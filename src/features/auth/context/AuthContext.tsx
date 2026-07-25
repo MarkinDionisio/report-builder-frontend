@@ -20,6 +20,7 @@ interface AuthContextType {
   acceptInvitation: (data: AcceptInvitationRequest) => Promise<Result<MeResponse, ApiProblemDetails>>;
   logout: () => void;
   initialize: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -95,6 +96,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return completeAuthentication(result.value);
   };
 
+  const refreshUser = useCallback(async (): Promise<void> => {
+    const meResult = await authApi.getMe();
+    if (isOk(meResult)) {
+      setState({ status: "authenticated", user: meResult.value });
+    } else if (meResult.error.status === 401) {
+      clearSession();
+      setState({ status: "anonymous", user: null });
+    }
+  }, []);
+
   const logout = () => {
     clearSession();
     setState({ status: "anonymous", user: null });
@@ -109,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         acceptInvitation,
         logout,
         initialize,
+        refreshUser,
       }}
     >
       {children}

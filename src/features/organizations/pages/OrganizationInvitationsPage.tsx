@@ -19,9 +19,11 @@ import {
   XCircle,
 } from "lucide-react";
 
+import { canManageOrganization } from "../../../shared/utils/roles";
+
 export const OrganizationInvitationsPage: React.FC = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
-  const { initialize } = useAuth();
+  const { state, refreshUser } = useAuth();
 
   const [invitations, setInvitations] = useState<OrganizationInvitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,13 +43,13 @@ export const OrganizationInvitationsPage: React.FC = () => {
 
     if (isErr(res)) {
       if (res.error.status === 403) {
-        initialize();
+        refreshUser();
       }
       setProblem(res.error);
     } else {
       setInvitations(res.value);
     }
-  }, [organizationId, initialize]);
+  }, [organizationId, refreshUser]);
 
   useEffect(() => {
     fetchInvitations();
@@ -66,6 +68,9 @@ export const OrganizationInvitationsPage: React.FC = () => {
     const res = await organizationsApi.revokeInvitation(organizationId, revokingInvitation.id);
 
     if (isErr(res)) {
+      if (res.error.status === 403) {
+        refreshUser();
+      }
       setActionProblem(res.error);
       if (res.error.code === "invitations.revoke_not_pending") {
         fetchInvitations();
@@ -77,6 +82,7 @@ export const OrganizationInvitationsPage: React.FC = () => {
     setInvitations((prev) =>
       prev.map((i) => (i.id === revokingInvitation.id ? { ...i, status: "revoked" } : i))
     );
+    setRevokingInvitation(null);
     return true;
   };
 
@@ -116,6 +122,38 @@ export const OrganizationInvitationsPage: React.FC = () => {
         };
     }
   };
+
+  const me = state.status === "authenticated" ? state.user : null;
+  const canManage = me && organizationId ? canManageOrganization(me, organizationId) : false;
+
+  if (problem?.status === 403 || (!isLoading && !canManage)) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <Navbar />
+        <main style={{ maxWidth: "800px", width: "100%", margin: "4rem auto", padding: "0 1.5rem", flex: 1, textAlign: "center" }}>
+          <div className="glass-card animate-fade-in" style={{ padding: "3rem 2rem" }}>
+            <ProblemAlert
+              problem={
+                problem || {
+                  type: "about:blank",
+                  title: "Acesso Negado",
+                  status: 403,
+                  detail: "Você não possui permissão para gerenciar esta organização.",
+                  instance: `/organizations/${organizationId}/invitations`,
+                  code: "invitations.organization_management_forbidden",
+                }
+              }
+            />
+            <div style={{ marginTop: "2rem" }}>
+              <Link to="/organizations" className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+                <ArrowLeft size={18} /> Voltar para Organizações
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>

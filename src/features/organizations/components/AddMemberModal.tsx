@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { ApiProblemDetails } from "../../../shared/api/types";
 import { ProblemAlert } from "../../../shared/components/Alert";
-import type { OrganizationInvitation, OrganizationRole } from "../types";
-import { UserPlus, Loader2, X } from "lucide-react";
+import type { OrganizationInvitation, OrganizationRole, OrganizationUserLookup } from "../types";
+import { organizationsApi } from "../api/organizationsApi";
+import { isOk } from "../../../shared/result/result";
+import { UserPlus, Loader2, X, Search, CheckCircle, MailWarning } from "lucide-react";
 
 interface AddMemberModalProps {
   isOpen: boolean;
@@ -11,6 +13,7 @@ interface AddMemberModalProps {
     email: string,
     role: OrganizationRole
   ) => Promise<{ success: boolean; invitation?: OrganizationInvitation | null }>;
+  organizationId: string;
   assignableRoles: OrganizationRole[];
   problem: ApiProblemDetails | null;
 }
@@ -19,6 +22,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   isOpen,
   onClose,
   onSubmit,
+  organizationId,
   assignableRoles,
   problem,
 }) => {
@@ -26,18 +30,69 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
   const [role, setRole] = useState<OrganizationRole>(assignableRoles[0] || "viewer");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // User Lookup state
+  const [isSearching, setIsSearching] = useState(false);
+  const [lookupUserResult, setLookupUserResult] = useState<OrganizationUserLookup | null>(null);
+  const [userNotFound, setUserNotFound] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (assignableRoles.length > 0 && !assignableRoles.includes(role)) {
+      setRole(assignableRoles[0]);
+    }
+  }, [assignableRoles, role]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      setEmail("");
+      setLookupUserResult(null);
+      setUserNotFound(false);
+      setLookupError(null);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const handleLookup = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !organizationId) return;
+
+    setIsSearching(true);
+    setLookupError(null);
+    setLookupUserResult(null);
+    setUserNotFound(false);
+
+    const res = await organizationsApi.lookupUser(organizationId, trimmedEmail);
+    setIsSearching(false);
+
+    if (isOk(res)) {
+      setLookupUserResult(res.value);
+    } else if (res.error.code === "organizations.user_not_found" || res.error.status === 404) {
+      setUserNotFound(true);
+    } else {
+      setLookupError(res.error.detail || "Falha ao consultar usuário.");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (lookupUserResult && !lookupUserResult.canCurrentUserManageRole) {
+      return;
+    }
+
     setIsSubmitting(true);
     const result = await onSubmit(email.trim(), role);
     setIsSubmitting(false);
+
     if (result.success) {
       setEmail("");
+      setLookupUserResult(null);
+      setUserNotFound(false);
       onClose();
     }
   };
+
+  const cannotManageUser = lookupUserResult !== null && !lookupUserResult.canCurrentUserManageRole;
 
   return (
     <div
@@ -53,7 +108,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
         padding: "1rem",
       }}
     >
-      <div className="glass-card animate-fade-in" style={{ maxWidth: "480px", padding: "1.75rem" }}>
+      <div className="glass-card animate-fade-in" style={{ maxWidth: "480px", width: "100%", padding: "1.75rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <UserPlus size={22} style={{ color: "var(--primary-500)" }} />
@@ -74,22 +129,99 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
 
         <ProblemAlert problem={problem} />
 
+        {lookupError && (
+          <div className="alert alert-danger animate-fade-in" style={{ marginBottom: "1rem" }}>
+            {lookupError}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <div className="input-group">
             <label className="input-label" htmlFor="member-email">
               E-mail do Usuário *
             </label>
-            <input
-              id="member-email"
-              type="email"
-              required
-              className="input-field"
-              placeholder="usuario@exemplo.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              disabled={isSubmitting}
-            />
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                id="member-email"
+                type="email"
+                required
+                className="input-field"
+                placeholder="usuario@exemplo.com"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setLookupUserResult(null);
+                  setUserNotFound(false);
+                }}
+                onBlur={handleLookup}
+                disabled={isSubmitting}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={handleLookup}
+                className="btn btn-secondary"
+                disabled={isSubmitting || isSearching || !email.trim()}
+                title="Consultar se o usuário já possui conta"
+              >
+                {isSearching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+              </button>
+            </div>
           </div>
+
+          {/* Lookup Result Indicator */}
+          {lookupUserResult && (
+            <div
+              style={{
+                padding: "0.75rem",
+                borderRadius: "6px",
+                marginBottom: "1rem",
+                fontSize: "0.85rem",
+                background: cannotManageUser ? "rgba(239, 68, 68, 0.12)" : "rgba(16, 185, 129, 0.12)",
+                border: `1px solid ${cannotManageUser ? "rgba(239, 68, 68, 0.3)" : "rgba(16, 185, 129, 0.3)"}`,
+                color: cannotManageUser ? "#f87171" : "#34d399",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              {cannotManageUser ? (
+                <>
+                  <MailWarning size={18} />
+                  <span>
+                    Conta localizada: <strong>{lookupUserResult.name}</strong> ({lookupUserResult.email}). Você não possui permissão para gerenciá-la.
+                  </span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={18} />
+                  <span>
+                    Conta localizada: <strong>{lookupUserResult.name}</strong> ({lookupUserResult.email}). Associação direta disponível.
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+
+          {userNotFound && (
+            <div
+              style={{
+                padding: "0.75rem",
+                borderRadius: "6px",
+                marginBottom: "1rem",
+                fontSize: "0.85rem",
+                background: "rgba(245, 158, 11, 0.12)",
+                border: "1px solid rgba(245, 158, 11, 0.3)",
+                color: "#f59e0b",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <UserPlus size={18} />
+              <span>Nenhuma conta localizada. Um convite de 7 dias será gerado.</span>
+            </div>
+          )}
 
           <div className="input-group">
             <label className="input-label" htmlFor="member-role">
@@ -100,7 +232,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
               className="input-field"
               value={role}
               onChange={(e) => setRole(e.target.value as OrganizationRole)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || cannotManageUser}
               style={{ background: "var(--bg-input)", color: "var(--text-primary)" }}
             >
               {assignableRoles.map((r) => (
@@ -120,11 +252,19 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
             >
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={isSubmitting || cannotManageUser}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 size={16} className="animate-spin" /> Processando...
                 </>
+              ) : userNotFound ? (
+                "Enviar Convite"
+              ) : lookupUserResult ? (
+                "Adicionar Membro"
               ) : (
                 "Adicionar / Convidar"
               )}

@@ -1,4 +1,9 @@
-export type GlobalRole = "root" | "administrator" | "creator" | "viewer";
+export type GlobalRole = "unassigned" | "root" | "administrator" | "creator" | "viewer";
+
+export interface UpdateUserGlobalRoleRequest {
+  newRole: GlobalRole;
+  profileIds?: string[];
+}
 
 export interface RegisterRequest {
   name: string;

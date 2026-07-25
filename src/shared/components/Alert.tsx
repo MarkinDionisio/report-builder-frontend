@@ -147,6 +147,20 @@ export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string 
     title: "Acesso Negado",
     message: "Você não possui permissão para gerenciar esta organização.",
   },
+
+  // Users Global Role
+  "users.not_found": {
+    title: "Usuário Não Encontrado",
+    message: "O usuário solicitado não foi localizado.",
+  },
+  "users.invalid_role": {
+    title: "Papel Global Inválido",
+    message: "O papel global informado é inválido.",
+  },
+  "users.root_access_required": {
+    title: "Acesso Restrito",
+    message: "Apenas Administradores Root podem alterar o papel global de usuários.",
+  },
 };
 
 interface AlertProps {

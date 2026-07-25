@@ -59,17 +59,39 @@ describe("Organizations API Service (Result Pattern)", () => {
       headers: { "Content-Type": "application/json" },
     });
 
-    vi.spyOn(client, "apiFetch").mockResolvedValueOnce(ok(mockResponse));
+    const fetchSpy = vi.spyOn(client, "apiFetch").mockResolvedValueOnce(ok(mockResponse));
 
-    const result = await organizationsApi.lookupUser("org-1", "joao@example.com");
+    const result = await organizationsApi.lookupUser("org-1", "joao@example.com ");
     expect(isOk(result)).toBe(true);
     if (isOk(result)) {
       expect(result.value.email).toBe("joao@example.com");
       expect(result.value.canCurrentUserManageRole).toBe(true);
     }
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/v1/organizations/org-1/users/lookup?email=joao%40example.com");
   });
 
-  it("should create pending invitation with token", async () => {
+  it("should return err on lookup when user is not found (404 organizations.user_not_found)", async () => {
+    const mockProblem = {
+      type: "about:blank",
+      title: "Not Found",
+      status: 404,
+      detail: "Nenhum usuário foi localizado com este e-mail.",
+      instance: "/api/v1/organizations/org-1/users/lookup",
+      code: "organizations.user_not_found",
+    };
+
+    vi.spyOn(client, "apiFetch").mockResolvedValueOnce(err(mockProblem));
+
+    const result = await organizationsApi.lookupUser("org-1", "desconhecido@exemplo.com");
+    expect(isErr(result)).toBe(true);
+    if (isErr(result)) {
+      expect(result.error.status).toBe(404);
+      expect(result.error.code).toBe("organizations.user_not_found");
+    }
+  });
+
+  it("should create pending invitation with token for non-existing user", async () => {
     const mockInvitation = {
       id: "inv-123",
       organizationId: "org-1",
@@ -104,12 +126,75 @@ describe("Organizations API Service (Result Pattern)", () => {
     }
   });
 
+  it("should handle accepted status when creating invitation for existing user", async () => {
+    const mockAcceptedInvitation = {
+      id: null,
+      organizationId: "org-1",
+      organizationName: "Operação Brasil",
+      email: "existente@exemplo.com",
+      organizationRole: "viewer",
+      status: "accepted",
+      invitedByUserId: "user-root",
+      expiresAt: null,
+      acceptedAt: new Date().toISOString(),
+      acceptedByUserId: "user-existing-id",
+    };
+
+    const mockResponse = new Response(JSON.stringify(mockAcceptedInvitation), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    vi.spyOn(client, "apiFetch").mockResolvedValueOnce(ok(mockResponse));
+
+    const result = await organizationsApi.createInvitation("org-1", {
+      email: "existente@exemplo.com",
+      organizationRole: "viewer",
+    });
+
+    expect(isOk(result)).toBe(true);
+    if (isOk(result)) {
+      expect(result.value.status).toBe("accepted");
+    }
+  });
+
+  it("should update organization sending mandatory name and description", async () => {
+    const mockOrg = { id: "org-1", name: "Operação América do Sul", description: null };
+    const mockResponse = new Response(JSON.stringify(mockOrg), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const fetchSpy = vi.spyOn(client, "apiFetch").mockResolvedValueOnce(ok(mockResponse));
+
+    const result = await organizationsApi.update("org-1", {
+      name: "Operação América do Sul",
+      description: null,
+    });
+
+    expect(isOk(result)).toBe(true);
+    expect(fetchSpy).toHaveBeenCalledWith("/api/v1/organizations/org-1", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Operação América do Sul", description: null }),
+    });
+  });
+
   it("should handle 204 No Content on organization deletion", async () => {
     const mockResponse = new Response(null, { status: 204 });
 
     vi.spyOn(client, "apiFetch").mockResolvedValueOnce(ok(mockResponse));
 
     const result = await organizationsApi.delete("org-1");
+    expect(isOk(result)).toBe(true);
+  });
+
+  it("should handle 204 No Content on invitation revocation", async () => {
+    const mockResponse = new Response(null, { status: 204 });
+
+    vi.spyOn(client, "apiFetch").mockResolvedValueOnce(ok(mockResponse));
+
+    const result = await organizationsApi.revokeInvitation("org-1", "inv-123");
     expect(isOk(result)).toBe(true);
   });
 });

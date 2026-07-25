@@ -3,8 +3,9 @@ import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import { Navbar } from "../../../shared/components/Navbar";
 import { organizationsApi } from "../api/organizationsApi";
+import { usersApi } from "../../users/api/usersApi";
 import type { OrganizationMember, OrganizationInvitation, OrganizationRole } from "../types";
-import type { ApiProblemDetails } from "../../../shared/api/types";
+import type { ApiProblemDetails, GlobalRole } from "../../../shared/api/types";
 import { isErr } from "../../../shared/result/result";
 import { ProblemAlert } from "../../../shared/components/Alert";
 import { AddMemberModal } from "../components/AddMemberModal";
@@ -20,9 +21,11 @@ import {
   Check,
 } from "lucide-react";
 
+import { assignableRoles, canManageOrganization, memberActions } from "../../../shared/utils/roles";
+
 export const OrganizationMembersPage: React.FC = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
-  const { state, initialize } = useAuth();
+  const { state, refreshUser } = useAuth();
 
   const [members, setMembers] = useState<OrganizationMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,11 +42,8 @@ export const OrganizationMembersPage: React.FC = () => {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingMember, setDeletingMember] = useState<OrganizationMember | null>(null);
 
-  const isRoot = state.status === "authenticated" && state.user?.globalRole === "root";
-
-  const assignableRoles: OrganizationRole[] = isRoot
-    ? ["administrator", "creator", "viewer"]
-    : ["creator", "viewer"];
+  const me = state.status === "authenticated" ? state.user : null;
+  const availableRoles: OrganizationRole[] = me ? assignableRoles(me) : ["creator", "viewer"];
 
   const fetchMembers = useCallback(async () => {
     if (!organizationId) return;
@@ -55,13 +55,13 @@ export const OrganizationMembersPage: React.FC = () => {
 
     if (isErr(res)) {
       if (res.error.status === 403) {
-        initialize();
+        refreshUser();
       }
       setProblem(res.error);
     } else {
       setMembers(res.value);
     }
-  }, [organizationId, initialize]);
+  }, [organizationId, refreshUser]);
 
   useEffect(() => {
     fetchMembers();
@@ -88,7 +88,35 @@ export const OrganizationMembersPage: React.FC = () => {
 
       // If updating current user, refresh /me
       if (state.status === "authenticated" && member.id === state.user.id) {
-        initialize();
+        refreshUser();
+      }
+    }
+  };
+
+  const handleGlobalRoleChange = async (member: OrganizationMember, newRole: GlobalRole) => {
+    setActionProblem(null);
+    setSuccessMessage(null);
+    setUpdatingMemberId(member.id);
+
+    const res = await usersApi.updateGlobalRole(member.id, {
+      newRole,
+      profileIds: [],
+    });
+
+    setUpdatingMemberId(null);
+
+    if (isErr(res)) {
+      setActionProblem(res.error);
+    } else {
+      setMembers((prev) =>
+        prev.map((m) => (m.id === member.id ? { ...m, globalRole: newRole } : m))
+      );
+      setSuccessMessage(`Papel global de ${member.name} atualizado para ${newRole} com sucesso!`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+
+      // If updating current user, refresh /me
+      if (state.status === "authenticated" && member.id === state.user.id) {
+        refreshUser();
       }
     }
   };
@@ -142,10 +170,41 @@ export const OrganizationMembersPage: React.FC = () => {
 
     setMembers((prev) => prev.filter((m) => m.id !== deletingMember.id));
     if (state.status === "authenticated" && deletingMember.id === state.user.id) {
-      initialize();
+      refreshUser();
     }
     return true;
   };
+
+  const canManage = me && organizationId ? canManageOrganization(me, organizationId) : false;
+
+  if (problem?.status === 403 || (!isLoading && !canManage)) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        <Navbar />
+        <main style={{ maxWidth: "800px", width: "100%", margin: "4rem auto", padding: "0 1.5rem", flex: 1, textAlign: "center" }}>
+          <div className="glass-card animate-fade-in" style={{ padding: "3rem 2rem" }}>
+            <ProblemAlert
+              problem={
+                problem || {
+                  type: "about:blank",
+                  title: "Acesso Negado",
+                  status: 403,
+                  detail: "Você não possui permissão para gerenciar esta organização.",
+                  instance: `/organizations/${organizationId}/members`,
+                  code: "organizations.member_view_forbidden",
+                }
+              }
+            />
+            <div style={{ marginTop: "2rem" }}>
+              <Link to="/organizations" className="btn btn-primary" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+                <ArrowLeft size={18} /> Voltar para Organizações
+              </Link>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -171,14 +230,16 @@ export const OrganizationMembersPage: React.FC = () => {
               </p>
             </div>
 
-            <div style={{ display: "flex", gap: "0.75rem" }}>
-              <Link to={`/organizations/${organizationId}/invitations`} className="btn btn-secondary">
-                <Mail size={16} /> Ver Convites
-              </Link>
-              <button onClick={() => setIsAddOpen(true)} className="btn btn-primary">
-                <UserPlus size={18} /> Adicionar / Convidar Membro
-              </button>
-            </div>
+            {canManage && (
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <Link to={`/organizations/${organizationId}/invitations`} className="btn btn-secondary">
+                  <Mail size={16} /> Ver Convites
+                </Link>
+                <button onClick={() => setIsAddOpen(true)} className="btn btn-primary">
+                  <UserPlus size={18} /> Adicionar / Convidar Membro
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -221,7 +282,7 @@ export const OrganizationMembersPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {members.map((member) => {
-                    const canEdit = member.canCurrentUserManageRole || isRoot;
+                    const actions = memberActions(member);
                     const isUpdating = updatingMemberId === member.id;
 
                     return (
@@ -229,12 +290,30 @@ export const OrganizationMembersPage: React.FC = () => {
                         <td style={{ padding: "1rem", fontWeight: 600 }}>{member.name}</td>
                         <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>{member.email}</td>
                         <td style={{ padding: "1rem" }}>
-                          <span style={{ fontSize: "0.8rem", padding: "0.2rem 0.5rem", borderRadius: "4px", background: "rgba(255,255,255,0.06)" }}>
-                            {member.globalRole}
-                          </span>
+                          {me?.globalRole === "root" ? (
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+                              <select
+                                className="input-field"
+                                value={member.globalRole}
+                                onChange={(e) => handleGlobalRoleChange(member, e.target.value as GlobalRole)}
+                                disabled={isUpdating}
+                                style={{ padding: "0.35rem 0.6rem", fontSize: "0.85rem", width: "auto" }}
+                              >
+                                {["unassigned", "root", "administrator", "creator", "viewer"].map((gr) => (
+                                  <option key={gr} value={gr} style={{ background: "#0f172a" }}>
+                                    {gr}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: "0.8rem", padding: "0.2rem 0.5rem", borderRadius: "4px", background: "rgba(255,255,255,0.06)" }}>
+                              {member.globalRole}
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: "1rem" }}>
-                          {canEdit ? (
+                          {actions.canChangeRole ? (
                             <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
                               <select
                                 className="input-field"
@@ -243,7 +322,7 @@ export const OrganizationMembersPage: React.FC = () => {
                                 disabled={isUpdating}
                                 style={{ padding: "0.35rem 0.6rem", fontSize: "0.85rem", width: "auto" }}
                               >
-                                {assignableRoles.map((r) => (
+                                {availableRoles.map((r) => (
                                   <option key={r} value={r} style={{ background: "#0f172a" }}>
                                     {r}
                                   </option>
@@ -258,7 +337,7 @@ export const OrganizationMembersPage: React.FC = () => {
                           )}
                         </td>
                         <td style={{ padding: "1rem", textAlign: "right" }}>
-                          {canEdit ? (
+                          {actions.canRemove ? (
                             <button
                               onClick={() => handleOpenDelete(member)}
                               className="btn"
@@ -291,7 +370,8 @@ export const OrganizationMembersPage: React.FC = () => {
           isOpen={isAddOpen}
           onClose={() => setIsAddOpen(false)}
           onSubmit={handleAddOrInvite}
-          assignableRoles={assignableRoles}
+          organizationId={organizationId || ""}
+          assignableRoles={availableRoles}
           problem={actionProblem}
         />
 
