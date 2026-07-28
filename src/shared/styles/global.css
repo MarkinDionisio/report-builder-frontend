@@ -14,10 +14,6 @@ body {
   min-height: 100vh;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.12) 0px, transparent 50%);
-  background-attachment: fixed;
 }
 
 #root {
@@ -85,7 +81,6 @@ a:hover {
   font-family: inherit;
   outline: none;
   transition: all var(--transition-fast);
-  backdrop-filter: blur(8px);
 }
 
 .input-field:focus {
@@ -122,14 +117,14 @@ a:hover {
 }
 
 .btn-primary {
-  background: var(--accent-gradient);
+  background: var(--primary-500);
   color: #ffffff;
-  box-shadow: var(--shadow-glow);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover:not(:disabled) {
+  background: var(--primary-600);
   transform: translateY(-1px);
-  box-shadow: 0 0 25px rgba(99, 102, 241, 0.4);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -154,20 +149,24 @@ a:hover {
 
 /* Card Container */
 .glass-card {
-  background: var(--card-gradient);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
-  backdrop-filter: blur(16px);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-sm);
   padding: 2.5rem;
   width: 100%;
+  transition: all var(--transition-fast);
+}
+
+.glass-card:hover {
+  border-color: var(--border-color-hover);
+  box-shadow: var(--shadow-md);
 }
 
 /* Header & Navbar */
 .header-nav {
   border-bottom: 1px solid var(--border-color);
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(16px);
+  background: var(--bg-card);
   padding: 1rem 2rem;
   position: sticky;
   top: 0;
@@ -209,8 +208,8 @@ a:hover {
 
 .nav-link.active {
   color: #ffffff;
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .desktop-user-actions {
@@ -244,18 +243,17 @@ a:hover {
   top: 100%;
   left: 0;
   right: 0;
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(20px);
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   padding: 1.25rem 1.25rem 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-lg);
 }
 
 .mobile-user-card {
-  background: rgba(30, 41, 59, 0.7);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 1rem;
@@ -285,8 +283,8 @@ a:hover {
 .mobile-nav-link:hover,
 .mobile-nav-link.active {
   color: #ffffff;
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 /* Dashboard Grid */
