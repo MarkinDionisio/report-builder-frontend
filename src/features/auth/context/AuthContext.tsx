@@ -10,7 +10,7 @@ import type {
 } from "../../../shared/api/types";
 import { clearSession, installTokens, readPersistedSession, refreshSession } from "../../../shared/api/client";
 import { authApi } from "../api/authApi";
-import { err, isErr, ok } from "../../../shared/result/result";
+import { err, isErr, isOk, ok } from "../../../shared/result/result";
 import type { Result } from "../../../shared/result/result";
 
 interface AuthContextType {

@@ -212,31 +212,49 @@ export const OrganizationsListPage: React.FC = () => {
                   {org.description || <em style={{ color: "var(--text-muted)" }}>Sem descrição informada.</em>}
                 </p>
 
-                {userCanManage && (
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "0.75rem",
-                      borderTop: "1px solid var(--border-color)",
-                      paddingTop: "1rem",
-                    }}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.75rem",
+                    borderTop: "1px solid var(--border-color)",
+                    paddingTop: "1rem",
+                  }}
+                >
+                  <Link
+                    to={`/organizations/${org.id}`}
+                    className="btn btn-primary"
+                    style={{ width: "100%", justifyContent: "center", fontSize: "0.85rem", padding: "0.55rem" }}
                   >
-                    <Link
-                      to={`/organizations/${org.id}/members`}
-                      className="btn btn-secondary"
-                      style={{ flex: 1, padding: "0.55rem 0.75rem", fontSize: "0.85rem" }}
-                    >
-                      <Users size={16} /> Membros
-                    </Link>
-                    <Link
-                      to={`/organizations/${org.id}/invitations`}
-                      className="btn btn-secondary"
-                      style={{ flex: 1, padding: "0.55rem 0.75rem", fontSize: "0.85rem" }}
-                    >
-                      <Mail size={16} /> Convites
-                    </Link>
-                  </div>
-                )}
+                    <Building2 size={16} /> Acessar Central da Organização
+                  </Link>
+
+                  {userCanManage && (
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <Link
+                        to={`/organizations/${org.id}/members`}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, padding: "0.45rem 0.5rem", fontSize: "0.775rem", justifyContent: "center" }}
+                      >
+                        <Users size={14} /> Membros
+                      </Link>
+                      <Link
+                        to={`/organizations/${org.id}/invitations`}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, padding: "0.45rem 0.5rem", fontSize: "0.775rem", justifyContent: "center" }}
+                      >
+                        <Mail size={14} /> Convites
+                      </Link>
+                      <Link
+                        to={`/organizations/${org.id}/profiles`}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, padding: "0.45rem 0.5rem", fontSize: "0.775rem", justifyContent: "center" }}
+                      >
+                        <Users size={14} /> Perfis
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}

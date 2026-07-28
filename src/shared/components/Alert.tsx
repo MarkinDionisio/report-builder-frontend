@@ -206,3 +206,47 @@ export const ProblemAlert: React.FC<AlertProps> = ({ problem }) => {
     </div>
   );
 };
+
+export const Alert: React.FC<{
+  type: "error" | "warning" | "success" | "info";
+  message: string;
+  style?: React.CSSProperties;
+}> = ({ type, message, style }) => {
+  const bg =
+    type === "error"
+      ? "rgba(239, 68, 68, 0.1)"
+      : type === "warning"
+      ? "rgba(245, 158, 11, 0.1)"
+      : type === "success"
+      ? "rgba(34, 197, 94, 0.1)"
+      : "rgba(59, 130, 246, 0.1)";
+
+  const color =
+    type === "error"
+      ? "#ef4444"
+      : type === "warning"
+      ? "#f59e0b"
+      : type === "success"
+      ? "#22c55e"
+      : "#3b82f6";
+
+  return (
+    <div
+      style={{
+        padding: "0.75rem 1rem",
+        borderRadius: "6px",
+        background: bg,
+        color,
+        fontSize: "0.875rem",
+        display: "flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        ...style,
+      }}
+    >
+      <AlertCircle size={16} style={{ flexShrink: 0 }} />
+      <span>{message}</span>
+    </div>
+  );
+};
+

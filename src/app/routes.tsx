@@ -6,8 +6,12 @@ import { AcceptInvitationPage } from "../features/auth/pages/AcceptInvitationPag
 import { ProtectedRoute } from "../features/auth/components/ProtectedRoute";
 import { DashboardPage } from "../features/dashboard/pages/DashboardPage";
 import { OrganizationsListPage } from "../features/organizations/pages/OrganizationsListPage";
+import { OrganizationDetailPage } from "../features/organizations/pages/OrganizationDetailPage";
 import { OrganizationMembersPage } from "../features/organizations/pages/OrganizationMembersPage";
 import { OrganizationInvitationsPage } from "../features/organizations/pages/OrganizationInvitationsPage";
+import { ReportFieldsPage } from "../features/catalog/pages/ReportFieldsPage";
+import { OrganizationProfilesPage } from "../features/catalog/pages/OrganizationProfilesPage";
+import { ProfileGrantsEditorPage } from "../features/catalog/pages/ProfileGrantsEditorPage";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -35,6 +39,14 @@ export const AppRoutes: React.FC = () => {
         }
       />
       <Route
+        path="/organizations/:organizationId"
+        element={
+          <ProtectedRoute>
+            <OrganizationDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/organizations/:organizationId/members"
         element={
           <ProtectedRoute>
@@ -51,8 +63,37 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
+      {/* Administrative Catalog Routes - Centralized under Organizations */}
+      <Route path="/data-sources" element={<Navigate to="/organizations" replace />} />
+      <Route path="/report-schemas" element={<Navigate to="/organizations" replace />} />
+      <Route
+        path="/report-schemas/:schemaId/fields"
+        element={
+          <ProtectedRoute>
+            <ReportFieldsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizations/:organizationId/profiles"
+        element={
+          <ProtectedRoute>
+            <OrganizationProfilesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizations/:organizationId/profiles/:profileId/grants"
+        element={
+          <ProtectedRoute>
+            <ProfileGrantsEditorPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Fallback Catch-all Route */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 };
+
