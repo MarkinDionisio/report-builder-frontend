@@ -10,6 +10,7 @@ import type {
   OrganizationMember,
   OrganizationUserLookup,
   UpdateOrganizationMemberRoleRequest,
+  UpdateOrganizationMemberProfilesRequest,
   UpsertOrganizationRequest,
 } from "../types";
 
@@ -176,6 +177,33 @@ export const organizationsApi = {
         status: 500,
         detail: "Falha ao atualizar papel do membro.",
         instance: `/api/v1/organizations/${orgId}/members/${userId}`,
+      });
+    }
+  },
+
+  async updateMemberProfiles(
+    orgId: string,
+    userId: string,
+    data: UpdateOrganizationMemberProfilesRequest
+  ): Promise<Result<OrganizationMember, ApiProblemDetails>> {
+    const res = await apiFetch(`/api/v1/organizations/${orgId}/members/${userId}/profiles`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (isErr(res)) return err(res.error);
+
+    try {
+      const updatedMember = (await res.value.json()) as OrganizationMember;
+      return ok(updatedMember);
+    } catch {
+      return err({
+        type: "about:blank",
+        title: "Erro de Resposta",
+        status: 500,
+        detail: "Falha ao atualizar perfis do membro.",
+        instance: `/api/v1/organizations/${orgId}/members/${userId}/profiles`,
       });
     }
   },

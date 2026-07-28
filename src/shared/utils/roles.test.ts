@@ -88,6 +88,7 @@ describe("Role Utilities", () => {
       email: "mem@example.com",
       globalRole: "viewer",
       organizationRole: "viewer",
+      profileIds: [],
       canCurrentUserManageRole: true,
     };
     expect(memberActions(member)).toEqual({ canChangeRole: true, canRemove: true });

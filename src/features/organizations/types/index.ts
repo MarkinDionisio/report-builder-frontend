@@ -20,6 +20,7 @@ export interface OrganizationMember {
   email: string;
   globalRole: GlobalRole;
   organizationRole: OrganizationRole;
+  profileIds: string[];
   canCurrentUserManageRole: boolean;
 }
 
@@ -38,6 +39,10 @@ export interface AddOrganizationMemberRequest {
 
 export interface UpdateOrganizationMemberRoleRequest {
   organizationRole: OrganizationRole;
+}
+
+export interface UpdateOrganizationMemberProfilesRequest {
+  profileIds: string[];
 }
 
 export interface CreateOrganizationInvitationRequest {

@@ -4,7 +4,9 @@ import { useAuth } from "../../auth/context/AuthContext";
 import { Navbar } from "../../../shared/components/Navbar";
 import { organizationsApi } from "../api/organizationsApi";
 import { usersApi } from "../../users/api/usersApi";
+import { catalogApi } from "../../catalog/api/catalogApi";
 import type { OrganizationMember, OrganizationInvitation, OrganizationRole } from "../types";
+import type { Profile } from "../../catalog/types/catalogTypes";
 import type { ApiProblemDetails, GlobalRole } from "../../../shared/api/types";
 import { isErr } from "../../../shared/result/result";
 import { ProblemAlert } from "../../../shared/components/Alert";
@@ -28,6 +30,7 @@ export const OrganizationMembersPage: React.FC = () => {
   const { state, refreshUser } = useAuth();
 
   const [members, setMembers] = useState<OrganizationMember[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -50,16 +53,23 @@ export const OrganizationMembersPage: React.FC = () => {
     setIsLoading(true);
     setProblem(null);
 
-    const res = await organizationsApi.listMembers(organizationId);
+    const [membersRes, profilesRes] = await Promise.all([
+      organizationsApi.listMembers(organizationId),
+      catalogApi.listProfiles(organizationId),
+    ]);
+
     setIsLoading(false);
 
-    if (isErr(res)) {
-      if (res.error.status === 403) {
+    if (isErr(membersRes)) {
+      if (membersRes.error.status === 403) {
         refreshUser();
       }
-      setProblem(res.error);
+      setProblem(membersRes.error);
+    } else if (isErr(profilesRes)) {
+      setProblem(profilesRes.error);
     } else {
-      setMembers(res.value);
+      setMembers(membersRes.value);
+      setProfiles(profilesRes.value);
     }
   }, [organizationId, refreshUser]);
 
@@ -112,6 +122,44 @@ export const OrganizationMembersPage: React.FC = () => {
         prev.map((m) => (m.id === member.id ? { ...m, globalRole: newRole } : m))
       );
       setSuccessMessage(`Papel global de ${member.name} atualizado para ${newRole} com sucesso!`);
+      setTimeout(() => setSuccessMessage(null), 4000);
+
+      // If updating current user, refresh /me
+      if (state.status === "authenticated" && member.id === state.user.id) {
+        refreshUser();
+      }
+    }
+  };
+
+  const handleProfileToggle = async (member: OrganizationMember, profileId: string, isChecked: boolean) => {
+    if (!organizationId) return;
+    setActionProblem(null);
+    setSuccessMessage(null);
+    setUpdatingMemberId(member.id);
+
+    const currentProfileIds = member.profileIds || [];
+    let newProfileIds = [...currentProfileIds];
+
+    if (isChecked) {
+      newProfileIds.push(profileId);
+    } else {
+      newProfileIds = newProfileIds.filter((id) => id !== profileId);
+    }
+
+    // Deduplicate
+    newProfileIds = [...new Set(newProfileIds)];
+
+    const res = await organizationsApi.updateMemberProfiles(organizationId, member.id, {
+      profileIds: newProfileIds,
+    });
+
+    setUpdatingMemberId(null);
+
+    if (isErr(res)) {
+      setActionProblem(res.error);
+    } else {
+      setMembers((prev) => prev.map((m) => (m.id === member.id ? res.value : m)));
+      setSuccessMessage(`Perfis de ${member.name} atualizados com sucesso!`);
       setTimeout(() => setSuccessMessage(null), 4000);
 
       // If updating current user, refresh /me
@@ -277,6 +325,7 @@ export const OrganizationMembersPage: React.FC = () => {
                     <th style={{ padding: "0.75rem 1rem" }}>E-mail</th>
                     <th style={{ padding: "0.75rem 1rem" }}>Papel Global</th>
                     <th style={{ padding: "0.75rem 1rem" }}>Papel na Organização</th>
+                    <th style={{ padding: "0.75rem 1rem" }}>Perfis</th>
                     <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Ações</th>
                   </tr>
                 </thead>
@@ -333,6 +382,68 @@ export const OrganizationMembersPage: React.FC = () => {
                           ) : (
                             <span style={{ fontWeight: 600, color: "var(--primary-500)" }}>
                               {member.organizationRole}
+                            </span>
+                          )}
+                        </td>
+                        <td style={{ padding: "1rem" }}>
+                          {actions.canChangeRole ? (
+                            <details style={{ position: "relative" }}>
+                              <summary
+                                className="input-field"
+                                style={{
+                                  padding: "0.35rem 0.6rem",
+                                  fontSize: "0.85rem",
+                                  cursor: "pointer",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.5rem",
+                                  listStyle: "none",
+                                }}
+                              >
+                                {member.profileIds?.length || 0} perfis selecionados
+                              </summary>
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: "100%",
+                                  left: 0,
+                                  marginTop: "0.25rem",
+                                  background: "#0f172a",
+                                  border: "1px solid var(--border-color)",
+                                  borderRadius: "6px",
+                                  padding: "0.5rem",
+                                  zIndex: 10,
+                                  minWidth: "200px",
+                                  boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "0.4rem",
+                                  maxHeight: "200px",
+                                  overflowY: "auto",
+                                }}
+                              >
+                                {profiles.map((p) => {
+                                  const isChecked = (member.profileIds || []).includes(p.id);
+                                  return (
+                                    <label key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", cursor: "pointer" }}>
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        disabled={isUpdating}
+                                        onChange={(e) => handleProfileToggle(member, p.id, e.target.checked)}
+                                      />
+                                      <span style={{ color: "var(--text-primary)" }}>{p.name}</span>
+                                    </label>
+                                  );
+                                })}
+                                {profiles.length === 0 && (
+                                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Nenhum perfil criado.</span>
+                                )}
+                              </div>
+                            </details>
+                          ) : (
+                            <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
+                              {member.profileIds?.length || 0} perfil(s)
                             </span>
                           )}
                         </td>
