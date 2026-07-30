@@ -110,7 +110,6 @@ export const OrganizationMembersPage: React.FC = () => {
 
     const res = await usersApi.updateGlobalRole(member.id, {
       newRole,
-      profileIds: [],
     });
 
     setUpdatingMemberId(null);

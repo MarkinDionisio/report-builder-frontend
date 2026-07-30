@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/context/AuthContext";
-import { LogOut, LayoutDashboard, Building2, Menu, X, User } from "lucide-react";
+import { LogOut, LayoutDashboard, Building2, Menu, X, User, Server, FileText } from "lucide-react";
 
 export const Navbar: React.FC = () => {
   const { state, logout } = useAuth();
@@ -66,6 +66,22 @@ export const Navbar: React.FC = () => {
           >
             <Building2 size={16} /> Organizações
           </Link>
+          {user.globalRole === "root" && (
+            <>
+              <Link
+                to="/data-sources"
+                className={`nav-link ${currentPath.startsWith("/data-sources") ? "active" : ""}`}
+              >
+                <Server size={16} /> DataSources
+              </Link>
+              <Link
+                to="/report-schemas"
+                className={`nav-link ${currentPath.startsWith("/report-schemas") ? "active" : ""}`}
+              >
+                <FileText size={16} /> Catálogo
+              </Link>
+            </>
+          )}
         </nav>
 
         {/* Desktop User Info & Logout */}
@@ -146,6 +162,26 @@ export const Navbar: React.FC = () => {
               <Building2 size={20} />
               <span>Organizações</span>
             </Link>
+            {user.globalRole === "root" && (
+              <>
+                <Link
+                  to="/data-sources"
+                  onClick={() => setIsOpen(false)}
+                  className={`mobile-nav-link ${currentPath.startsWith("/data-sources") ? "active" : ""}`}
+                >
+                  <Server size={20} />
+                  <span>DataSources</span>
+                </Link>
+                <Link
+                  to="/report-schemas"
+                  onClick={() => setIsOpen(false)}
+                  className={`mobile-nav-link ${currentPath.startsWith("/report-schemas") ? "active" : ""}`}
+                >
+                  <FileText size={20} />
+                  <span>Catálogo</span>
+                </Link>
+              </>
+            )}
           </nav>
 
           <div style={{ paddingTop: "1rem", borderTop: "1px solid var(--border-color)" }}>

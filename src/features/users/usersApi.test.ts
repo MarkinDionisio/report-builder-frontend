@@ -17,7 +17,7 @@ describe("Users API Service", () => {
     expect(fetchSpy).toHaveBeenCalledWith("/api/v1/users/user-123", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newRole: "creator", profileIds: [] }),
+      body: JSON.stringify({ globalRole: "creator" }),
     });
   });
 

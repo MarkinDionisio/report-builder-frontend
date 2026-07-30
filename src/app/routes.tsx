@@ -12,6 +12,8 @@ import { OrganizationInvitationsPage } from "../features/organizations/pages/Org
 import { ReportFieldsPage } from "../features/catalog/pages/ReportFieldsPage";
 import { OrganizationProfilesPage } from "../features/catalog/pages/OrganizationProfilesPage";
 import { ProfileGrantsEditorPage } from "../features/catalog/pages/ProfileGrantsEditorPage";
+import { DataSourcesPage } from "../features/catalog/pages/DataSourcesPage";
+import { ReportSchemasPage } from "../features/catalog/pages/ReportSchemasPage";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -64,8 +66,22 @@ export const AppRoutes: React.FC = () => {
       />
 
       {/* Administrative Catalog Routes - Centralized under Organizations */}
-      <Route path="/data-sources" element={<Navigate to="/organizations" replace />} />
-      <Route path="/report-schemas" element={<Navigate to="/organizations" replace />} />
+      <Route
+        path="/data-sources"
+        element={
+          <ProtectedRoute>
+            <DataSourcesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report-schemas"
+        element={
+          <ProtectedRoute>
+            <ReportSchemasPage />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/report-schemas/:schemaId/fields"
         element={
