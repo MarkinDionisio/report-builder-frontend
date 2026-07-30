@@ -10,14 +10,13 @@ describe("Users API Service", () => {
 
     const result = await usersApi.updateGlobalRole("user-123", {
       newRole: "creator",
-      profileIds: [],
     });
 
     expect(isOk(result)).toBe(true);
     expect(fetchSpy).toHaveBeenCalledWith("/api/v1/users/user-123", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ globalRole: "creator" }),
+      body: JSON.stringify({ newRole: "creator" }),
     });
   });
 
@@ -35,7 +34,6 @@ describe("Users API Service", () => {
 
     const result = await usersApi.updateGlobalRole("user-123", {
       newRole: "administrator",
-      profileIds: [],
     });
 
     expect(isErr(result)).toBe(true);

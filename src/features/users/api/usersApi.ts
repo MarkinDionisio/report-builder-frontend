@@ -9,7 +9,7 @@ export const usersApi = {
     data: UpdateUserGlobalRoleRequest
   ): Promise<Result<void, ApiProblemDetails>> {
     const payload = {
-      globalRole: data.newRole,
+      newRole: data.newRole,
     };
 
     const res = await apiFetch(`/api/v1/users/${userId}`, {

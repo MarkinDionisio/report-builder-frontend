@@ -177,17 +177,25 @@ export const ProblemAlert: React.FC<AlertProps> = ({ problem }) => {
   const isExpectedError = Boolean(knownError || hasValidationErrors);
 
   // For unexpected errors, display a single polite generic message without exposing internal details
-  const displayTitle = isExpectedError
-    ? knownError?.title || problem.title || "Atenção"
-    : "Erro de Processamento";
+  let displayTitle = "Erro de Processamento";
+  let displayMessage = "Ocorreu um erro ao processar sua requisição. Por favor, tente novamente mais tarde.";
 
-  const displayMessage = isExpectedError
-    ? knownError?.message || problem.detail
-    : "Ocorreu um erro ao processar sua requisição. Por favor, tente novamente mais tarde.";
+  if (isExpectedError) {
+    if (knownError) {
+      displayTitle = knownError.title;
+      displayMessage = knownError.message;
+    } else if (hasValidationErrors) {
+      displayTitle = "Erro de Validação";
+      displayMessage = "Os dados fornecidos são inválidos. Por favor, verifique e tente novamente.";
+    } else {
+      displayTitle = problem.title || "Atenção";
+      displayMessage = problem.detail || "Não foi possível concluir a ação.";
+    }
+  }
 
   return (
     <div className="alert alert-danger animate-fade-in" role="alert">
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
         <AlertCircle size={18} style={{ flexShrink: 0 }} />
         <span className="alert-title">{displayTitle}</span>
       </div>
@@ -195,7 +203,7 @@ export const ProblemAlert: React.FC<AlertProps> = ({ problem }) => {
       <div style={{ marginTop: "0.2rem" }}>{displayMessage}</div>
 
       {hasValidationErrors && (
-        <ul style={{ marginTop: "0.5rem", paddingLeft: "1.25rem", fontSize: "0.825rem" }}>
+        <ul style={{ marginTop: "0.75rem", paddingLeft: "1.5rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
           {Object.entries(problem.errors!).map(([field, messages]) => (
             <li key={field}>
               <strong>{field}:</strong> {messages.join(", ")}
