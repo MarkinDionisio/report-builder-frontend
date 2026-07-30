@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { RootReportField, UpsertReportFieldRequest } from "../types/catalogTypes";
 import { catalogApi } from "../api/catalogApi";
@@ -7,7 +7,7 @@ import { isErr } from "../../../shared/result/result";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
-import { ArrowLeft, List, Plus, Edit2, Trash2, ShieldAlert, X, EyeOff } from "lucide-react";
+import { ArrowLeft, List, Plus, Edit2, Trash2, ShieldAlert, X, EyeOff, Search } from "lucide-react";
 
 const OPERATOR_OPTIONS = [
   { value: "eq", label: "Igual (eq)" },
@@ -31,11 +31,13 @@ const AGGREGATION_OPTIONS = [
 
 export const ReportFieldsPage: React.FC = () => {
   const { schemaId } = useParams<{ schemaId: string }>();
+  const navigate = useNavigate();
   const { state, refreshUser } = useAuth();
   const user = state.status === "authenticated" ? state.user : null;
   const isRoot = user?.globalRole === "root";
 
   const [fields, setFields] = useState<RootReportField[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -247,12 +249,12 @@ export const ReportFieldsPage: React.FC = () => {
       <Navbar />
       <main className="container" style={{ padding: "2rem 1rem" }}>
         <div style={{ marginBottom: "1rem" }}>
-          <Link to="/report-schemas" className="btn btn-secondary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem" }}>
+          <button onClick={() => navigate(-1)} className="btn btn-secondary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem" }}>
             <ArrowLeft size={16} /> Voltar para Schemas
-          </Link>
+          </button>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <div className="responsive-flex-header" style={{ marginBottom: "1.5rem" }}>
           <div>
             <h1 style={{ fontSize: "1.75rem", margin: "0 0 0.25rem 0", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <List size={28} className="text-accent" /> Campos do Schema
@@ -261,9 +263,22 @@ export const ReportFieldsPage: React.FC = () => {
               Defina capacidades (selecionável, filtrável, agrupável, agregável), tipo público e operadores.
             </p>
           </div>
-          <button onClick={openCreateModal} className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Plus size={18} /> Adicionar Campo
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+            <div style={{ position: "relative" }}>
+              <Search size={16} style={{ position: "absolute", left: "10px", top: "10px", color: "var(--text-secondary)" }} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Buscar campo..."
+                style={{ paddingLeft: "34px", width: "250px" }}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <button onClick={openCreateModal} className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Plus size={18} /> Adicionar Campo
+            </button>
+          </div>
         </div>
 
         {errorMsg && <Alert type="error" message={errorMsg} style={{ marginBottom: "1.25rem" }} />}
@@ -281,18 +296,34 @@ export const ReportFieldsPage: React.FC = () => {
           </div>
         ) : (
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-            <table className="table" style={{ width: "100%", margin: 0 }}>
-              <thead>
-                <tr>
-                  <th>Nome Público / Interno</th>
-                  <th>Tipo / Nulo</th>
-                  <th>Capacidade</th>
-                  <th>Sensível / Status</th>
-                  <th style={{ textAlign: "right" }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {fields.map((field) => (
+            {(() => {
+              const st = searchTerm.toLowerCase();
+              const filteredFields = fields.filter((f) =>
+                f.name.toLowerCase().includes(st) ||
+                f.internalFieldName.toLowerCase().includes(st)
+              );
+
+              if (filteredFields.length === 0) {
+                return (
+                  <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
+                    Nenhum campo encontrado na busca.
+                  </div>
+                );
+              }
+
+              return (
+                <table className="table" style={{ width: "100%", margin: 0 }}>
+                  <thead>
+                    <tr>
+                      <th>Nome Público / Interno</th>
+                      <th>Tipo / Nulo</th>
+                      <th>Capacidade</th>
+                      <th>Sensível / Status</th>
+                      <th style={{ textAlign: "right" }}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredFields.map((field) => (
                   <tr key={field.id}>
                     <td>
                       <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{field.name}</div>
@@ -343,6 +374,8 @@ export const ReportFieldsPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            );
+            })()}
           </div>
         )}
 
@@ -361,7 +394,7 @@ export const ReportFieldsPage: React.FC = () => {
 
               <form onSubmit={handleSaveField} style={{ padding: "1.25rem" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="responsive-grid-2col">
                     <div>
                       <label className="form-label" htmlFor="field-internal-name">
                         Nome do Campo Interno (DB) *
@@ -393,7 +426,7 @@ export const ReportFieldsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                  <div className="responsive-grid-2col">
                     <div>
                       <label className="form-label" htmlFor="field-public-type">
                         Tipo Público *
@@ -430,7 +463,7 @@ export const ReportFieldsPage: React.FC = () => {
 
                   <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "0.75rem" }}>
                     <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.5rem" }}>Capacidades Habilitadas</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "0.5rem" }}>
+                    <div className="responsive-grid-5col">
                       <label style={{ fontSize: "0.8rem", cursor: "pointer" }}>
                         <input type="checkbox" checked={isSelectable} onChange={(e) => setIsSelectable(e.target.checked)} /> Select
                       </label>
@@ -451,7 +484,7 @@ export const ReportFieldsPage: React.FC = () => {
 
                   <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "0.75rem" }}>
                     <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.5rem" }}>Operadores Permitidos</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
+                    <div className="responsive-grid-3col">
                       {OPERATOR_OPTIONS.map((op) => (
                         <label key={op.value} style={{ fontSize: "0.8rem", cursor: "pointer" }}>
                           <input
@@ -467,7 +500,7 @@ export const ReportFieldsPage: React.FC = () => {
 
                   <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "0.75rem" }}>
                     <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.5rem" }}>Agregações Permitidas</div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.5rem" }}>
+                    <div className="responsive-grid-3col">
                       {AGGREGATION_OPTIONS.map((agg) => (
                         <label key={agg.value} style={{ fontSize: "0.8rem", cursor: "pointer" }}>
                           <input

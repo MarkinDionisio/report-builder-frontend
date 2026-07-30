@@ -520,7 +520,7 @@ export const ReportSchemasPage: React.FC = () => {
                         DataSource Origem: <strong>{currentDs?.name}</strong> (Organização: <strong>{currentOrg?.name}</strong>)
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                      <div className="responsive-grid-2col">
                         <div>
                           <label className="form-label" htmlFor="schema-internal-name">
                             Schema DB Interno *

@@ -38,6 +38,7 @@ import {
   X,
   ChevronDown,
   ChevronUp,
+  Search,
 } from "lucide-react";
 
 export const OrganizationDetailPage: React.FC = () => {
@@ -55,7 +56,9 @@ export const OrganizationDetailPage: React.FC = () => {
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [schemasByDs, setSchemasByDs] = useState<Record<string, RootReportSchema[]>>({});
-  const [expandedDsId, setExpandedDsId] = useState<string | null>(null);
+  const initialExpandedDsId = searchParams.get("ds");
+  const [expandedDsId, setExpandedDsId] = useState<string | null>(initialExpandedDsId);
+  const [schemaSearchTerms, setSchemaSearchTerms] = useState<Record<string, string>>({});
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -127,23 +130,29 @@ export const OrganizationDetailPage: React.FC = () => {
     loadOrgDetails();
   }, [loadOrgDetails]);
 
-  const loadSchemasForDs = async (dsId: string) => {
+  const loadSchemasForDs = useCallback(async (dsId: string) => {
     const res = await catalogApi.listReportSchemas(dsId);
     if (!isErr(res)) {
       setSchemasByDs((prev) => ({ ...prev, [dsId]: res.value }));
     }
+  }, []);
+
+  const toggleExpandDs = (dsId: string) => {
+    const newId = expandedDsId === dsId ? null : dsId;
+    setExpandedDsId(newId);
+    
+    setSearchParams(params => {
+      if (newId) params.set("ds", newId);
+      else params.delete("ds");
+      return params;
+    }, { replace: true });
   };
 
-  const toggleExpandDs = async (dsId: string) => {
-    if (expandedDsId === dsId) {
-      setExpandedDsId(null);
-    } else {
-      setExpandedDsId(dsId);
-      if (!schemasByDs[dsId]) {
-        await loadSchemasForDs(dsId);
-      }
+  useEffect(() => {
+    if (expandedDsId && !schemasByDs[expandedDsId]) {
+      loadSchemasForDs(expandedDsId).catch(console.error);
     }
-  };
+  }, [expandedDsId, schemasByDs, loadSchemasForDs]);
 
   const changeTab = (tabName: string) => {
     setSearchParams({ tab: tabName });
@@ -465,37 +474,62 @@ export const OrganizationDetailPage: React.FC = () => {
                       {/* Expanded Schemas Section */}
                       {isExpanded && (
                         <div style={{ background: "var(--surface-color)", borderTop: "1px solid var(--border-color)", padding: "1rem" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
                             <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>
                               Schemas Catalogados do DataSource ({dsSchemas.length})
                             </div>
-                            {isRoot && (
-                              <button
-                                onClick={() => openCreateSchemaModal(ds.id)}
-                                className="btn btn-secondary"
-                                style={{ padding: "0.3rem 0.6rem", fontSize: "0.775rem" }}
-                              >
-                                <Plus size={14} /> Novo Schema Manual
-                              </button>
-                            )}
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+                              <div style={{ position: "relative" }}>
+                                <Search size={14} style={{ position: "absolute", left: "10px", top: "8px", color: "var(--text-secondary)" }} />
+                                <input
+                                  type="text"
+                                  className="form-input"
+                                  placeholder="Buscar schema..."
+                                  style={{ paddingLeft: "30px", fontSize: "0.8rem", height: "30px", width: "200px" }}
+                                  value={schemaSearchTerms[ds.id] || ""}
+                                  onChange={(e) => setSchemaSearchTerms(prev => ({ ...prev, [ds.id]: e.target.value }))}
+                                />
+                              </div>
+                              {isRoot && (
+                                <button
+                                  onClick={() => openCreateSchemaModal(ds.id)}
+                                  className="btn btn-secondary"
+                                  style={{ padding: "0.3rem 0.6rem", fontSize: "0.775rem", height: "30px" }}
+                                >
+                                  <Plus size={14} /> Novo Schema Manual
+                                </button>
+                              )}
+                            </div>
                           </div>
 
-                          {dsSchemas.length === 0 ? (
-                            <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                              Nenhum schema catalogado para este DataSource. Use Introspecção ou Bootstrap para importar.
-                            </div>
-                          ) : (
-                            <table className="table" style={{ width: "100%", fontSize: "0.8rem", margin: 0 }}>
-                              <thead>
-                                <tr>
-                                  <th>Nome Público</th>
-                                  <th>Origem DB</th>
-                                  <th>Status</th>
-                                  <th style={{ textAlign: "right" }}>Ações</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {dsSchemas.map((schema) => (
+                          {(() => {
+                            const st = schemaSearchTerms[ds.id]?.toLowerCase() || "";
+                            const filteredSchemas = dsSchemas.filter(s => 
+                              s.publicName.toLowerCase().includes(st) || 
+                              s.internalSchemaName.toLowerCase().includes(st) || 
+                              s.internalObjectName.toLowerCase().includes(st)
+                            );
+
+                            if (filteredSchemas.length === 0) {
+                              return (
+                                <div style={{ textAlign: "center", padding: "1.5rem", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
+                                  {dsSchemas.length === 0 ? "Nenhum schema catalogado para este DataSource. Use Introspecção ou Bootstrap para importar." : "Nenhum schema encontrado na busca."}
+                                </div>
+                              );
+                            }
+
+                            return (
+                              <table className="table" style={{ width: "100%", fontSize: "0.8rem", margin: 0 }}>
+                                <thead>
+                                  <tr>
+                                    <th>Nome Público</th>
+                                    <th>Origem DB</th>
+                                    <th>Status</th>
+                                    <th style={{ textAlign: "right" }}>Ações</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {filteredSchemas.map((schema) => (
                                   <tr key={schema.id}>
                                     <td>
                                       <strong>{schema.publicName}</strong>
@@ -544,7 +578,8 @@ export const OrganizationDetailPage: React.FC = () => {
                                 ))}
                               </tbody>
                             </table>
-                          )}
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
@@ -674,7 +709,7 @@ export const OrganizationDetailPage: React.FC = () => {
               <form onSubmit={handleSaveSchema} style={{ padding: "1.25rem" }}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   {!editingSchema ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div className="responsive-grid-2col">
                       <div>
                         <label className="form-label" htmlFor="schema-internal-name">
                           Schema DB Interno *
