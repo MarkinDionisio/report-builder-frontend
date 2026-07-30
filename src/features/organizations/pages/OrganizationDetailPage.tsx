@@ -50,7 +50,8 @@ export const OrganizationDetailPage: React.FC = () => {
   const user = state.status === "authenticated" ? state.user : null;
   const isRoot = user?.globalRole === "root";
 
-  const activeTab = searchParams.get("tab") || "datasources";
+  const activeTabParam = searchParams.get("tab");
+  const activeTab = !isRoot ? "profiles" : (activeTabParam || "datasources");
 
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
@@ -346,24 +347,26 @@ export const OrganizationDetailPage: React.FC = () => {
 
         {/* Tab Header Navigation */}
         <div style={{ display: "flex", borderBottom: "2px solid var(--border-color)", marginBottom: "1.5rem" }}>
-          <button
-            onClick={() => changeTab("datasources")}
-            className={`btn ${activeTab === "datasources" ? "btn-primary" : "btn-secondary"}`}
-            style={{ borderRadius: "8px 8px 0 0", padding: "0.65rem 1.25rem", borderBottom: "none" }}
-          >
-            <Server size={18} /> DataSources & Schemas ({dataSources.length})
-          </button>
+          {isRoot && (
+            <button
+              onClick={() => changeTab("datasources")}
+              className={`btn ${activeTab === "datasources" ? "btn-primary" : "btn-secondary"}`}
+              style={{ borderRadius: "8px 8px 0 0", padding: "0.65rem 1.25rem", borderBottom: "none" }}
+            >
+              <Server size={18} /> DataSources & Schemas ({dataSources.length})
+            </button>
+          )}
           <button
             onClick={() => changeTab("profiles")}
             className={`btn ${activeTab === "profiles" ? "btn-primary" : "btn-secondary"}`}
-            style={{ borderRadius: "8px 8px 0 0", padding: "0.65rem 1.25rem", borderBottom: "none", marginLeft: "0.5rem" }}
+            style={{ borderRadius: "8px 8px 0 0", padding: "0.65rem 1.25rem", borderBottom: "none", marginLeft: isRoot ? "0.5rem" : "0" }}
           >
             <Key size={18} /> Perfis de Acesso & Grants ({profiles.length})
           </button>
         </div>
 
         {/* Tab 1: DataSources & Schemas */}
-        {activeTab === "datasources" && (
+        {isRoot && activeTab === "datasources" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
               <div>
