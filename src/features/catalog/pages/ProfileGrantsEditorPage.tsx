@@ -15,7 +15,10 @@ import { canManageOrganization } from "../../../shared/utils/roles";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
-import { Key, ArrowLeft, CheckSquare, ShieldAlert, Database, Layers, CheckCircle2 } from "lucide-react";
+import { 
+  Key, ArrowLeft, CheckSquare, ShieldAlert, Database, Layers, CheckCircle2, 
+  Save, ChevronDown, ChevronRight, Search, XCircle
+} from "lucide-react";
 
 export const ProfileGrantsEditorPage: React.FC = () => {
   const { organizationId, profileId } = useParams<{ organizationId: string; profileId: string }>();
@@ -29,7 +32,14 @@ export const ProfileGrantsEditorPage: React.FC = () => {
   const [selectedDataSourceId, setSelectedDataSourceId] = useState<string>("");
 
   const [availableCatalog, setAvailableCatalog] = useState<AvailableCatalogSchema[]>([]);
-  const [grants, setGrants] = useState<ProfileGrants>({ schemas: [] });
+  const [, setGrants] = useState<ProfileGrants>({ schemas: [] });
+  const [draftGrants, setDraftGrants] = useState<ProfileGrants>({ schemas: [] });
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showSuccessBar, setShowSuccessBar] = useState(false);
+
+  const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showOnlyGranted, setShowOnlyGranted] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
@@ -71,6 +81,8 @@ export const ProfileGrantsEditorPage: React.FC = () => {
     setProfile(profRes.value);
     if (!isErr(grantsRes)) {
       setGrants(grantsRes.value);
+      setDraftGrants(grantsRes.value);
+      setHasUnsavedChanges(false);
     }
 
     if (!isErr(dsRes)) {
@@ -106,6 +118,12 @@ export const ProfileGrantsEditorPage: React.FC = () => {
       }
     } else {
       setAvailableCatalog(res.value);
+      // Opcional: Expandir o primeiro schema automaticamente para melhor UX
+      if (res.value.length > 0) {
+        setExpandedSchemas(new Set([res.value[0].id]));
+      } else {
+        setExpandedSchemas(new Set());
+      }
     }
   }, [organizationId, selectedDataSourceId, refreshUser]);
 
@@ -116,8 +134,20 @@ export const ProfileGrantsEditorPage: React.FC = () => {
   }, [selectedDataSourceId, loadAvailableCatalog]);
 
   const findFieldGrant = (schemaId: string, fieldId: string): ProfileFieldGrant | undefined => {
-    const schemaGrant = grants.schemas.find((s) => s.schemaId === schemaId);
+    const schemaGrant = draftGrants.schemas.find((s) => s.schemaId === schemaId);
     return schemaGrant?.fields.find((f) => f.fieldId === fieldId);
+  };
+
+  const toggleSchemaExpansion = (schemaId: string) => {
+    setExpandedSchemas((prev) => {
+      const next = new Set(prev);
+      if (next.has(schemaId)) {
+        next.delete(schemaId);
+      } else {
+        next.add(schemaId);
+      }
+      return next;
+    });
   };
 
   // Level 1: Grant ALL Schemas of the selected DataSource at once (POST /grant-all)
@@ -139,18 +169,15 @@ export const ProfileGrantsEditorPage: React.FC = () => {
       }
     } else {
       setGrants(res.value);
+      setDraftGrants(res.value);
+      setHasUnsavedChanges(false);
       setSuccessMsg("Todos os schemas e campos disponíveis no DataSource foram liberados com sucesso!");
     }
   };
 
-  // Level 2: Grant ALL Fields of a SPECIFIC Schema at once (PUT snapshot update)
-  const handleGrantEntireSchema = async (targetSchema: AvailableCatalogSchema) => {
-    if (!organizationId || !profileId) return;
-    setSaving(true);
-    setErrorMsg(null);
-    setSuccessMsg(null);
-
-    const nextSchemas: ProfileSchemaGrant[] = JSON.parse(JSON.stringify(grants.schemas));
+  // Level 2: Grant ALL Fields of a SPECIFIC Schema at once (Updates Draft)
+  const handleGrantEntireSchema = (targetSchema: AvailableCatalogSchema) => {
+    const nextSchemas: ProfileSchemaGrant[] = JSON.parse(JSON.stringify(draftGrants.schemas));
     let schemaGrant = nextSchemas.find((s) => s.schemaId === targetSchema.id);
 
     if (!schemaGrant) {
@@ -169,35 +196,25 @@ export const ProfileGrantsEditorPage: React.FC = () => {
     }));
 
     const cleanedSchemas = nextSchemas.filter((s) => s.fields.length > 0);
-    const snapshotPayload = { schemas: cleanedSchemas };
-
-    const res = await catalogApi.updateProfileGrants(organizationId, profileId, snapshotPayload);
-    setSaving(false);
-
-    if (isErr(res)) {
-      if (res.error.status === 403) {
-        setAccessDenied(true);
-        refreshUser();
-      } else {
-        setErrorMsg(res.error.detail || "Erro ao liberar todos os campos do schema.");
-      }
-    } else {
-      setGrants(res.value);
-      setSuccessMsg(`Todos os campos do schema "${targetSchema.name}" foram liberados!`);
-    }
+    setDraftGrants({ schemas: cleanedSchemas });
+    setHasUnsavedChanges(true);
   };
 
-  // Level 3: Grant or Revoke individual field capability (PUT snapshot update)
-  const handleToggleCapability = async (
+  // Level 2.5: Revoke ALL Fields of a SPECIFIC Schema at once (Updates Draft)
+  const handleRevokeEntireSchema = (targetSchema: AvailableCatalogSchema) => {
+    const nextSchemas: ProfileSchemaGrant[] = JSON.parse(JSON.stringify(draftGrants.schemas));
+    const cleanedSchemas = nextSchemas.filter((s) => s.schemaId !== targetSchema.id);
+    setDraftGrants({ schemas: cleanedSchemas });
+    setHasUnsavedChanges(true);
+  };
+
+  // Level 3: Grant or Revoke individual field capability (Updates Draft)
+  const handleToggleCapability = (
     schemaId: string,
     fieldId: string,
     capability: keyof Omit<ProfileFieldGrant, "fieldId">
   ) => {
-    if (!organizationId || !profileId) return;
-    setErrorMsg(null);
-    setSuccessMsg(null);
-
-    const nextSchemas: ProfileSchemaGrant[] = JSON.parse(JSON.stringify(grants.schemas));
+    const nextSchemas: ProfileSchemaGrant[] = JSON.parse(JSON.stringify(draftGrants.schemas));
     let schemaGrant = nextSchemas.find((s) => s.schemaId === schemaId);
 
     if (!schemaGrant) {
@@ -227,10 +244,17 @@ export const ProfileGrantsEditorPage: React.FC = () => {
     );
     const cleanedSchemas = nextSchemas.filter((s) => s.fields.length > 0);
 
-    const snapshotPayload = { schemas: cleanedSchemas };
+    setDraftGrants({ schemas: cleanedSchemas });
+    setHasUnsavedChanges(true);
+  };
 
+  const handleSaveChanges = async () => {
+    if (!organizationId || !profileId) return;
     setSaving(true);
-    const res = await catalogApi.updateProfileGrants(organizationId, profileId, snapshotPayload);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    const res = await catalogApi.updateProfileGrants(organizationId, profileId, { schemas: draftGrants.schemas });
     setSaving(false);
 
     if (isErr(res)) {
@@ -241,14 +265,33 @@ export const ProfileGrantsEditorPage: React.FC = () => {
         setAccessDenied(true);
         refreshUser();
       } else {
-        setErrorMsg(res.error.detail || "Erro ao atualizar permissão individual.");
+        setErrorMsg(res.error.detail || "Erro ao salvar permissões.");
       }
     } else {
       setGrants(res.value);
+      setDraftGrants(res.value);
+      setHasUnsavedChanges(false);
+      setSuccessMsg("Alterações salvas com sucesso!");
+      setShowSuccessBar(true);
+      setTimeout(() => {
+        setShowSuccessBar(false);
+      }, 3000);
     }
   };
 
   const currentDs = dataSources.find((d) => d.id === selectedDataSourceId);
+  const filteredCatalog = availableCatalog.filter((schema) => {
+    const matchesSearch = schema.name.toLowerCase().includes(searchTerm.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (showOnlyGranted) {
+      const schemaGrant = draftGrants.schemas.find((s) => s.schemaId === schema.id);
+      const grantedFieldsCount = schemaGrant?.fields.length || 0;
+      return grantedFieldsCount > 0;
+    }
+
+    return true;
+  });
 
   if (accessDenied || (!canManage && !loading)) {
     return (
@@ -270,7 +313,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
   return (
     <>
       <Navbar />
-      <main className="container" style={{ padding: "2rem 1rem" }}>
+      <main className="container" style={{ padding: "2rem 1rem", paddingBottom: hasUnsavedChanges ? "6rem" : "2rem" }}>
         <div style={{ marginBottom: "1rem" }}>
           <Link
             to={`/organizations/${organizationId}/profiles`}
@@ -291,17 +334,30 @@ export const ProfileGrantsEditorPage: React.FC = () => {
             </p>
           </div>
 
-          {selectedDataSourceId && availableCatalog.length > 0 && (
-            <button
-              onClick={handleGrantAllDataSource}
-              className="btn btn-primary"
-              disabled={saving}
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-              title="Liberar 100% dos Schemas e Campos deste DataSource de uma vez"
-            >
-              <CheckSquare size={18} /> Liberar Todos os Schemas do DataSource
-            </button>
-          )}
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            {selectedDataSourceId && availableCatalog.length > 0 && (
+              <button
+                onClick={handleGrantAllDataSource}
+                className="btn btn-secondary"
+                disabled={saving}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                title="Liberar 100% dos Schemas e Campos deste DataSource de uma vez (Salva imediatamente no banco)"
+              >
+                <CheckSquare size={18} /> Liberar Tudo (Imediato)
+              </button>
+            )}
+
+            {hasUnsavedChanges && (
+              <button
+                onClick={handleSaveChanges}
+                className="btn btn-primary"
+                disabled={saving}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                <Save size={18} /> Salvar Alterações
+              </button>
+            )}
+          </div>
         </div>
 
         {errorMsg && <Alert type="error" message={errorMsg} style={{ marginBottom: "1.25rem" }} />}
@@ -364,130 +420,260 @@ export const ProfileGrantsEditorPage: React.FC = () => {
               </div>
             ) : (
               /* Step 2: Grant Matrix with Multi-Level Release */
-              availableCatalog.map((schema) => (
-                <div key={schema.id} className="card" style={{ padding: 0, overflow: "hidden" }}>
-                  <div
-                    style={{
-                      background: "var(--surface-color)",
-                      padding: "0.85rem 1.25rem",
-                      borderBottom: "1px solid var(--border-color)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>{schema.name}</span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginLeft: "0.75rem" }}>
-                        DataSource: {schema.dataSourceName} (Org: {profile?.organizationName})
-                      </span>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                      <span className="badge badge-info">{schema.type}</span>
-
-                      {/* Level 2: Grant ALL Fields of this Schema */}
-                      <button
-                        onClick={() => handleGrantEntireSchema(schema)}
-                        className="btn btn-secondary"
-                        disabled={saving}
-                        style={{ padding: "0.3rem 0.6rem", fontSize: "0.775rem", display: "flex", alignItems: "center", gap: "0.3rem" }}
-                        title="Liberar todas as capacidades de todos os campos deste schema de uma vez"
-                      >
-                        <CheckCircle2 size={14} className="text-accent" /> Liberar Schema Completo
-                      </button>
-                    </div>
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+                  <div style={{ position: "relative", flex: 1, minWidth: "300px", maxWidth: "600px" }}>
+                    <Search size={18} style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
+                    <input
+                      type="text"
+                      placeholder="Buscar por nome do schema..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ 
+                        width: "100%", 
+                        padding: "0.6rem 1rem 0.6rem 2.75rem", 
+                        border: "1px solid var(--border-color)", 
+                        borderRadius: "6px", 
+                        background: "var(--bg)", 
+                        color: "var(--text)",
+                        fontSize: "0.95rem"
+                      }}
+                    />
                   </div>
-
-                  <table className="table" style={{ width: "100%", margin: 0, fontSize: "0.85rem" }}>
-                    <thead>
-                      <tr>
-                        <th>Campo do Catálogo</th>
-                        <th>Tipo</th>
-                        <th style={{ textAlign: "center" }}>Selectable</th>
-                        <th style={{ textAlign: "center" }}>Filterable</th>
-                        <th style={{ textAlign: "center" }}>Sortable</th>
-                        <th style={{ textAlign: "center" }}>Groupable</th>
-                        <th style={{ textAlign: "center" }}>Aggregatable</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {schema.fields.map((field) => {
-                        const fieldGrant = findFieldGrant(schema.id, field.id);
-                        return (
-                          <tr key={field.id}>
-                            <td>
-                              <strong>{field.name}</strong>
-                            </td>
-                            <td>
-                              <code>{field.type}</code>
-                            </td>
-
-                            {/* Selectable */}
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                type="checkbox"
-                                disabled={!field.selectable || saving}
-                                checked={Boolean(fieldGrant?.selectable)}
-                                onChange={() => handleToggleCapability(schema.id, field.id, "selectable")}
-                                style={{ width: "16px", height: "16px", cursor: field.selectable ? "pointer" : "not-allowed" }}
-                              />
-                            </td>
-
-                            {/* Filterable */}
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                type="checkbox"
-                                disabled={!field.filterable || saving}
-                                checked={Boolean(fieldGrant?.filterable)}
-                                onChange={() => handleToggleCapability(schema.id, field.id, "filterable")}
-                                style={{ width: "16px", height: "16px", cursor: field.filterable ? "pointer" : "not-allowed" }}
-                              />
-                            </td>
-
-                            {/* Sortable */}
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                type="checkbox"
-                                disabled={!field.sortable || saving}
-                                checked={Boolean(fieldGrant?.sortable)}
-                                onChange={() => handleToggleCapability(schema.id, field.id, "sortable")}
-                                style={{ width: "16px", height: "16px", cursor: field.sortable ? "pointer" : "not-allowed" }}
-                              />
-                            </td>
-
-                            {/* Groupable */}
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                type="checkbox"
-                                disabled={!field.groupable || saving}
-                                checked={Boolean(fieldGrant?.groupable)}
-                                onChange={() => handleToggleCapability(schema.id, field.id, "groupable")}
-                                style={{ width: "16px", height: "16px", cursor: field.groupable ? "pointer" : "not-allowed" }}
-                              />
-                            </td>
-
-                            {/* Aggregatable */}
-                            <td style={{ textAlign: "center" }}>
-                              <input
-                                type="checkbox"
-                                disabled={!field.aggregatable || saving}
-                                checked={Boolean(fieldGrant?.aggregatable)}
-                                onChange={() => handleToggleCapability(schema.id, field.id, "aggregatable")}
-                                style={{ width: "16px", height: "16px", cursor: field.aggregatable ? "pointer" : "not-allowed" }}
-                              />
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.95rem", color: "var(--text-secondary)", userSelect: "none" }}>
+                    <input 
+                      type="checkbox" 
+                      checked={showOnlyGranted}
+                      onChange={(e) => setShowOnlyGranted(e.target.checked)}
+                      style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: "var(--primary-500)" }}
+                    />
+                    Mostrar apenas schemas liberados
+                  </label>
                 </div>
-              ))
+                {filteredCatalog.length === 0 ? (
+                  <div className="card" style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
+                    Nenhum schema encontrado com o termo "{searchTerm}".
+                  </div>
+                ) : (
+                  filteredCatalog.map((schema) => {
+                const isExpanded = expandedSchemas.has(schema.id);
+                const schemaGrant = draftGrants.schemas.find(s => s.schemaId === schema.id);
+                const grantedFieldsCount = schemaGrant?.fields.length || 0;
+                const totalFieldsCount = schema.fields.length;
+
+                return (
+                  <div key={schema.id} className="card" style={{ padding: 0, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        background: "var(--surface-color)",
+                        padding: "0.85rem 1.25rem",
+                        borderBottom: isExpanded ? "1px solid var(--border-color)" : "none",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div 
+                        style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "pointer", userSelect: "none" }}
+                        onClick={() => toggleSchemaExpansion(schema.id)}
+                      >
+                        {isExpanded ? <ChevronDown size={20} className="text-accent" /> : <ChevronRight size={20} className="text-accent" />}
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: "1.05rem" }}>{schema.name}</span>
+                          <span 
+                            style={{ 
+                              marginLeft: "0.75rem", 
+                              fontSize: "0.7rem", 
+                              padding: "0.2rem 0.4rem",
+                              borderRadius: "4px",
+                              backgroundColor: grantedFieldsCount > 0 ? "rgba(16, 185, 129, 0.15)" : "rgba(255, 255, 255, 0.05)",
+                              color: grantedFieldsCount > 0 ? "var(--success-500, #10b981)" : "var(--text-secondary)",
+                              border: `1px solid ${grantedFieldsCount > 0 ? "rgba(16, 185, 129, 0.3)" : "var(--border-color)"}`
+                            }}
+                          >
+                            {grantedFieldsCount === 0 ? "Nenhum acesso" : `${grantedFieldsCount}/${totalFieldsCount} campos com acesso`}
+                          </span>
+                          <span style={{ display: "block", fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
+                            DataSource: {schema.dataSourceName}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <span className="badge badge-info">{schema.type}</span>
+
+                        {/* Level 2: Grant ALL Fields of this Schema */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGrantEntireSchema(schema);
+                          }}
+                          className="btn btn-secondary"
+                          disabled={saving}
+                          style={{ padding: "0.3rem 0.6rem", fontSize: "0.775rem", display: "flex", alignItems: "center", gap: "0.3rem" }}
+                          title="Liberar todas as capacidades de todos os campos deste schema de uma vez"
+                        >
+                          <CheckCircle2 size={14} className="text-accent" /> Liberar Schema
+                        </button>
+
+                        {/* Level 2.5: Revoke ALL Fields of this Schema */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRevokeEntireSchema(schema);
+                          }}
+                          className="btn btn-secondary"
+                          disabled={saving || grantedFieldsCount === 0}
+                          style={{ 
+                            padding: "0.3rem 0.6rem", 
+                            fontSize: "0.775rem", 
+                            display: "flex", 
+                            alignItems: "center", 
+                            gap: "0.3rem", 
+                            color: grantedFieldsCount === 0 ? "var(--text-muted)" : "var(--danger-500)", 
+                            borderColor: grantedFieldsCount === 0 ? "var(--border-color)" : "var(--danger-500)" 
+                          }}
+                          title={grantedFieldsCount === 0 ? "Schema já está revogado" : "Revogar todas as capacidades de todos os campos deste schema de uma vez"}
+                        >
+                          <XCircle size={14} /> Revogar Schema
+                        </button>
+                      </div>
+                    </div>
+
+                    {isExpanded && (
+                      <table className="table" style={{ width: "100%", margin: 0, fontSize: "0.85rem" }}>
+                        <thead>
+                          <tr>
+                            <th>Campo do Catálogo</th>
+                            <th>Tipo</th>
+                            <th style={{ textAlign: "center" }}>Selectable</th>
+                            <th style={{ textAlign: "center" }}>Filterable</th>
+                            <th style={{ textAlign: "center" }}>Sortable</th>
+                            <th style={{ textAlign: "center" }}>Groupable</th>
+                            <th style={{ textAlign: "center" }}>Aggregatable</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {schema.fields.map((field) => {
+                            const fieldGrant = findFieldGrant(schema.id, field.id);
+                            return (
+                              <tr key={field.id}>
+                                <td>
+                                  <strong>{field.name}</strong>
+                                </td>
+                                <td>
+                                  <code>{field.type}</code>
+                                </td>
+
+                                {/* Selectable */}
+                                <td style={{ textAlign: "center" }}>
+                                  <input
+                                    type="checkbox"
+                                    disabled={!field.selectable || saving}
+                                    checked={Boolean(fieldGrant?.selectable)}
+                                    onChange={() => handleToggleCapability(schema.id, field.id, "selectable")}
+                                    style={{ width: "16px", height: "16px", cursor: field.selectable ? "pointer" : "not-allowed" }}
+                                  />
+                                </td>
+
+                                {/* Filterable */}
+                                <td style={{ textAlign: "center" }}>
+                                  <input
+                                    type="checkbox"
+                                    disabled={!field.filterable || saving}
+                                    checked={Boolean(fieldGrant?.filterable)}
+                                    onChange={() => handleToggleCapability(schema.id, field.id, "filterable")}
+                                    style={{ width: "16px", height: "16px", cursor: field.filterable ? "pointer" : "not-allowed" }}
+                                  />
+                                </td>
+
+                                {/* Sortable */}
+                                <td style={{ textAlign: "center" }}>
+                                  <input
+                                    type="checkbox"
+                                    disabled={!field.sortable || saving}
+                                    checked={Boolean(fieldGrant?.sortable)}
+                                    onChange={() => handleToggleCapability(schema.id, field.id, "sortable")}
+                                    style={{ width: "16px", height: "16px", cursor: field.sortable ? "pointer" : "not-allowed" }}
+                                  />
+                                </td>
+
+                                {/* Groupable */}
+                                <td style={{ textAlign: "center" }}>
+                                  <input
+                                    type="checkbox"
+                                    disabled={!field.groupable || saving}
+                                    checked={Boolean(fieldGrant?.groupable)}
+                                    onChange={() => handleToggleCapability(schema.id, field.id, "groupable")}
+                                    style={{ width: "16px", height: "16px", cursor: field.groupable ? "pointer" : "not-allowed" }}
+                                  />
+                                </td>
+
+                                {/* Aggregatable */}
+                                <td style={{ textAlign: "center" }}>
+                                  <input
+                                    type="checkbox"
+                                    disabled={!field.aggregatable || saving}
+                                    checked={Boolean(fieldGrant?.aggregatable)}
+                                    onChange={() => handleToggleCapability(schema.id, field.id, "aggregatable")}
+                                    style={{ width: "16px", height: "16px", cursor: field.aggregatable ? "pointer" : "not-allowed" }}
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                );
+              })
             )}
+            </>
+          )}
           </div>
         )}
       </main>
+
+      {/* Floating Save Button Bar / Success Toast */}
+      {(hasUnsavedChanges || showSuccessBar) && (
+        <div style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: showSuccessBar ? "var(--success-500, #10b981)" : "var(--bg-card, #111)",
+          borderTop: showSuccessBar ? "none" : "1px solid var(--border-color)",
+          padding: "1rem 2rem",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          boxShadow: "0 -4px 12px rgba(0,0,0,0.5)",
+          zIndex: 9999,
+          color: showSuccessBar ? "#fff" : "var(--text-primary)"
+        }}>
+          {showSuccessBar ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "bold" }}>
+              <CheckCircle2 size={20} />
+              Alterações salvas com sucesso!
+            </div>
+          ) : (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+              <div>
+                <strong>Você possui alterações não salvas.</strong> Lembre-se de salvar antes de sair.
+              </div>
+              <button
+                onClick={handleSaveChanges}
+                className="btn btn-primary"
+                disabled={saving}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              >
+                <Save size={18} /> Salvar Alterações
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 };
