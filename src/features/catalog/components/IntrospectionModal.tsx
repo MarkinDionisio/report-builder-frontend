@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Search, Database, ArrowRight, CheckCircle2, RefreshCw } from "lucide-react";
+import { X, Search, Database, CheckCircle2, RefreshCw } from "lucide-react";
 import type {
   ImportReportSchemaRequest,
   ImportSchemaPreview,

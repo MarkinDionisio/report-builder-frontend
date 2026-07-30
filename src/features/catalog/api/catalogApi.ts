@@ -100,8 +100,10 @@ export const catalogApi = {
 
   // --- DataSources ---
   async listDataSources(organizationId?: string): Promise<Result<DataSource[], ApiProblemDetails>> {
-    const query = organizationId ? `?organizationId=${encodeURIComponent(organizationId)}` : "";
-    const res = await apiFetch(`/api/v1/data-sources${query}`);
+    const url = organizationId 
+      ? `/api/v1/organizations/${encodeURIComponent(organizationId)}/data-sources` 
+      : "/api/v1/data-sources";
+    const res = await apiFetch(url);
     return parseJsonResponse<DataSource[]>(res);
   },
 

@@ -76,6 +76,7 @@ export const OrganizationDetailPage: React.FC = () => {
   const [targetDsIdForSchema, setTargetDsIdForSchema] = useState<string>("");
   const [editingSchema, setEditingSchema] = useState<RootReportSchema | null>(null);
   const [deletingSchema, setDeletingSchema] = useState<RootReportSchema | null>(null);
+  const [viewingFieldsSchema, setViewingFieldsSchema] = useState<RootReportSchema | null>(null);
 
   const [savingSchema, setSavingSchema] = useState(false);
   const [deletingDsLoading, setDeletingDsLoading] = useState(false);
@@ -132,11 +133,30 @@ export const OrganizationDetailPage: React.FC = () => {
   }, [loadOrgDetails]);
 
   const loadSchemasForDs = useCallback(async (dsId: string) => {
-    const res = await catalogApi.listReportSchemas(dsId);
-    if (!isErr(res)) {
-      setSchemasByDs((prev) => ({ ...prev, [dsId]: res.value }));
+    if (isRoot) {
+      const res = await catalogApi.listReportSchemas(dsId);
+      if (!isErr(res)) {
+        setSchemasByDs((prev) => ({ ...prev, [dsId]: res.value }));
+      }
+    } else if (organizationId) {
+      const res = await catalogApi.getAvailableCatalog(organizationId, dsId);
+      if (!isErr(res)) {
+        const adapted = res.value.map(s => ({
+          id: s.id,
+          dataSourceId: s.dataSourceId,
+          publicName: s.name,
+          publicType: s.type,
+          internalSchemaName: "",
+          internalObjectName: "",
+          description: null,
+          isEnabled: true,
+          isAvailableAdapted: true,
+          _availableFields: s.fields,
+        })) as unknown as RootReportSchema[];
+        setSchemasByDs((prev) => ({ ...prev, [dsId]: adapted }));
+      }
     }
-  }, []);
+  }, [isRoot, organizationId]);
 
   const toggleExpandDs = (dsId: string) => {
     const newId = expandedDsId === dsId ? null : dsId;
@@ -538,19 +558,35 @@ export const OrganizationDetailPage: React.FC = () => {
                                       <strong>{schema.publicName}</strong>
                                     </td>
                                     <td>
-                                      <code>{schema.internalSchemaName}.{schema.internalObjectName}</code>
+                                      {(schema as any).isAvailableAdapted ? (
+                                        <span className="text-secondary" style={{ fontSize: "0.8rem", fontStyle: "italic" }}>
+                                          Detalhes ocultos (acesso de admin)
+                                        </span>
+                                      ) : (
+                                        <code>{schema.internalSchemaName}.{schema.internalObjectName}</code>
+                                      )}
                                     </td>
                                     <td>
-                                      {schema.isEnabled ? (
-                                        <span className="badge badge-success">Habilitado</span>
+                                      {(schema as any).isAvailableAdapted ? (
+                                        <span className="badge badge-success">Disponível</span>
                                       ) : (
-                                        <span className="badge badge-warning">Desabilitado</span>
+                                        schema.isEnabled ? (
+                                          <span className="badge badge-success">Habilitado</span>
+                                        ) : (
+                                          <span className="badge badge-warning">Desabilitado</span>
+                                        )
                                       )}
                                     </td>
                                     <td style={{ textAlign: "right" }}>
                                       <div style={{ display: "inline-flex", gap: "0.4rem" }}>
                                         <button
-                                          onClick={() => navigate(`/report-schemas/${schema.id}/fields`)}
+                                          onClick={() => {
+                                            if ((schema as any).isAvailableAdapted) {
+                                              setViewingFieldsSchema(schema);
+                                            } else {
+                                              navigate(`/report-schemas/${schema.id}/fields`);
+                                            }
+                                          }}
                                           className="btn btn-secondary"
                                           style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
                                           title="Gerenciar Campos (Fields)"
@@ -838,6 +874,59 @@ export const OrganizationDetailPage: React.FC = () => {
                     {deletingSchemaLoading ? "Excluindo..." : "Excluir"}
                   </button>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Viewing Fields Modal */}
+        {viewingFieldsSchema && (
+          <div className="modal-backdrop">
+            <div className="modal-container" style={{ maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}>
+              <div className="modal-header">
+                <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <List size={20} className="text-accent" /> Campos do Schema
+                </h3>
+                <button onClick={() => setViewingFieldsSchema(null)} className="btn-icon">
+                  <X size={20} />
+                </button>
+              </div>
+              <div style={{ padding: "1.25rem" }}>
+                <p style={{ margin: "0 0 1rem 0" }}>
+                  Exibindo <strong>{viewingFieldsSchema.publicName}</strong> (Visualização de Admin)
+                </p>
+                {!(viewingFieldsSchema as any)._availableFields || (viewingFieldsSchema as any)._availableFields.length === 0 ? (
+                  <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)", background: "var(--bg-secondary)", borderRadius: "8px" }}>
+                    Nenhum campo disponível neste schema.
+                  </div>
+                ) : (
+                  <table className="table" style={{ width: "100%", margin: 0, fontSize: "0.85rem" }}>
+                    <thead>
+                      <tr>
+                        <th>Nome</th>
+                        <th>Tipo</th>
+                        <th>Capacidades</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {((viewingFieldsSchema as any)._availableFields as any[]).map(field => (
+                        <tr key={field.id}>
+                          <td><strong>{field.name}</strong></td>
+                          <td><span className="badge badge-info">{field.type}</span></td>
+                          <td>
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+                              {field.selectable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Select</span>}
+                              {field.filterable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Filter</span>}
+                              {field.sortable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Sort</span>}
+                              {field.groupable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Group</span>}
+                              {field.aggregatable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Aggregate</span>}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           </div>
