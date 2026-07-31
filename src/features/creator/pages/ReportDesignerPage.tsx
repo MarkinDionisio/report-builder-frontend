@@ -811,6 +811,47 @@ export const ReportDesignerPage: React.FC = () => {
       return col.alias;
     };
 
+    const formatCellValue = (val: any, type: string) => {
+      if (val === null || val === undefined) return "";
+      
+      const typeLower = (type || "").toLowerCase();
+      
+      if (typeLower.includes("date") || typeLower.includes("timestamp") || typeLower.includes("time")) {
+        try {
+          const date = new Date(val);
+          if (isNaN(date.getTime())) return String(val);
+          if (typeLower === "date") {
+            return date.toLocaleDateString("pt-BR");
+          }
+          return date.toLocaleString("pt-BR");
+        } catch {
+          return String(val);
+        }
+      }
+      
+      if (typeLower.includes("decimal") || typeLower.includes("numeric") || typeLower.includes("float") || typeLower.includes("double") || typeLower.includes("real") || typeLower.includes("number")) {
+        try {
+          return Number(val).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+        } catch {
+          return String(val);
+        }
+      }
+      
+      if (typeLower.includes("int")) {
+        try {
+          return Number(val).toLocaleString("pt-BR");
+        } catch {
+          return String(val);
+        }
+      }
+      
+      if (typeof val === "boolean" || typeLower.includes("bool")) {
+        return val ? "Sim" : "Não";
+      }
+      
+      return String(val);
+    };
+
     return (
       <div style={{ width: "100%", height: "100%", overflowY: "auto", padding: "1.5rem" }}>
         <div style={{ maxWidth: "1000px", margin: "0 auto", width: "100%", display: "flex", flexDirection: "column" }}>
@@ -876,7 +917,7 @@ export const ReportDesignerPage: React.FC = () => {
                         <tr key={rIdx} style={{ borderBottom: "1px solid var(--border-color)" }}>
                           {previewData.columns.map((col: any, cIdx: number) => (
                             <td key={cIdx} style={{ padding: "0.75rem 1rem", fontSize: "0.9rem", whiteSpace: "nowrap" }}>
-                              {String(row[col.alias] ?? "")}
+                              {formatCellValue(row[col.alias], col.type)}
                             </td>
                           ))}
                         </tr>
