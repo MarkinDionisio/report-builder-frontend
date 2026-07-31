@@ -285,15 +285,24 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
                   Objetos Descobertos ({objects.length})
                 </div>
                 <div style={{ position: "relative", marginBottom: "0.75rem", flexShrink: 0 }}>
-                  <Search size={14} style={{ position: "absolute", left: "10px", top: "10px", color: "var(--text-secondary)" }} />
+                  <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
                   <input
                     type="text"
                     className="form-input"
                     placeholder="Filtrar tabela/view..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    style={{ paddingLeft: "30px", fontSize: "0.85rem" }}
+                    style={{ paddingLeft: "30px", paddingRight: "30px", fontSize: "0.85rem", width: "100%" }}
                   />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
+                      title="Limpar busca"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
 
                 {loadingObjects ? (

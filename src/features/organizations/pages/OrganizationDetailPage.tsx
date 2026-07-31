@@ -503,15 +503,24 @@ export const OrganizationDetailPage: React.FC = () => {
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                               <div style={{ position: "relative" }}>
-                                <Search size={14} style={{ position: "absolute", left: "10px", top: "8px", color: "var(--text-secondary)" }} />
+                                <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
                                 <input
                                   type="text"
                                   className="form-input"
                                   placeholder="Buscar schema..."
-                                  style={{ paddingLeft: "30px", fontSize: "0.8rem", height: "30px", width: "200px" }}
+                                  style={{ paddingLeft: "30px", paddingRight: "30px", fontSize: "0.8rem", height: "30px", width: "200px" }}
                                   value={schemaSearchTerms[ds.id] || ""}
                                   onChange={(e) => setSchemaSearchTerms(prev => ({ ...prev, [ds.id]: e.target.value }))}
                                 />
+                                {schemaSearchTerms[ds.id] && (
+                                  <button
+                                    onClick={() => setSchemaSearchTerms(prev => ({ ...prev, [ds.id]: "" }))}
+                                    style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
+                                    title="Limpar busca"
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                )}
                               </div>
                               {isRoot && (
                                 <button

@@ -17,7 +17,7 @@ import { Alert } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { 
   Key, ArrowLeft, CheckSquare, ShieldAlert, Database, Layers, CheckCircle2, 
-  Save, ChevronDown, ChevronRight, Search, XCircle, Loader2
+  Save, ChevronDown, ChevronRight, Search, XCircle, Loader2, X
 } from "lucide-react";
 
 export const ProfileGrantsEditorPage: React.FC = () => {
@@ -482,7 +482,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                       onChange={(e) => setSearchTerm(e.target.value)}
                       style={{ 
                         width: "100%", 
-                        padding: "0.6rem 1rem 0.6rem 2.75rem", 
+                        padding: "0.6rem 2.75rem 0.6rem 2.75rem", 
                         border: "1px solid var(--border-color)", 
                         borderRadius: "6px", 
                         background: "var(--bg)", 
@@ -490,6 +490,15 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                         fontSize: "0.95rem"
                       }}
                     />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
+                        title="Limpar busca"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
                   </div>
                   <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.95rem", color: "var(--text-secondary)", userSelect: "none" }}>
                     <input 

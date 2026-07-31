@@ -265,15 +265,24 @@ export const ReportFieldsPage: React.FC = () => {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
             <div style={{ position: "relative" }}>
-              <Search size={16} style={{ position: "absolute", left: "10px", top: "10px", color: "var(--text-secondary)" }} />
+              <Search size={16} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
               <input
                 type="text"
                 className="form-input"
                 placeholder="Buscar campo..."
-                style={{ paddingLeft: "34px", width: "250px" }}
+                style={{ paddingLeft: "34px", paddingRight: "34px", width: "250px" }}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
+                  title="Limpar busca"
+                >
+                  <X size={16} />
+                </button>
+              )}
             </div>
             <button onClick={openCreateModal} className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Plus size={18} /> Adicionar Campo
