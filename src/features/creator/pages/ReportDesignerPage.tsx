@@ -11,6 +11,45 @@ import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField } 
 import { Database, Plus, X, ChevronRight, Check } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
 
+function availableAggregations(field: DesignerField): string[] {
+  if (!field.aggregatable) return [];
+  return field.allowedAggregations || [];
+}
+
+function canSum(field: DesignerField): boolean {
+  return (field.type === "number" || field.type === "integer") && availableAggregations(field).includes("sum");
+}
+
+function synchronizeGroupBy(select: any[], catalog: DesignerCatalog | null): any[] {
+  const hasAggregation = select.some(item => Boolean(item.aggregation));
+  if (!hasAggregation || !catalog) return [];
+
+  const seen = new Set<string>();
+  const groupBy: any[] = [];
+
+  for (const item of select) {
+    if (item.aggregation) continue;
+    const key = `${item.joinAlias ?? ""}:${item.fieldId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    
+    let isGroupable = false;
+    for (const schema of catalog.schemas) {
+      const field = schema.fields.find((f: any) => f.id === item.fieldId);
+      if (field && field.groupable) {
+        isGroupable = true;
+        break;
+      }
+    }
+    
+    if (isGroupable) {
+      groupBy.push({ fieldId: item.fieldId, joinAlias: item.joinAlias });
+    }
+  }
+
+  return groupBy.slice(0, 5);
+}
+
 export const ReportDesignerPage: React.FC = () => {
   const { organizationId, reportId } = useParams<{ organizationId: string; reportId?: string }>();
   const navigate = useNavigate();
@@ -50,6 +89,7 @@ export const ReportDesignerPage: React.FC = () => {
   const [visibilityScope, setVisibilityScope] = useState<"private" | "organization" | "global">("private");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showDevJson, setShowDevJson] = useState(false);
 
   // 1. Initial Load
   useEffect(() => {
@@ -199,7 +239,7 @@ export const ReportDesignerPage: React.FC = () => {
     setSelectedSchemaIds(newSelected);
   };
 
-  const handleAddFieldToSelect = (schema: DesignerSchema, field: DesignerField) => {
+  const handleAddFieldToSelect = (schema: DesignerSchema, field: DesignerField, aggregation?: string) => {
     if (!reportContent) return;
     const baseSchemaId = reportContent.dataset.schemaId;
     
@@ -212,14 +252,22 @@ export const ReportDesignerPage: React.FC = () => {
       }
     }
 
-    const isDuplicate = (reportContent.dataset.select || []).some(s => s.fieldId === field.id && (s.joinAlias || "") === joinAlias);
+    const isDuplicate = (reportContent.dataset.select || []).some(
+      s => s.fieldId === field.id && (s.joinAlias || "") === joinAlias && (s.aggregation || "") === (aggregation || "")
+    );
     if (isDuplicate) return;
+
+    const newItem: any = { fieldId: field.id, joinAlias };
+    if (aggregation) {
+      newItem.aggregation = aggregation;
+      newItem.alias = `Total de ${field.name}`;
+    }
 
     setReportContent({
       ...reportContent,
       dataset: {
         ...reportContent.dataset,
-        select: [...(reportContent.dataset.select || []), { fieldId: field.id, joinAlias }]
+        select: [...(reportContent.dataset.select || []), newItem]
       }
     });
   };
@@ -237,14 +285,17 @@ export const ReportDesignerPage: React.FC = () => {
     setIsSaving(true);
     setSaveError(null);
     
+    const contentToSave = { ...reportContent };
+    contentToSave.dataset.groupBy = synchronizeGroupBy(contentToSave.dataset.select || [], catalog);
+    
     const req = {
       title: reportTitle.trim(),
       visibilityScope,
       organizationId,
       content: {
-        ...reportContent,
+        ...contentToSave,
         dataset: {
-          ...reportContent.dataset,
+          ...contentToSave.dataset,
           dataSourceId: selectedDataSourceId
         }
       }
@@ -491,10 +542,17 @@ export const ReportDesignerPage: React.FC = () => {
                     <div style={{ paddingLeft: "1.25rem", paddingRight: "0.5rem", marginTop: "0.25rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
                       {fields.map(f => (
                         <div key={f.id} style={{ padding: "0.3rem 0", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)" }}>
-                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "80%" }} title={f.name}>{f.name}</span>
-                          <button className="btn-icon" style={{ padding: "0.2rem" }} title="Adicionar" onClick={() => handleAddFieldToSelect(s, f)}>
-                            <Plus size={14} />
-                          </button>
+                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70%" }} title={f.name}>{f.name}</span>
+                          <div style={{ display: "flex", gap: "0.25rem" }}>
+                            {canSum(f) && (
+                              <button className="btn-icon" style={{ padding: "0.2rem", fontSize: "0.7rem", fontWeight: "bold", background: "rgba(168, 85, 247, 0.1)", color: "var(--primary-500)", border: "1px solid var(--primary-500)", borderRadius: "4px" }} title="Somar (SUM)" onClick={() => handleAddFieldToSelect(s, f, "sum")}>
+                                SUM
+                              </button>
+                            )}
+                            <button className="btn-icon" style={{ padding: "0.2rem" }} title="Adicionar" onClick={() => handleAddFieldToSelect(s, f)}>
+                              <Plus size={14} />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -523,7 +581,10 @@ export const ReportDesignerPage: React.FC = () => {
                   return (
                     <div key={`${col.fieldId}-${index}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-color)", padding: "0.75rem 1rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
                       <div>
-                        <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{details.fieldName}</div>
+                        <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                          {col.aggregation ? <span style={{ color: "var(--primary-500)", marginRight: "0.3rem", fontSize: "0.8rem", padding: "0.1rem 0.3rem", border: "1px solid var(--primary-500)", borderRadius: "4px" }}>SUM</span> : null}
+                          {details.fieldName}
+                        </div>
                         <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
                           {details.schemaName} {col.joinAlias ? `(Join: ${col.joinAlias})` : "(Base)"}
                         </div>
@@ -556,8 +617,7 @@ export const ReportDesignerPage: React.FC = () => {
   const renderStep3 = () => {
     const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
     
-    // Build a flat list of options for dropdowns
-    const fieldOptions: { label: string; fieldId: string; joinAlias: string }[] = [];
+    const filterFieldOptions: { label: string; fieldId: string; joinAlias: string }[] = [];
     activeSchemas.forEach(s => {
       let joinAlias = "";
       if (reportContent && s.id !== reportContent.dataset.schemaId) {
@@ -568,7 +628,7 @@ export const ReportDesignerPage: React.FC = () => {
         }
       }
       s.fields.forEach(f => {
-        fieldOptions.push({
+        filterFieldOptions.push({
           label: `${f.name} (${s.name}${joinAlias ? ` - ${joinAlias}` : ''})`,
           fieldId: f.id,
           joinAlias
@@ -576,12 +636,42 @@ export const ReportDesignerPage: React.FC = () => {
       });
     });
 
+    const orderByFieldOptions = [...filterFieldOptions];
+    reportContent?.dataset.select?.forEach(sel => {
+      if (sel.aggregation) {
+        // Encontrar nome do campo original
+        let fieldName = "Desconhecido";
+        let schemaName = "Desconhecido";
+        let schemaId = reportContent.dataset.schemaId;
+        if (sel.joinAlias) {
+          const joinInfo = reportContent.dataset.joins?.find(j => j.alias === sel.joinAlias);
+          if (joinInfo) {
+            const joinTemplate = catalog?.joins.find(j => j.joinTemplateId === joinInfo.joinTemplateId);
+            if (joinTemplate) schemaId = joinTemplate.toSchemaId;
+          }
+        }
+        const schema = catalog?.schemas.find(s => s.id === schemaId);
+        if (schema) {
+          schemaName = schema.name;
+          const field = schema.fields.find(f => f.id === sel.fieldId);
+          if (field) fieldName = field.name;
+        }
+
+        orderByFieldOptions.push({
+          label: `SUM: ${fieldName} (${schemaName}${sel.joinAlias ? ` - ${sel.joinAlias}` : ''})`,
+          fieldId: sel.fieldId,
+          joinAlias: sel.joinAlias || "",
+          ...({ aggregation: sel.aggregation })
+        } as any);
+      }
+    });
+
     const conditions = reportContent?.dataset.where?.conditions || [];
     const orderBys = reportContent?.dataset.orderBy || [];
 
     const handleAddFilter = () => {
-      if (!reportContent || fieldOptions.length === 0) return;
-      const newFilter = { fieldId: fieldOptions[0].fieldId, joinAlias: fieldOptions[0].joinAlias, operator: "=", value: "" };
+      if (!reportContent || filterFieldOptions.length === 0) return;
+      const newFilter = { fieldId: filterFieldOptions[0].fieldId, joinAlias: filterFieldOptions[0].joinAlias, operator: "=", value: "" };
       
       const newWhere = reportContent.dataset.where 
         ? { ...reportContent.dataset.where, conditions: [...(reportContent.dataset.where.conditions || []), newFilter] }
@@ -611,8 +701,10 @@ export const ReportDesignerPage: React.FC = () => {
     };
 
     const handleAddOrderBy = () => {
-      if (!reportContent || fieldOptions.length === 0) return;
-      const newOrder = { fieldId: fieldOptions[0].fieldId, joinAlias: fieldOptions[0].joinAlias, direction: "asc" as "asc" | "desc" };
+      if (!reportContent || orderByFieldOptions.length === 0) return;
+      const opt = orderByFieldOptions[0] as any;
+      const newOrder: any = { fieldId: opt.fieldId, joinAlias: opt.joinAlias, direction: "asc" as "asc" | "desc" };
+      if (opt.aggregation) newOrder.aggregation = opt.aggregation;
       setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, orderBy: [...(reportContent.dataset.orderBy || []), newOrder] } });
     };
 
@@ -621,8 +713,13 @@ export const ReportDesignerPage: React.FC = () => {
       const newOrderBys = [...reportContent.dataset.orderBy];
       
       if (key === "field") {
-        const [fieldId, joinAlias] = value.split("|");
+        const [fieldId, joinAlias, aggregation] = value.split("|");
         newOrderBys[index] = { ...newOrderBys[index], fieldId, joinAlias: joinAlias || undefined };
+        if (aggregation && aggregation !== "undefined") {
+          newOrderBys[index].aggregation = aggregation;
+        } else {
+          delete newOrderBys[index].aggregation;
+        }
       } else {
         newOrderBys[index] = { ...newOrderBys[index], [key]: value };
       }
@@ -670,7 +767,7 @@ export const ReportDesignerPage: React.FC = () => {
                       value={`${c.fieldId}|${c.joinAlias || ""}`}
                       onChange={(e) => handleUpdateFilter(index, "field", e.target.value)}
                     >
-                      {fieldOptions.map(opt => <option key={`${opt.fieldId}|${opt.joinAlias}`} value={`${opt.fieldId}|${opt.joinAlias}`}>{opt.label}</option>)}
+                      {filterFieldOptions.map(opt => <option key={`${opt.fieldId}|${opt.joinAlias}`} value={`${opt.fieldId}|${opt.joinAlias}`}>{opt.label}</option>)}
                     </select>
                     <select 
                       className="form-input" 
@@ -732,10 +829,10 @@ export const ReportDesignerPage: React.FC = () => {
                     <select 
                       className="form-input" 
                       style={{ flex: 2 }}
-                      value={`${o.fieldId}|${o.joinAlias || ""}`}
+                      value={`${o.fieldId}|${o.joinAlias || ""}|${o.aggregation || ""}`}
                       onChange={(e) => handleUpdateOrderBy(index, "field", e.target.value)}
                     >
-                      {fieldOptions.map(opt => <option key={`${opt.fieldId}|${opt.joinAlias}`} value={`${opt.fieldId}|${opt.joinAlias}`}>{opt.label}</option>)}
+                      {orderByFieldOptions.map((opt: any) => <option key={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`} value={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`}>{opt.label}</option>)}
                     </select>
                     <select 
                       className="form-input" 
@@ -772,9 +869,12 @@ export const ReportDesignerPage: React.FC = () => {
       setPreviewLoading(true);
       setPreviewError(null);
       
+      const contentForPreview = { ...reportContent };
+      contentForPreview.dataset.groupBy = synchronizeGroupBy(contentForPreview.dataset.select || [], catalog);
+      
       const req = {
         organizationId,
-        content: reportContent,
+        content: contentForPreview,
         filters: [],
         page: 1,
         pageSize: 50
@@ -862,10 +962,37 @@ export const ReportDesignerPage: React.FC = () => {
                 Visualize o resultado parcial da query gerada.
               </p>
             </div>
-            <button className="btn btn-primary" onClick={handleExecutePreview} disabled={previewLoading}>
-              {previewLoading ? "Executando..." : "Executar Query"}
-            </button>
+            <div style={{ display: "flex", gap: "1rem" }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowDevJson(!showDevJson)}
+                title="Visualizar a estrutura declarativa que será enviada para a API"
+              >
+                {showDevJson ? "Ocultar JSON" : "Ver JSON Gerado"}
+              </button>
+              <button className="btn btn-primary" onClick={handleExecutePreview} disabled={previewLoading}>
+                {previewLoading ? "Executando..." : "Executar Query"}
+              </button>
+            </div>
           </div>
+          
+          {showDevJson && reportContent && (
+            <div style={{ marginBottom: "1.5rem", background: "#1e1e1e", borderRadius: "8px", border: "1px solid #444", overflow: "hidden", animation: "fadeIn 0.2s ease" }}>
+              <div style={{ background: "#2d2d2d", padding: "0.5rem 1rem", borderBottom: "1px solid #444", color: "#e5e7eb", fontSize: "0.85rem", fontWeight: 600, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span>Payload Declarativo (ReportContentV1)</span>
+                <span style={{ fontSize: "0.75rem", color: "#999", fontWeight: 400 }}>Apenas visível para Creators</span>
+              </div>
+              <pre style={{ margin: 0, padding: "1rem", color: "#a6e22e", overflowX: "auto", fontSize: "0.85rem", maxHeight: "400px", overflowY: "auto" }}>
+                {JSON.stringify({
+                  ...reportContent, 
+                  dataset: {
+                    ...reportContent.dataset,
+                    groupBy: synchronizeGroupBy(reportContent.dataset.select || [], catalog)
+                  }
+                }, null, 2)}
+              </pre>
+            </div>
+          )}
           
           {previewError && (
             <div style={{ position: "relative", marginBottom: "1rem" }}>
@@ -876,6 +1003,16 @@ export const ReportDesignerPage: React.FC = () => {
               >
                 <X size={16} />
               </button>
+            </div>
+          )}
+
+          {previewData?.warnings && previewData.warnings.length > 0 && (
+            <div style={{ marginBottom: "1rem" }}>
+              {previewData.warnings.map((w: any, idx: number) => (
+                <div key={idx} style={{ marginBottom: idx < previewData.warnings!.length - 1 ? "0.5rem" : 0 }}>
+                  <Alert type="warning" message={w.message} />
+                </div>
+              ))}
             </div>
           )}
           

@@ -221,6 +221,13 @@ export interface ExecuteResponse {
   pageSize: number;
   rowCount: number;
   durationMs: number;
+  warnings?: Array<{
+    code: "report_execution.order_by_ignored";
+    message: string;
+    itemIndex: number;
+    fieldId: string;
+    joinAlias: string | null;
+  }>;
 }
 
 export interface PreviewRequest {

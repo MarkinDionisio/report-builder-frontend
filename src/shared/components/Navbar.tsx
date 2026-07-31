@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/context/AuthContext";
-import { canOpenCreatorWorkspace } from "../../features/auth/utils/authUtils";
 import { LogOut, LayoutDashboard, Building2, Menu, X, User, Server, FileText, Link as LinkIcon, PenTool } from "lucide-react";
 
 export const Navbar: React.FC = () => {

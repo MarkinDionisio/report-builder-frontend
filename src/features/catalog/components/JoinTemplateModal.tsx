@@ -11,7 +11,6 @@ import type {
 import { catalogApi } from "../api/catalogApi";
 import { isErr } from "../../../shared/result/result";
 import { Alert } from "../../../shared/components/Alert";
-import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 
 interface JoinTemplateModalProps {
   isOpen: boolean;
