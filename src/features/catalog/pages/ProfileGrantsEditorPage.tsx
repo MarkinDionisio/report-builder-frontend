@@ -17,7 +17,7 @@ import { Alert } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { 
   Key, ArrowLeft, CheckSquare, ShieldAlert, Database, Layers, CheckCircle2, 
-  Save, ChevronDown, ChevronRight, Search, XCircle
+  Save, ChevronDown, ChevronRight, Search, XCircle, Loader2
 } from "lucide-react";
 
 export const ProfileGrantsEditorPage: React.FC = () => {
@@ -38,12 +38,14 @@ export const ProfileGrantsEditorPage: React.FC = () => {
   const [showSuccessBar, setShowSuccessBar] = useState(false);
 
   const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set());
+  const [isRevokingAll, setIsRevokingAll] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [showOnlyGranted, setShowOnlyGranted] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingAction, setSavingAction] = useState<"revokeAll" | "grantAll" | "save" | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -154,11 +156,13 @@ export const ProfileGrantsEditorPage: React.FC = () => {
   const handleGrantAllDataSource = async () => {
     if (!organizationId || !profileId || !selectedDataSourceId) return;
     setSaving(true);
+    setSavingAction("grantAll");
     setErrorMsg(null);
     setSuccessMsg(null);
 
     const res = await catalogApi.grantAllProfileSchemas(organizationId, profileId, selectedDataSourceId);
     setSaving(false);
+    setSavingAction(null);
 
     if (isErr(res)) {
       if (res.error.status === 403) {
@@ -172,6 +176,36 @@ export const ProfileGrantsEditorPage: React.FC = () => {
       setDraftGrants(res.value);
       setHasUnsavedChanges(false);
       setSuccessMsg("Todos os schemas e campos disponíveis no DataSource foram liberados com sucesso!");
+    }
+  };
+
+  const handleRevokeAllProfileGrants = async () => {
+    if (!organizationId || !profileId || !selectedDataSourceId) return;
+    setSaving(true);
+    setSavingAction("revokeAll");
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    const currentDsSchemaIds = new Set(availableCatalog.map(s => s.id));
+    const nextSchemas = draftGrants.schemas.filter(s => !currentDsSchemaIds.has(s.schemaId));
+
+    const res = await catalogApi.updateProfileGrants(organizationId, profileId, { schemas: nextSchemas });
+    setSaving(false);
+    setSavingAction(null);
+
+    if (isErr(res)) {
+      if (res.error.status === 403) {
+        setAccessDenied(true);
+        refreshUser();
+      } else {
+        setErrorMsg(res.error.detail || "Erro ao revogar permissões do DataSource.");
+      }
+    } else {
+      setGrants(res.value);
+      setDraftGrants(res.value);
+      setHasUnsavedChanges(false);
+      setIsRevokingAll(false);
+      setSuccessMsg("Todos os grants deste DataSource foram revogados com sucesso!");
     }
   };
 
@@ -251,11 +285,13 @@ export const ProfileGrantsEditorPage: React.FC = () => {
   const handleSaveChanges = async () => {
     if (!organizationId || !profileId) return;
     setSaving(true);
+    setSavingAction("save");
     setErrorMsg(null);
     setSuccessMsg(null);
 
     const res = await catalogApi.updateProfileGrants(organizationId, profileId, { schemas: draftGrants.schemas });
     setSaving(false);
+    setSavingAction(null);
 
     if (isErr(res)) {
       if (res.error.code === "report_catalog.grant_not_available") {
@@ -335,6 +371,19 @@ export const ProfileGrantsEditorPage: React.FC = () => {
           </div>
 
           <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            {draftGrants.schemas.some(s => availableCatalog.some(c => c.id === s.schemaId)) && (
+              <button
+                onClick={() => setIsRevokingAll(true)}
+                className="btn btn-danger"
+                disabled={saving}
+                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                title="Revogar todos os grants concedidos neste DataSource (Imediato)"
+              >
+                {savingAction === "revokeAll" ? <Loader2 size={18} className="animate-spin" /> : <XCircle size={18} />}
+                {savingAction === "revokeAll" ? "Revogando..." : "Revogar Tudo (Imediato)"}
+              </button>
+            )}
+
             {selectedDataSourceId && availableCatalog.length > 0 && (
               <button
                 onClick={handleGrantAllDataSource}
@@ -343,7 +392,8 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
                 title="Liberar 100% dos Schemas e Campos deste DataSource de uma vez (Salva imediatamente no banco)"
               >
-                <CheckSquare size={18} /> Liberar Tudo (Imediato)
+                {savingAction === "grantAll" ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
+                {savingAction === "grantAll" ? "Liberando..." : "Liberar Tudo (Imediato)"}
               </button>
             )}
 
@@ -354,7 +404,8 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                 disabled={saving}
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
               >
-                <Save size={18} /> Salvar Alterações
+                {savingAction === "save" ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                {savingAction === "save" ? "Salvando..." : "Salvar Alterações"}
               </button>
             )}
           </div>
@@ -635,6 +686,39 @@ export const ProfileGrantsEditorPage: React.FC = () => {
         )}
       </main>
 
+      {/* Delete Confirmation Modal */}
+      {isRevokingAll && (
+        <div className="modal-backdrop">
+          <div className="modal-container" style={{ maxWidth: "450px" }}>
+            <div className="modal-header">
+              <h3 style={{ margin: 0, color: "var(--danger-500)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <ShieldAlert size={20} /> Confirmar Revogação
+              </h3>
+              <button onClick={() => setIsRevokingAll(false)} className="btn-icon" disabled={saving}>
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div style={{ padding: "1.25rem" }}>
+              <p style={{ margin: "0 0 1rem 0", fontSize: "0.95rem" }}>
+                Tem certeza que deseja revogar os acessos deste perfil para <strong>todos os schemas e campos do DataSource selecionado</strong>?
+              </p>
+              <div style={{ background: "rgba(239, 68, 68, 0.1)", padding: "0.75rem", borderRadius: "6px", fontSize: "0.85rem", color: "var(--danger-500)", marginBottom: "1.25rem" }}>
+                Esta ação limpará apenas as permissões associadas a este DataSource e será aplicada imediatamente no banco de dados.
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+                <button onClick={() => setIsRevokingAll(false)} className="btn btn-secondary" disabled={saving}>
+                  Cancelar
+                </button>
+                <button onClick={handleRevokeAllProfileGrants} className="btn btn-danger" disabled={saving}>
+                  {savingAction === "revokeAll" ? <Loader2 size={18} className="animate-spin" /> : null}
+                  {savingAction === "revokeAll" ? "Revogando..." : "Sim, Revogar Tudo"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating Save Button Bar / Success Toast */}
       {(hasUnsavedChanges || showSuccessBar) && (
         <div style={{
@@ -668,7 +752,8 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                 disabled={saving}
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
               >
-                <Save size={18} /> Salvar Alterações
+                {savingAction === "save" ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                {savingAction === "save" ? "Salvando..." : "Salvar Alterações"}
               </button>
             </div>
           )}
