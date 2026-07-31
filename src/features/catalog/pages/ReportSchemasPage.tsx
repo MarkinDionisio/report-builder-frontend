@@ -26,6 +26,7 @@ import {
   Building2,
   ArrowRight,
   Layers,
+  Search,
 } from "lucide-react";
 
 export const ReportSchemasPage: React.FC = () => {
@@ -41,6 +42,7 @@ export const ReportSchemasPage: React.FC = () => {
   // Cascading Selection State
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
   const [selectedDsId, setSelectedDsId] = useState<string>("");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingDataSources, setLoadingDataSources] = useState(false);
@@ -294,6 +296,16 @@ export const ReportSchemasPage: React.FC = () => {
     );
   }
 
+  // Filter schemas
+  const filteredSchemas = schemas.filter((schema) => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    const publicNameMatch = schema.publicName.toLowerCase().includes(term);
+    const descMatch = schema.description?.toLowerCase().includes(term);
+    const internalMatch = `${schema.internalSchemaName}.${schema.internalObjectName}`.toLowerCase().includes(term);
+    return publicNameMatch || descMatch || internalMatch;
+  });
+
   return (
     <>
       <Navbar />
@@ -429,11 +441,35 @@ export const ReportSchemasPage: React.FC = () => {
           </div>
         ) : (
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-            <div style={{ background: "var(--surface-color)", padding: "0.85rem 1.25rem", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ background: "var(--surface-color)", padding: "0.85rem 1.25rem", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
               <div style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
                 Schemas do DataSource <strong>{currentDs?.name}</strong> (Organização: <strong>{currentOrg?.name}</strong>)
               </div>
-              <span className="badge badge-info">{schemas.length} Schemas</span>
+              <div style={{ display: "flex", gap: "1rem", alignItems: "center", flex: "1", justifyContent: "flex-end", minWidth: "300px" }}>
+                <div style={{ position: "relative", width: "100%", maxWidth: "350px" }}>
+                  <Search size={16} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Buscar schema por nome, descrição ou origem..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{ paddingLeft: "2.25rem", width: "100%", background: "var(--bg-main)" }}
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
+                      title="Limpar busca"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+                <span className="badge badge-info" style={{ whiteSpace: "nowrap" }}>
+                  {filteredSchemas.length} {filteredSchemas.length === 1 ? "Schema" : "Schemas"}
+                </span>
+              </div>
             </div>
 
             <table className="table" style={{ width: "100%", margin: 0 }}>
@@ -446,8 +482,19 @@ export const ReportSchemasPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {schemas.map((schema) => (
-                  <tr key={schema.id}>
+                {filteredSchemas.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: "center", padding: "3rem", color: "var(--text-secondary)" }}>
+                      {searchTerm ? (
+                        <>Nenhum schema encontrado contendo "<strong>{searchTerm}</strong>".</>
+                      ) : (
+                        "Nenhum schema cadastrado."
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSchemas.map((schema) => (
+                    <tr key={schema.id}>
                     <td>
                       <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{schema.publicName}</div>
                       {schema.description && (
@@ -493,7 +540,7 @@ export const ReportSchemasPage: React.FC = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
