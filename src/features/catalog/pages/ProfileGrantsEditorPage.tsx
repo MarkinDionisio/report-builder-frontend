@@ -120,12 +120,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
       }
     } else {
       setAvailableCatalog(res.value);
-      // Opcional: Expandir o primeiro schema automaticamente para melhor UX
-      if (res.value.length > 0) {
-        setExpandedSchemas(new Set([res.value[0].id]));
-      } else {
-        setExpandedSchemas(new Set());
-      }
+      setExpandedSchemas(new Set());
     }
   }, [organizationId, selectedDataSourceId, refreshUser]);
 
