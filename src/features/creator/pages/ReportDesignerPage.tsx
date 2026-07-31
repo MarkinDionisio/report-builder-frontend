@@ -50,6 +50,72 @@ function synchronizeGroupBy(select: any[], catalog: DesignerCatalog | null): any
   return groupBy.slice(0, 5);
 }
 
+interface OrderByCompatibility {
+  compatible: boolean;
+  reason?: "fieldNotSortable" | "aggregationNotAllowed" | "aggregatedOrderRequiresGroupedQuery" | "fieldNotGrouped";
+}
+
+function referenceKey(reference: any): string {
+  return `${reference.joinAlias?.trim() ?? ""}:${reference.fieldId}`;
+}
+
+function validateOrderBy(
+  item: any,
+  select: any[],
+  groupBy: any[],
+  field: any,
+): OrderByCompatibility {
+  const isGroupedQuery = select.some(selected => Boolean(selected.aggregation)) || groupBy.length > 0;
+
+  if (!item.aggregation && !field.sortable) {
+    return { compatible: false, reason: "fieldNotSortable" };
+  }
+
+  if (item.aggregation && (!field.aggregatable || !field.allowedAggregations?.includes(item.aggregation))) {
+    return { compatible: false, reason: "aggregationNotAllowed" };
+  }
+
+  if (!isGroupedQuery && item.aggregation) {
+    return { compatible: false, reason: "aggregatedOrderRequiresGroupedQuery" };
+  }
+
+  if (isGroupedQuery && !item.aggregation) {
+    const grouped = new Set(groupBy.map(referenceKey));
+    if (!grouped.has(referenceKey(item))) {
+      return { compatible: false, reason: "fieldNotGrouped" };
+    }
+  }
+
+  return { compatible: true };
+}
+
+function normalizeWhereValues(conditions: any[]): any[] {
+  return conditions.map(c => {
+    const isNoValue = c.operator === "isNull" || c.operator === "isNotNull";
+    if (isNoValue) {
+      const { value, ...rest } = c;
+      return rest;
+    }
+    
+    if (c.operator === "in" || c.operator === "between") {
+      if (typeof c.value === "string") {
+        const arr = c.value.split(",").map((s: string) => s.trim()).filter(Boolean);
+        return { ...c, value: c.operator === "between" ? arr.slice(0, 2) : arr };
+      }
+    }
+    
+    // Attempt parsing number/boolean for single values
+    if (typeof c.value === "string" && (c.operator !== "in" && c.operator !== "between")) {
+      const v = c.value.trim();
+      if (v === "true") return { ...c, value: true };
+      if (v === "false") return { ...c, value: false };
+      if (!isNaN(Number(v)) && v !== "") return { ...c, value: Number(v) };
+    }
+    
+    return c;
+  });
+}
+
 export const ReportDesignerPage: React.FC = () => {
   const { organizationId, reportId } = useParams<{ organizationId: string; reportId?: string }>();
   const navigate = useNavigate();
@@ -287,6 +353,9 @@ export const ReportDesignerPage: React.FC = () => {
     
     const contentToSave = { ...reportContent };
     contentToSave.dataset.groupBy = synchronizeGroupBy(contentToSave.dataset.select || [], catalog);
+    if (contentToSave.dataset.where?.conditions) {
+      contentToSave.dataset.where.conditions = normalizeWhereValues(contentToSave.dataset.where.conditions);
+    }
     
     const req = {
       title: reportTitle.trim(),
@@ -618,6 +687,8 @@ export const ReportDesignerPage: React.FC = () => {
     const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
     
     const filterFieldOptions: { label: string; fieldId: string; joinAlias: string }[] = [];
+    const orderByFieldOptions: { label: string; fieldId: string; joinAlias: string; aggregation?: string }[] = [];
+
     activeSchemas.forEach(s => {
       let joinAlias = "";
       if (reportContent && s.id !== reportContent.dataset.schemaId) {
@@ -628,15 +699,28 @@ export const ReportDesignerPage: React.FC = () => {
         }
       }
       s.fields.forEach(f => {
-        filterFieldOptions.push({
-          label: `${f.name} (${s.name}${joinAlias ? ` - ${joinAlias}` : ''})`,
-          fieldId: f.id,
-          joinAlias
-        });
+        if (f.filterable !== false) {
+          filterFieldOptions.push({
+            label: `${f.name} (${s.name}${joinAlias ? ` - ${joinAlias}` : ''})`,
+            fieldId: f.id,
+            joinAlias
+          });
+        }
+        if (f.sortable !== false) {
+          const item = { fieldId: f.id, joinAlias };
+          const currentGroupBy = synchronizeGroupBy(reportContent?.dataset.select || [], catalog);
+          const compat = validateOrderBy(item, reportContent?.dataset.select || [], currentGroupBy, f);
+          if (compat.compatible) {
+            orderByFieldOptions.push({
+              label: `${f.name} (${s.name}${joinAlias ? ` - ${joinAlias}` : ''})`,
+              fieldId: f.id,
+              joinAlias
+            });
+          }
+        }
       });
     });
 
-    const orderByFieldOptions = [...filterFieldOptions];
     reportContent?.dataset.select?.forEach(sel => {
       if (sel.aggregation) {
         // Encontrar nome do campo original
@@ -651,18 +735,26 @@ export const ReportDesignerPage: React.FC = () => {
           }
         }
         const schema = catalog?.schemas.find(s => s.id === schemaId);
+        let field: any = null;
         if (schema) {
           schemaName = schema.name;
-          const field = schema.fields.find(f => f.id === sel.fieldId);
+          field = schema.fields.find(f => f.id === sel.fieldId);
           if (field) fieldName = field.name;
         }
 
-        orderByFieldOptions.push({
-          label: `SUM: ${fieldName} (${schemaName}${sel.joinAlias ? ` - ${sel.joinAlias}` : ''})`,
-          fieldId: sel.fieldId,
-          joinAlias: sel.joinAlias || "",
-          ...({ aggregation: sel.aggregation })
-        } as any);
+        if (field) {
+          const item = { fieldId: sel.fieldId, joinAlias: sel.joinAlias || "", aggregation: sel.aggregation };
+          const currentGroupBy = synchronizeGroupBy(reportContent?.dataset.select || [], catalog);
+          const compat = validateOrderBy(item, reportContent?.dataset.select || [], currentGroupBy, field);
+          if (compat.compatible) {
+            orderByFieldOptions.push({
+              label: `${sel.aggregation.toUpperCase()}: ${fieldName} (${schemaName}${sel.joinAlias ? ` - ${sel.joinAlias}` : ''})`,
+              fieldId: sel.fieldId,
+              joinAlias: sel.joinAlias || "",
+              ...({ aggregation: sel.aggregation })
+            } as any);
+          }
+        }
       }
     });
 
@@ -756,48 +848,66 @@ export const ReportDesignerPage: React.FC = () => {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                {conditions.map((c, index) => (
-                  <div key={index} style={{ display: "flex", gap: "0.5rem", alignItems: "center", background: "var(--surface-color)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
-                    <span style={{ fontWeight: 600, color: "var(--primary-400)", minWidth: "40px", fontSize: "0.85rem" }}>
-                      {index === 0 ? "WHERE" : "AND"}
-                    </span>
-                    <select 
-                      className="form-input" 
-                      style={{ flex: 2 }}
-                      value={`${c.fieldId}|${c.joinAlias || ""}`}
-                      onChange={(e) => handleUpdateFilter(index, "field", e.target.value)}
-                    >
-                      {filterFieldOptions.map(opt => <option key={`${opt.fieldId}|${opt.joinAlias}`} value={`${opt.fieldId}|${opt.joinAlias}`}>{opt.label}</option>)}
-                    </select>
-                    <select 
-                      className="form-input" 
-                      style={{ flex: 1 }}
-                      value={c.operator}
-                      onChange={(e) => handleUpdateFilter(index, "operator", e.target.value)}
-                    >
-                      <option value="=">Igual a (=)</option>
-                      <option value="!=">Diferente de (!=)</option>
-                      <option value=">">Maior que (&gt;)</option>
-                      <option value="<">Menor que (&lt;)</option>
-                      <option value=">=">Maior ou igual (&gt;=)</option>
-                      <option value="<=">Menor ou igual (&lt;=)</option>
-                      <option value="like">Contém</option>
-                      <option value="not like">Não contém</option>
-                      <option value="in">Na lista (IN)</option>
-                    </select>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      style={{ flex: 2 }}
-                      placeholder="Valor..."
-                      value={c.value as string || ""}
-                      onChange={(e) => handleUpdateFilter(index, "value", e.target.value)}
-                    />
-                    <button className="btn-icon" style={{ color: "var(--danger-500)" }} onClick={() => handleRemoveFilter(index)}>
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
+                {conditions.map((c, index) => {
+                  let field: any = null;
+                  const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
+                  for (const s of activeSchemas) {
+                    const f = s.fields.find((f: any) => f.id === c.fieldId);
+                    if (f) {
+                      field = f;
+                      break;
+                    }
+                  }
+
+                  const allowedOps = field?.allowedOperators || ["=", "!=", ">", "<", ">=", "<=", "like", "not like", "in", "isNull", "isNotNull", "between"];
+                  const opLabel = (op: string) => {
+                    const labels: Record<string, string> = {
+                      "=": "Igual a (=)", "!=": "Diferente de (!=)", ">": "Maior que (>)", "<": "Menor que (<)",
+                      ">=": "Maior ou igual (>=)", "<=": "Menor ou igual (<=)", "like": "Contém", "not like": "Não contém",
+                      "in": "Na lista (IN)", "isNull": "É Nulo", "isNotNull": "Não é Nulo", "between": "Entre (Between)"
+                    };
+                    return labels[op] || op;
+                  };
+
+                  const isNoValue = c.operator === "isNull" || c.operator === "isNotNull";
+
+                  return (
+                    <div key={index} style={{ display: "flex", gap: "0.5rem", alignItems: "center", background: "var(--surface-color)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
+                      <span style={{ fontWeight: 600, color: "var(--primary-400)", minWidth: "40px", fontSize: "0.85rem" }}>
+                        {index === 0 ? "WHERE" : "AND"}
+                      </span>
+                      <select 
+                        className="form-input" 
+                        style={{ flex: 2 }}
+                        value={`${c.fieldId}|${c.joinAlias || ""}`}
+                        onChange={(e) => handleUpdateFilter(index, "field", e.target.value)}
+                      >
+                        {filterFieldOptions.map(opt => <option key={`${opt.fieldId}|${opt.joinAlias}`} value={`${opt.fieldId}|${opt.joinAlias}`}>{opt.label}</option>)}
+                      </select>
+                      <select 
+                        className="form-input" 
+                        style={{ flex: 1 }}
+                        value={c.operator}
+                        onChange={(e) => handleUpdateFilter(index, "operator", e.target.value)}
+                      >
+                        {allowedOps.map((op: string) => <option key={op} value={op}>{opLabel(op)}</option>)}
+                      </select>
+                      {!isNoValue && (
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          style={{ flex: 2 }}
+                          placeholder={c.operator === "in" || c.operator === "between" ? "Valores separados por vírgula..." : "Valor..."}
+                          value={Array.isArray(c.value) ? c.value.join(", ") : (c.value as string || "")}
+                          onChange={(e) => handleUpdateFilter(index, "value", e.target.value)}
+                        />
+                      )}
+                      <button className="btn-icon" style={{ color: "var(--danger-500)" }} onClick={() => handleRemoveFilter(index)}>
+                        <X size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -821,33 +931,60 @@ export const ReportDesignerPage: React.FC = () => {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                {orderBys.map((o, index) => (
-                  <div key={index} style={{ display: "flex", gap: "0.5rem", alignItems: "center", background: "var(--surface-color)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
-                    <span style={{ fontWeight: 600, color: "var(--primary-400)", minWidth: "40px", fontSize: "0.85rem" }}>
-                      {index === 0 ? "ORDER BY" : "THEN BY"}
-                    </span>
-                    <select 
-                      className="form-input" 
-                      style={{ flex: 2 }}
-                      value={`${o.fieldId}|${o.joinAlias || ""}|${o.aggregation || ""}`}
-                      onChange={(e) => handleUpdateOrderBy(index, "field", e.target.value)}
-                    >
-                      {orderByFieldOptions.map((opt: any) => <option key={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`} value={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`}>{opt.label}</option>)}
-                    </select>
-                    <select 
-                      className="form-input" 
-                      style={{ flex: 1 }}
-                      value={o.direction}
-                      onChange={(e) => handleUpdateOrderBy(index, "direction", e.target.value as "asc" | "desc")}
-                    >
-                      <option value="asc">Ascendente (A-Z, 0-9)</option>
-                      <option value="desc">Descendente (Z-A, 9-0)</option>
-                    </select>
-                    <button className="btn-icon" style={{ color: "var(--danger-500)" }} onClick={() => handleRemoveOrderBy(index)}>
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
+                {orderBys.map((o, index) => {
+                  let field: any = null;
+                  const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
+                  for (const s of activeSchemas) {
+                    const f = s.fields.find((f: any) => f.id === o.fieldId);
+                    if (f) {
+                      field = f;
+                      break;
+                    }
+                  }
+
+                  let compat: OrderByCompatibility = { compatible: true };
+                  if (field) {
+                    const currentGroupBy = synchronizeGroupBy(reportContent?.dataset.select || [], catalog);
+                    compat = validateOrderBy(o, reportContent?.dataset.select || [], currentGroupBy, field);
+                  }
+
+                  const backendWarning = previewData?.warnings?.find((w: any) => w.code === "report_execution.order_by_ignored" && w.itemIndex === index);
+                  
+                  return (
+                    <div key={index}>
+                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", background: "var(--surface-color)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
+                        <span style={{ fontWeight: 600, color: "var(--primary-400)", minWidth: "40px", fontSize: "0.85rem" }}>
+                          {index === 0 ? "ORDER BY" : "THEN BY"}
+                        </span>
+                        <select 
+                          className="form-input" 
+                          style={{ flex: 2, borderColor: (!compat.compatible || backendWarning) ? "var(--warning-500)" : undefined }}
+                          value={`${o.fieldId}|${o.joinAlias || ""}|${o.aggregation || ""}`}
+                          onChange={(e) => handleUpdateOrderBy(index, "field", e.target.value)}
+                        >
+                          {orderByFieldOptions.map((opt: any) => <option key={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`} value={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`}>{opt.label}</option>)}
+                        </select>
+                        <select 
+                          className="form-input" 
+                          style={{ flex: 1 }}
+                          value={o.direction}
+                          onChange={(e) => handleUpdateOrderBy(index, "direction", e.target.value as "asc" | "desc")}
+                        >
+                          <option value="asc">Ascendente (A-Z, 0-9)</option>
+                          <option value="desc">Descendente (Z-A, 9-0)</option>
+                        </select>
+                        <button className="btn-icon" style={{ color: "var(--danger-500)" }} onClick={() => handleRemoveOrderBy(index)}>
+                          <X size={16} />
+                        </button>
+                      </div>
+                      {(!compat.compatible || backendWarning) && (
+                        <div style={{ fontSize: "0.8rem", color: "var(--warning-500)", marginTop: "0.25rem", marginLeft: "0.25rem" }}>
+                          {backendWarning ? backendWarning.message : `Campo ignorado ou incompatível com a forma atual da consulta (${compat.reason})`}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -871,6 +1008,9 @@ export const ReportDesignerPage: React.FC = () => {
       
       const contentForPreview = { ...reportContent };
       contentForPreview.dataset.groupBy = synchronizeGroupBy(contentForPreview.dataset.select || [], catalog);
+      if (contentForPreview.dataset.where?.conditions) {
+        contentForPreview.dataset.where.conditions = normalizeWhereValues(contentForPreview.dataset.where.conditions);
+      }
       
       const req = {
         organizationId,
