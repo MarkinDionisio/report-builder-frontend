@@ -16,10 +16,6 @@ function availableAggregations(field: DesignerField): string[] {
   return field.allowedAggregations || [];
 }
 
-function canSum(field: DesignerField): boolean {
-  return (field.type === "number" || field.type === "integer") && availableAggregations(field).includes("sum");
-}
-
 function synchronizeGroupBy(select: any[], catalog: DesignerCatalog | null): any[] {
   const hasAggregation = select.some(item => Boolean(item.aggregation));
   if (!hasAggregation || !catalog) return [];
@@ -612,11 +608,19 @@ export const ReportDesignerPage: React.FC = () => {
                       {fields.map(f => (
                         <div key={f.id} style={{ padding: "0.3rem 0", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)" }}>
                           <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70%" }} title={f.name}>{f.name}</span>
-                          <div style={{ display: "flex", gap: "0.25rem" }}>
-                            {canSum(f) && (
-                              <button className="btn-icon" style={{ padding: "0.2rem", fontSize: "0.7rem", fontWeight: "bold", background: "rgba(168, 85, 247, 0.1)", color: "var(--primary-500)", border: "1px solid var(--primary-500)", borderRadius: "4px" }} title="Somar (SUM)" onClick={() => handleAddFieldToSelect(s, f, "sum")}>
-                                SUM
-                              </button>
+                          <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", justifyContent: "flex-end", maxWidth: "60%" }}>
+                            {availableAggregations(f).length > 0 && (
+                              <select
+                                className="form-input"
+                                style={{ padding: "0.1rem 0.5rem", fontSize: "0.7rem", height: "auto", border: "1px solid var(--primary-500)", color: "var(--primary-500)", background: "rgba(168, 85, 247, 0.05)", borderRadius: "4px", width: "auto", cursor: "pointer" }}
+                                value=""
+                                onChange={(e) => { if (e.target.value) handleAddFieldToSelect(s, f, e.target.value); }}
+                              >
+                                <option value="">+ Agreg.</option>
+                                {availableAggregations(f).map(agg => (
+                                  <option key={agg} value={agg}>{agg === "count_distinct" ? "DISTINCT" : agg.toUpperCase()}</option>
+                                ))}
+                              </select>
                             )}
                             <button className="btn-icon" style={{ padding: "0.2rem" }} title="Adicionar" onClick={() => handleAddFieldToSelect(s, f)}>
                               <Plus size={14} />
@@ -651,7 +655,7 @@ export const ReportDesignerPage: React.FC = () => {
                     <div key={`${col.fieldId}-${index}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-color)", padding: "0.75rem 1rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
                       <div>
                         <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
-                          {col.aggregation ? <span style={{ color: "var(--primary-500)", marginRight: "0.3rem", fontSize: "0.8rem", padding: "0.1rem 0.3rem", border: "1px solid var(--primary-500)", borderRadius: "4px" }}>SUM</span> : null}
+                          {col.aggregation ? <span style={{ color: "var(--primary-500)", marginRight: "0.3rem", fontSize: "0.8rem", padding: "0.1rem 0.3rem", border: "1px solid var(--primary-500)", borderRadius: "4px" }}>{col.aggregation === "count_distinct" ? "DISTINCT" : col.aggregation.toUpperCase()}</span> : null}
                           {details.fieldName}
                         </div>
                         <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
