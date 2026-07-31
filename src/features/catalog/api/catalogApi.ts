@@ -313,4 +313,40 @@ export const catalogApi = {
     );
     return parseJsonResponse<ProfileGrants>(res);
   },
+
+  // --- Report Join Templates ---
+  async listJoinTemplates(): Promise<Result<import("../types/catalogTypes").ReportJoinTemplate[], ApiProblemDetails>> {
+    const res = await apiFetch("/api/v1/report-join-templates");
+    return parseJsonResponse<import("../types/catalogTypes").ReportJoinTemplate[]>(res);
+  },
+
+  async createJoinTemplate(
+    data: import("../types/catalogTypes").CreateReportJoinTemplateRequest
+  ): Promise<Result<import("../types/catalogTypes").ReportJoinTemplate, ApiProblemDetails>> {
+    const res = await apiFetch("/api/v1/report-join-templates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return parseJsonResponse<import("../types/catalogTypes").ReportJoinTemplate>(res);
+  },
+
+  async updateJoinTemplate(
+    id: string,
+    data: import("../types/catalogTypes").UpdateReportJoinTemplateRequest
+  ): Promise<Result<import("../types/catalogTypes").ReportJoinTemplate, ApiProblemDetails>> {
+    const res = await apiFetch(`/api/v1/report-join-templates/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    return parseJsonResponse<import("../types/catalogTypes").ReportJoinTemplate>(res);
+  },
+
+  async deleteJoinTemplate(id: string): Promise<Result<void, ApiProblemDetails>> {
+    const res = await apiFetch(`/api/v1/report-join-templates/${id}`, {
+      method: "DELETE",
+    });
+    return handleVoidResponse(res);
+  },
 };

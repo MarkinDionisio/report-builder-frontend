@@ -14,6 +14,10 @@ import { OrganizationProfilesPage } from "../features/catalog/pages/Organization
 import { ProfileGrantsEditorPage } from "../features/catalog/pages/ProfileGrantsEditorPage";
 import { DataSourcesPage } from "../features/catalog/pages/DataSourcesPage";
 import { ReportSchemasPage } from "../features/catalog/pages/ReportSchemasPage";
+import { ReportJoinTemplatesPage } from "../features/catalog/pages/ReportJoinTemplatesPage";
+import { CreatorWorkspacePage } from "../features/creator/pages/CreatorWorkspacePage";
+import { OrganizationCreatorDashboardPage } from "../features/creator/pages/OrganizationCreatorDashboardPage";
+import { ReportDesignerPage } from "../features/creator/pages/ReportDesignerPage";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -65,6 +69,40 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
+      {/* Creator Workspace Routes */}
+      <Route
+        path="/creator"
+        element={
+          <ProtectedRoute>
+            <CreatorWorkspacePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizations/:organizationId/creator"
+        element={
+          <ProtectedRoute>
+            <OrganizationCreatorDashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizations/:organizationId/creator/reports/new"
+        element={
+          <ProtectedRoute>
+            <ReportDesignerPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/organizations/:organizationId/creator/reports/:reportId"
+        element={
+          <ProtectedRoute>
+            <ReportDesignerPage />
+          </ProtectedRoute>
+        }
+      />
+
       {/* Administrative Catalog Routes - Centralized under Organizations */}
       <Route
         path="/data-sources"
@@ -87,6 +125,14 @@ export const AppRoutes: React.FC = () => {
         element={
           <ProtectedRoute>
             <ReportFieldsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/report-join-templates"
+        element={
+          <ProtectedRoute>
+            <ReportJoinTemplatesPage />
           </ProtectedRoute>
         }
       />

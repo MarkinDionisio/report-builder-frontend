@@ -273,3 +273,34 @@ export interface UpdateProfileGrantsRequest {
 export interface GrantAllRequest {
   dataSourceId: string;
 }
+
+export type JoinType = "inner" | "left";
+
+export interface ReportJoinTemplate {
+  id: string;
+  name: string;
+  suggestedAlias: string;
+  joinType: JoinType;
+  leftInternalSchemaName: string;
+  leftInternalObjectName: string;
+  leftInternalFieldName: string;
+  rightInternalSchemaName: string;
+  rightInternalObjectName: string;
+  rightInternalFieldName: string;
+  isEnabled: boolean;
+}
+
+export interface CreateReportJoinTemplateRequest {
+  name: string;
+  suggestedAlias: string;
+  joinType: JoinType;
+  leftInternalSchemaName: string;
+  leftInternalObjectName: string;
+  leftInternalFieldName: string;
+  rightInternalSchemaName: string;
+  rightInternalObjectName: string;
+  rightInternalFieldName: string;
+  isEnabled: boolean;
+}
+
+export type UpdateReportJoinTemplateRequest = CreateReportJoinTemplateRequest;

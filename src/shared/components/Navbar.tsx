@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/context/AuthContext";
-import { LogOut, LayoutDashboard, Building2, Menu, X, User, Server, FileText } from "lucide-react";
+import { canOpenCreatorWorkspace } from "../../features/auth/utils/authUtils";
+import { LogOut, LayoutDashboard, Building2, Menu, X, User, Server, FileText, Link as LinkIcon, PenTool } from "lucide-react";
 
 export const Navbar: React.FC = () => {
   const { state, logout } = useAuth();
@@ -20,6 +21,11 @@ export const Navbar: React.FC = () => {
   }
 
   const user = state.user;
+
+  const hasCreatorAccess = user.globalRole === "root" || 
+    user.globalRole === "administrator" || 
+    user.globalRole === "creator" || 
+    user.organizations.some(org => org.organizationRole === "administrator" || org.organizationRole === "creator");
 
   return (
     <header className="header-nav">
@@ -62,10 +68,18 @@ export const Navbar: React.FC = () => {
           </Link>
           <Link
             to="/organizations"
-            className={`nav-link ${currentPath.startsWith("/organizations") ? "active" : ""}`}
+            className={`nav-link ${currentPath.startsWith("/organizations") && !currentPath.includes("/creator") ? "active" : ""}`}
           >
             <Building2 size={16} /> Organizações
           </Link>
+          {hasCreatorAccess && (
+            <Link
+              to="/creator"
+              className={`nav-link ${currentPath.includes("/creator") ? "active" : ""}`}
+            >
+              <PenTool size={16} /> Creator Workspace
+            </Link>
+          )}
           {user.globalRole === "root" && (
             <>
               <Link
@@ -79,6 +93,12 @@ export const Navbar: React.FC = () => {
                 className={`nav-link ${currentPath.startsWith("/report-schemas") ? "active" : ""}`}
               >
                 <FileText size={16} /> Catálogo
+              </Link>
+              <Link
+                to="/report-join-templates"
+                className={`nav-link ${currentPath.startsWith("/report-join-templates") ? "active" : ""}`}
+              >
+                <LinkIcon size={16} /> Joins
               </Link>
             </>
           )}
@@ -157,11 +177,21 @@ export const Navbar: React.FC = () => {
             <Link
               to="/organizations"
               onClick={() => setIsOpen(false)}
-              className={`mobile-nav-link ${currentPath.startsWith("/organizations") ? "active" : ""}`}
+              className={`mobile-nav-link ${currentPath.startsWith("/organizations") && !currentPath.includes("/creator") ? "active" : ""}`}
             >
               <Building2 size={20} />
               <span>Organizações</span>
             </Link>
+            {hasCreatorAccess && (
+              <Link
+                to="/creator"
+                onClick={() => setIsOpen(false)}
+                className={`mobile-nav-link ${currentPath.includes("/creator") ? "active" : ""}`}
+              >
+                <PenTool size={20} />
+                <span>Creator Workspace</span>
+              </Link>
+            )}
             {user.globalRole === "root" && (
               <>
                 <Link
@@ -179,6 +209,14 @@ export const Navbar: React.FC = () => {
                 >
                   <FileText size={20} />
                   <span>Catálogo</span>
+                </Link>
+                <Link
+                  to="/report-join-templates"
+                  onClick={() => setIsOpen(false)}
+                  className={`mobile-nav-link ${currentPath.startsWith("/report-join-templates") ? "active" : ""}`}
+                >
+                  <LinkIcon size={20} />
+                  <span>Joins</span>
                 </Link>
               </>
             )}
