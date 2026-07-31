@@ -52,6 +52,7 @@ interface OrderByCompatibility {
 }
 
 function referenceKey(reference: any): string {
+  if (reference.target === "rows") return "TARGET_ROWS";
   return `${reference.joinAlias?.trim() ?? ""}:${reference.fieldId}`;
 }
 
@@ -334,7 +335,8 @@ export const ReportDesignerPage: React.FC = () => {
     });
   };
 
-  const getFieldDetails = (fieldId: string) => {
+  const getFieldDetails = (fieldId?: string, target?: string) => {
+    if (target === "rows") return { schemaName: "Sistema", fieldName: "Linhas" };
     for (const schema of catalog?.schemas || []) {
       const field = schema.fields.find(f => f.id === fieldId);
       if (field) return { schemaName: schema.name, fieldName: field.name };
@@ -648,9 +650,9 @@ export const ReportDesignerPage: React.FC = () => {
                 <p style={{ color: "var(--text-secondary)" }}>Nenhuma coluna selecionada.</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "600px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "600px", paddingBottom: "1rem" }}>
                 {reportContent.dataset.select.map((col, index) => {
-                  const details = getFieldDetails(col.fieldId);
+                  const details = getFieldDetails(col.fieldId, (col as any).target);
                   return (
                     <div key={`${col.fieldId}-${index}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-color)", padding: "0.75rem 1rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
                       <div>
@@ -674,6 +676,17 @@ export const ReportDesignerPage: React.FC = () => {
                 })}
               </div>
             )}
+            <button 
+              className="btn btn-secondary" 
+              style={{ alignSelf: "flex-start", marginTop: "1rem" }}
+              onClick={() => {
+                if (!reportContent) return;
+                const newSelect = [...(reportContent.dataset.select || []), { target: "rows", aggregation: "count", alias: "Quantidade de Registros" } as any];
+                setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, select: newSelect } });
+              }}
+            >
+              + Adicionar Contagem de Registros
+            </button>
           </div>
           
           <div style={{ marginTop: "1rem", display: "flex", justifyContent: "flex-end", gap: "1rem", borderTop: "1px solid var(--border-color)", paddingTop: "1rem" }}>
@@ -727,6 +740,16 @@ export const ReportDesignerPage: React.FC = () => {
 
     reportContent?.dataset.select?.forEach(sel => {
       if (sel.aggregation) {
+        if ((sel as any).target === "rows") {
+          orderByFieldOptions.push({
+            label: `${sel.aggregation.toUpperCase()}: ${sel.alias || "Linhas"} (Sistema)`,
+            fieldId: "ROWS",
+            joinAlias: "",
+            aggregation: sel.aggregation
+          });
+          return;
+        }
+
         // Encontrar nome do campo original
         let fieldName = "Desconhecido";
         let schemaName = "Desconhecido";
@@ -810,11 +833,18 @@ export const ReportDesignerPage: React.FC = () => {
       
       if (key === "field") {
         const [fieldId, joinAlias, aggregation] = value.split("|");
-        newOrderBys[index] = { ...newOrderBys[index], fieldId, joinAlias: joinAlias || undefined };
-        if (aggregation && aggregation !== "undefined") {
-          newOrderBys[index].aggregation = aggregation;
+        if (fieldId === "ROWS") {
+          newOrderBys[index] = { ...newOrderBys[index], target: "rows", aggregation: aggregation || "count" };
+          delete newOrderBys[index].fieldId;
+          delete newOrderBys[index].joinAlias;
         } else {
-          delete newOrderBys[index].aggregation;
+          newOrderBys[index] = { ...newOrderBys[index], fieldId, joinAlias: joinAlias || undefined };
+          if (aggregation && aggregation !== "undefined") {
+            newOrderBys[index].aggregation = aggregation;
+          } else {
+            delete newOrderBys[index].aggregation;
+          }
+          delete newOrderBys[index].target;
         }
       } else {
         newOrderBys[index] = { ...newOrderBys[index], [key]: value };
@@ -963,7 +993,7 @@ export const ReportDesignerPage: React.FC = () => {
                         <select 
                           className="form-input" 
                           style={{ flex: 2, borderColor: (!compat.compatible || backendWarning) ? "var(--warning-500)" : undefined }}
-                          value={`${o.fieldId}|${o.joinAlias || ""}|${o.aggregation || ""}`}
+                          value={`${(o as any).target === "rows" ? "ROWS" : o.fieldId}|${o.joinAlias || ""}|${o.aggregation || ""}`}
                           onChange={(e) => handleUpdateOrderBy(index, "field", e.target.value)}
                         >
                           {orderByFieldOptions.map((opt: any) => <option key={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`} value={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`}>{opt.label}</option>)}
@@ -1035,8 +1065,9 @@ export const ReportDesignerPage: React.FC = () => {
 
     const getColumnDisplayName = (col: any) => {
       if (!catalog || !reportContent) return col.alias;
-      if (col.fieldId) {
+      if (col.fieldId || col.target === "rows") {
         let schemaId = reportContent.dataset.schemaId;
+        if (col.target === "rows") return col.alias || "Contagem de Linhas";
         if (col.joinAlias) {
           const joinInfo = reportContent.dataset.joins?.find(j => j.alias === col.joinAlias);
           if (joinInfo) {

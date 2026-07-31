@@ -65,8 +65,9 @@ export interface PagedResult<T> {
 }
 
 export interface FieldReference {
-  fieldId: string;
+  fieldId?: string;
   joinAlias?: string;
+  target?: "rows";
 }
 
 export interface SelectItem extends FieldReference {
