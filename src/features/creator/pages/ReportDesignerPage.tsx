@@ -148,6 +148,7 @@ export const ReportDesignerPage: React.FC = () => {
 
   // Save state
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showConfirmChangeBase, setShowConfirmChangeBase] = useState(false);
   const [reportTitle, setReportTitle] = useState("");
   const [visibilityScope, setVisibilityScope] = useState<"private" | "organization" | "global">("private");
   const [isSaving, setIsSaving] = useState(false);
@@ -590,7 +591,16 @@ export const ReportDesignerPage: React.FC = () => {
         
         {isBaseSelected && selectedGroup.length > 0 && (
           <div style={{ marginBottom: "2rem" }}>
-            <h4 style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Selecionadas</h4>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+              <h4 style={{ margin: 0, fontSize: "0.9rem", color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Selecionadas</h4>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: "0.3rem 0.75rem", fontSize: "0.8rem", minHeight: "auto", border: "1px solid var(--danger-500)", color: "var(--danger-500)", background: "rgba(239, 68, 68, 0.05)" }}
+                onClick={() => setShowConfirmChangeBase(true)}
+              >
+                Trocar Tabela Base
+              </button>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
               {selectedGroup.map(s => renderSchemaCard(s, true, false))}
             </div>
@@ -1367,6 +1377,29 @@ export const ReportDesignerPage: React.FC = () => {
               <button className="btn btn-secondary" onClick={() => setShowSaveModal(false)} disabled={isSaving}>Cancelar</button>
               <button className="btn btn-primary" style={{ background: "var(--success-500)", border: "none" }} onClick={handleSaveReport} disabled={isSaving || !reportTitle.trim()}>
                 {isSaving ? "Salvando..." : "Confirmar e Salvar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfirmChangeBase && (
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}>
+          <div style={{ background: "var(--bg-primary)", padding: "2rem", borderRadius: "12px", width: "100%", maxWidth: "450px", border: "1px solid var(--border-color)", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
+            <h3 style={{ marginBottom: "1rem", fontWeight: 600, fontSize: "1.25rem", color: "var(--danger-500)" }}>Trocar Tabela Base</h3>
+            <p style={{ color: "var(--text-secondary)", marginBottom: "2rem", fontSize: "0.95rem" }}>
+              Ao trocar a tabela base, <strong>todas as colunas selecionadas, filtros, ordenações e tabelas relacionadas (Joins) serão removidos</strong>. 
+              <br /><br />
+              Deseja realmente continuar?
+            </p>
+            
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem" }}>
+              <button className="btn btn-secondary" onClick={() => setShowConfirmChangeBase(false)}>Cancelar</button>
+              <button className="btn btn-primary" style={{ background: "var(--danger-500)", border: "none" }} onClick={() => {
+                handleToggleSchema(selectedSchemaIds[0]);
+                setShowConfirmChangeBase(false);
+              }}>
+                Confirmar
               </button>
             </div>
           </div>
