@@ -120,6 +120,11 @@ textarea.form-input {
   margin-top: 0.25rem;
 }
 
+option {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
 /* Buttons */
 .btn {
   display: inline-flex;
