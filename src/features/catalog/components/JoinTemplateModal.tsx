@@ -119,19 +119,24 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
     }
   };
 
+  const [hasLoadedLeftInitial, setHasLoadedLeftInitial] = useState(false);
   useEffect(() => {
-    if (leftSchemaId && !templateToEdit) {
-      setLeftFieldId("");
+    if (leftSchemaId) {
+      if (hasLoadedLeftInitial || !templateToEdit) {
+        setLeftFieldId("");
+      }
+      setHasLoadedLeftInitial(true);
     }
     const loadFields = async () => {
       if (!leftSchemaId) {
         setLeftFields([]);
         return;
       }
+      setLeftFields([]);
       const res = await catalogApi.listReportFields(leftSchemaId);
       if (!isErr(res)) {
         setLeftFields(res.value);
-        if (templateToEdit) {
+        if (templateToEdit && !hasLoadedLeftInitial) {
           const field = res.value.find(f => f.internalFieldName === templateToEdit.leftInternalFieldName);
           if (field) setLeftFieldId(field.id);
         }
@@ -140,19 +145,24 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
     if (isOpen) loadFields();
   }, [leftSchemaId, isOpen]);
 
+  const [hasLoadedRightInitial, setHasLoadedRightInitial] = useState(false);
   useEffect(() => {
-    if (rightSchemaId && !templateToEdit) {
-      setRightFieldId("");
+    if (rightSchemaId) {
+      if (hasLoadedRightInitial || !templateToEdit) {
+        setRightFieldId("");
+      }
+      setHasLoadedRightInitial(true);
     }
     const loadFields = async () => {
       if (!rightSchemaId) {
         setRightFields([]);
         return;
       }
+      setRightFields([]);
       const res = await catalogApi.listReportFields(rightSchemaId);
       if (!isErr(res)) {
         setRightFields(res.value);
-        if (templateToEdit) {
+        if (templateToEdit && !hasLoadedRightInitial) {
           const field = res.value.find(f => f.internalFieldName === templateToEdit.rightInternalFieldName);
           if (field) setRightFieldId(field.id);
         }
