@@ -78,7 +78,6 @@ export interface SelectItem extends FieldReference {
 export interface JoinItem {
   joinTemplateId: string;
   alias: string;
-  joinType?: JoinType;
 }
 
 export interface WhereNode extends Partial<FieldReference> {

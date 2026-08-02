@@ -7,7 +7,7 @@ import { catalogApi } from "../../catalog/api/catalogApi";
 import { creatorApi } from "../api/creatorApi";
 import { isErr } from "../../../shared/result/result";
 import type { DataSource } from "../../catalog/types/catalogTypes";
-import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField, JoinType } from "../types/creatorTypes";
+import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField } from "../types/creatorTypes";
 import { Database, Plus, X, ChevronRight, Check } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
 
@@ -294,7 +294,7 @@ export const ReportDesignerPage: React.FC = () => {
             alias = `${directJoin.suggestedAlias || "j"}${counter}`;
             counter++;
           }
-          joins.push({ joinTemplateId: directJoin.joinTemplateId, alias, joinType: directJoin.joinType || "inner" });
+          joins.push({ joinTemplateId: directJoin.joinTemplateId, alias });
           setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, joins } });
         }
       }
@@ -516,28 +516,8 @@ export const ReportDesignerPage: React.FC = () => {
       }
     });
 
-    const handleUpdateJoinType = (schemaId: string, joinType: JoinType) => {
-      if (!reportContent?.dataset.joins) return;
-      const directJoin = catalog?.joins.find(j => j.fromSchemaId === reportContent.dataset.schemaId && j.toSchemaId === schemaId);
-      if (!directJoin) return;
-      
-      const joins = reportContent.dataset.joins.map(j => 
-        j.joinTemplateId === directJoin.joinTemplateId ? { ...j, joinType } : j
-      );
-      
-      setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, joins } });
-    };
-
     const renderSchemaCard = (s: DesignerSchema, isSelected: boolean, isDisabled: boolean) => {
       const isBase = s.id === selectedSchemaIds[0];
-      
-      let joinItem: any = null;
-      if (isSelected && !isBase && reportContent?.dataset.joins) {
-        const directJoin = catalog?.joins.find(j => j.fromSchemaId === reportContent.dataset.schemaId && j.toSchemaId === s.id);
-        if (directJoin) {
-          joinItem = reportContent.dataset.joins.find(j => j.joinTemplateId === directJoin.joinTemplateId);
-        }
-      }
 
       return (
         <div 
@@ -554,20 +534,7 @@ export const ReportDesignerPage: React.FC = () => {
           <div>
             <div style={{ fontWeight: 600, color: isSelected ? "var(--text-primary)" : "var(--text-secondary)" }}>{s.name}</div>
             {isBase && <div style={{ fontSize: "0.75rem", color: "var(--primary-500)", marginTop: "0.2rem", fontWeight: 600 }}>Tabela Base</div>}
-            {isSelected && !isBase && (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.4rem" }} onClick={e => e.stopPropagation()}>
-                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Join:</div>
-                <select 
-                  className="form-input" 
-                  style={{ padding: "0.1rem 0.5rem", fontSize: "0.75rem", height: "auto", border: "1px solid var(--border-color)", background: "var(--surface-color)", borderRadius: "4px" }}
-                  value={joinItem?.joinType || catalog?.joins.find(j => j.fromSchemaId === reportContent?.dataset.schemaId && j.toSchemaId === s.id)?.joinType || "inner"}
-                  onChange={(e) => handleUpdateJoinType(s.id, e.target.value as any)}
-                >
-                  <option value="inner">INNER</option>
-                  <option value="left">LEFT</option>
-                </select>
-              </div>
-            )}
+            {isSelected && !isBase && <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>Tabela Relacionada (Join)</div>}
             {isDisabled && <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>Sem relação com a base</div>}
           </div>
           <div style={{ width: "20px", height: "20px", borderRadius: "4px", border: `1px solid ${isSelected ? "var(--primary-500)" : "var(--border-color)"}`, background: isSelected ? "var(--primary-500)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
