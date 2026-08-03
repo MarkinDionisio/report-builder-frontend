@@ -8,8 +8,9 @@ import { creatorApi } from "../api/creatorApi";
 import { isErr } from "../../../shared/result/result";
 import type { DataSource } from "../../catalog/types/catalogTypes";
 import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField } from "../types/creatorTypes";
-import { Database, Plus, X, ChevronRight, Check } from "lucide-react";
+import { Database, Plus, X, ChevronRight, Check, Variable, Calendar } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
+import { DYNAMIC_VARIABLES, resolveWhereNodeVariables } from "../utils/dynamicVariables";
 
 function availableAggregations(field: DesignerField): string[] {
   if (!field.aggregatable) return [];
@@ -915,6 +916,8 @@ export const ReportDesignerPage: React.FC = () => {
                   };
 
                   const isNoValue = c.operator === "isNull" || c.operator === "isNotNull";
+                  const isDate = field?.type?.toLowerCase().includes("date") || field?.type?.toLowerCase().includes("timestamp");
+                  const isVariable = isDate && typeof c.value === 'string' && c.value.startsWith("{{") && c.value.endsWith("}}");
 
                   return (
                     <div key={index} style={{ display: "flex", gap: "0.5rem", alignItems: "center", background: "var(--surface-color)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
@@ -938,14 +941,47 @@ export const ReportDesignerPage: React.FC = () => {
                         {allowedOps.map((op: string) => <option key={op} value={op}>{opLabel(op)}</option>)}
                       </select>
                       {!isNoValue && (
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          style={{ flex: 2 }}
-                          placeholder={c.operator === "in" || c.operator === "between" ? "Valores separados por vírgula..." : "Valor..."}
-                          value={Array.isArray(c.value) ? c.value.join(", ") : (c.value as string || "")}
-                          onChange={(e) => handleUpdateFilter(index, "value", e.target.value)}
-                        />
+                        <div style={{ flex: 2, display: "flex", gap: "0.25rem" }}>
+                          {isVariable ? (
+                            <select 
+                              className="form-input" 
+                              style={{ flex: 1 }}
+                              value={c.value as string}
+                              onChange={(e) => handleUpdateFilter(index, "value", e.target.value)}
+                            >
+                              <option value="">Selecione uma variável...</option>
+                              {DYNAMIC_VARIABLES.map(v => (
+                                <option key={v.id} value={v.id}>{v.label}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input 
+                              type={isDate && c.operator !== "in" && c.operator !== "between" ? "date" : "text"} 
+                              className="form-input" 
+                              style={{ flex: 1 }}
+                              placeholder={c.operator === "in" || c.operator === "between" ? "Valores separados por vírgula..." : "Valor..."}
+                              value={Array.isArray(c.value) ? c.value.join(", ") : (c.value as string || "")}
+                              onChange={(e) => handleUpdateFilter(index, "value", e.target.value)}
+                            />
+                          )}
+                          {isDate && (
+                            <button 
+                              type="button"
+                              className={`btn ${isVariable ? "btn-primary" : "btn-secondary"}`}
+                              style={{ padding: "0.25rem 0.5rem", minHeight: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}
+                              onClick={() => {
+                                if (isVariable) {
+                                  handleUpdateFilter(index, "value", "");
+                                } else {
+                                  handleUpdateFilter(index, "value", "{{Today}}");
+                                }
+                              }}
+                              title={isVariable ? "Mudar para valor fixo" : "Usar variável dinâmica"}
+                            >
+                              {isVariable ? <Variable size={16} /> : <Calendar size={16} />}
+                            </button>
+                          )}
+                        </div>
                       )}
                       <button className="btn-icon" style={{ color: "var(--danger-500)" }} onClick={() => handleRemoveFilter(index)}>
                         <X size={16} />
@@ -1053,6 +1089,14 @@ export const ReportDesignerPage: React.FC = () => {
       
       const contentForPreview = { ...reportContent };
       contentForPreview.dataset.groupBy = synchronizeGroupBy(contentForPreview.dataset.select || [], catalog);
+      if (contentForPreview.dataset.where) {
+        contentForPreview.dataset.where = resolveWhereNodeVariables(
+          contentForPreview.dataset.where, 
+          catalog, 
+          contentForPreview.dataset.schemaId,
+          contentForPreview.dataset.joins
+        );
+      }
       if (contentForPreview.dataset.where?.conditions) {
         contentForPreview.dataset.where.conditions = normalizeWhereValues(contentForPreview.dataset.where.conditions);
       }
