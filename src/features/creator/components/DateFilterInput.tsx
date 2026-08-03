@@ -139,7 +139,7 @@ export function DateFilterInput({ operator, value, fieldType, onChange, onOperat
       <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
         <select 
           className="form-input" 
-          style={{ width: "120px", minWidth: "120px", flexShrink: 0, display: isBetween ? "block" : "none", padding: "0.5rem" }}
+          style={{ width: "150px", minWidth: "150px", flexShrink: 0, display: isBetween ? "block" : "none", padding: "0.5rem" }}
           value={mode}
           onChange={handleModeChange}
         >

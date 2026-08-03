@@ -114,27 +114,46 @@ const InlineTagsInput = ({ value, onChange }: { value: string[]; onChange: (val:
  * Returns a human-readable label for an operator.
  */
 const getOpLabel = (op: string, isDate: boolean, _isNumber: boolean): string => {
-  switch (op) {
-    case "=": return "É exatamente";
-    case "!=": return "É diferente de";
-    case "like": return "Contém";
-    case "not like": return "Não contém";
-    case "in": return "É um de (lista)";
-    case "between": return "Está entre";
-    case "isNull": return "Está vazio";
-    case "isNotNull": return "Não está vazio";
+  const normalizedOp = op.toLowerCase();
+  switch (normalizedOp) {
+    case "=":
+    case "eq":
+      return "= (É exatamente)";
+    case "!=":
+    case "neq":
+      return "!= (É diferente de)";
+    case "like":
+    case "ilike":
+      return "LIKE (Contém)";
+    case "not like":
+    case "not ilike":
+      return "NOT LIKE (Não contém)";
+    case "in":
+      return "IN (É um de da lista)";
+    case "not in":
+      return "NOT IN (Não é nenhum da lista)";
+    case "between":
+      return "BETWEEN (Está entre)";
+    case "isnull":
+      return "IS NULL (Está vazio)";
+    case "isnotnull":
+      return "IS NOT NULL (Não está vazio)";
     case ">":
-      if (isDate) return "Depois de";
-      return "Maior que";
+    case "gt":
+      if (isDate) return "> (Depois de)";
+      return "> (Maior que)";
     case "<":
-      if (isDate) return "Antes de";
-      return "Menor que";
+    case "lt":
+      if (isDate) return "< (Antes de)";
+      return "< (Menor que)";
     case ">=":
-      if (isDate) return "A partir de";
-      return "Maior ou igual a";
+    case "gte":
+      if (isDate) return ">= (A partir de)";
+      return ">= (Maior ou igual a)";
     case "<=":
-      if (isDate) return "Até no máximo";
-      return "Menor ou igual a";
+    case "lte":
+      if (isDate) return "<= (Até no máximo)";
+      return "<= (Menor ou igual a)";
     default: return op;
   }
 };
@@ -172,9 +191,10 @@ export const FilterRow: React.FC<FilterRowProps> = ({
 }) => {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  const isNoValue = c.operator === "isNull" || c.operator === "isNotNull";
-  const isBetween = c.operator === "between";
-  const isIn = c.operator === "in";
+  const op = (c.operator || "").toLowerCase();
+  const isNoValue = op === "isnull" || op === "isnotnull";
+  const isBetween = op === "between";
+  const isIn = op === "in" || op === "not in";
   const valArray = Array.isArray(c.value) ? c.value : [c.value || "", ""];
 
   const hasValue = (() => {
@@ -316,7 +336,7 @@ export const FilterRow: React.FC<FilterRowProps> = ({
         </div>
 
         {/* Field type icon + Field selector */}
-        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", flex: 2, minWidth: "120px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", flex: 1, minWidth: "320px" }}>
           <FieldTypeIcon isDate={isDate} isNumber={isNumber} />
           <SearchableFieldSelect
             options={fieldOptions}
@@ -330,7 +350,7 @@ export const FilterRow: React.FC<FilterRowProps> = ({
         {/* Operator select */}
         <select
           className="form-input"
-          style={{ flex: 1, minWidth: "100px", padding: "0.5rem" }}
+          style={{ flex: 1, minWidth: "110px", padding: "0.5rem" }}
           value={c.operator}
           onChange={(e) => onUpdate(index, "operator", e.target.value)}
         >
@@ -343,7 +363,7 @@ export const FilterRow: React.FC<FilterRowProps> = ({
 
         {/* Value input area */}
         {!isNoValue && (
-          <div style={{ flex: 2, display: "flex", gap: "0.25rem", minWidth: "220px" }}>
+          <div style={{ flex: 2, display: "flex", gap: "0.25rem", minWidth: "120px" }}>
             {isDate ? (
               <DateFilterInput
                 operator={c.operator}
