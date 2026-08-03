@@ -8,9 +8,13 @@ import { creatorApi } from "../api/creatorApi";
 import { isErr } from "../../../shared/result/result";
 import type { DataSource } from "../../catalog/types/catalogTypes";
 import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField } from "../types/creatorTypes";
-import { Database, Plus, X, ChevronRight, Check, Variable, Calendar } from "lucide-react";
+import { Database, Plus, X, ChevronRight, Check, Filter, ChevronDown, ArrowUpDown } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
-import { DYNAMIC_VARIABLES, resolveWhereNodeVariables } from "../utils/dynamicVariables";
+import { resolveWhereNodeVariables } from "../utils/dynamicVariables";
+import { FilterRow } from "../components/FilterRow";
+import { OrderByRow } from "../components/OrderByRow";
+
+
 
 function availableAggregations(field: DesignerField): string[] {
   if (!field.aggregatable) return [];
@@ -87,31 +91,68 @@ function validateOrderBy(
   return { compatible: true };
 }
 
-function normalizeWhereValues(conditions: any[]): any[] {
-  return conditions.map(c => {
+import { getFieldTypeInfo, formatDateTimeValue } from "../utils/dateUtils";
+
+function normalizeWhereValues(conditions: any[], catalog?: DesignerCatalog | null, baseSchemaId?: string, joins?: any[]): any[] {
+  let newConditions: any[] = [];
+  
+  conditions.forEach(c => {
     const isNoValue = c.operator === "isNull" || c.operator === "isNotNull";
     if (isNoValue) {
       const { value, ...rest } = c;
-      return rest;
+      newConditions.push(rest);
+      return;
     }
-    
+
+    let val = c.value;
+
     if (c.operator === "in" || c.operator === "between") {
-      if (typeof c.value === "string") {
-        const arr = c.value.split(",").map((s: string) => s.trim()).filter(Boolean);
-        return { ...c, value: c.operator === "between" ? arr.slice(0, 2) : arr };
+      if (typeof val === "string") {
+        val = val.split(",").map((s: string) => s.trim()).filter(Boolean);
+        val = c.operator === "between" ? val.slice(0, 2) : val;
       }
     }
-    
-    // Attempt parsing number/boolean for single values
-    if (typeof c.value === "string" && (c.operator !== "in" && c.operator !== "between")) {
-      const v = c.value.trim();
-      if (v === "true") return { ...c, value: true };
-      if (v === "false") return { ...c, value: false };
-      if (!isNaN(Number(v)) && v !== "") return { ...c, value: Number(v) };
+
+    const fieldType = getFieldTypeInfo(c.fieldId || "", c.joinAlias, catalog, baseSchemaId, joins);
+
+    // Format dates correctly based on field type
+    if (Array.isArray(val)) {
+      val = val.map((v, idx) => {
+        if (typeof v === "string") {
+          // If it's between and the second value, treat it as endDate
+          const isEnd = c.operator === "between" && idx === 1;
+          return formatDateTimeValue(v, fieldType, isEnd);
+        }
+        return v;
+      });
+    } else if (typeof val === "string") {
+      val = formatDateTimeValue(val, fieldType);
+      
+      // Attempt parsing number/boolean for single values if it's not a date/time type
+      if (fieldType === "string" && c.operator !== "in" && c.operator !== "between") {
+        const vTrim = val.trim();
+        if (vTrim === "true") val = true;
+        else if (vTrim === "false") val = false;
+        else if (!isNaN(Number(vTrim)) && vTrim !== "") val = Number(vTrim);
+      }
+    }
+
+    // Special expansion for datetime with "="
+    if (fieldType === "datetime" && c.operator === "=" && typeof val === "string" && !val.startsWith("{{")) {
+      newConditions.push({
+        operator: "and",
+        conditions: [
+          { fieldId: c.fieldId, joinAlias: c.joinAlias, operator: ">=", value: val },
+          { fieldId: c.fieldId, joinAlias: c.joinAlias, operator: "<", value: formatDateTimeValue(c.value, fieldType, true) }
+        ]
+      });
+      return;
     }
     
-    return c;
+    newConditions.push({ ...c, value: val });
   });
+  
+  return newConditions;
 }
 
 export const ReportDesignerPage: React.FC = () => {
@@ -155,6 +196,16 @@ export const ReportDesignerPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showDevJson, setShowDevJson] = useState(false);
+
+  // Step 3 UI state
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
+  const [ordersExpanded, setOrdersExpanded] = useState(true);
+  const [filterDragIdx, setFilterDragIdx] = useState<number | null>(null);
+  const [filterDragOverIdx, setFilterDragOverIdx] = useState<number | null>(null);
+  const [filterDragPos, setFilterDragPos] = useState<"above" | "below" | null>(null);
+  const [orderDragIdx, setOrderDragIdx] = useState<number | null>(null);
+  const [orderDragOverIdx, setOrderDragOverIdx] = useState<number | null>(null);
+  const [orderDragPos, setOrderDragPos] = useState<"above" | "below" | null>(null);
 
   // 1. Initial Load
   useEffect(() => {
@@ -351,10 +402,15 @@ export const ReportDesignerPage: React.FC = () => {
     setIsSaving(true);
     setSaveError(null);
     
-    const contentToSave = { ...reportContent };
+    const contentToSave = JSON.parse(JSON.stringify(reportContent));
     contentToSave.dataset.groupBy = synchronizeGroupBy(contentToSave.dataset.select || [], catalog);
-    if (contentToSave.dataset.where?.conditions) {
-      contentToSave.dataset.where.conditions = normalizeWhereValues(contentToSave.dataset.where.conditions);
+    if (contentToSave.dataset.where) {
+      contentToSave.dataset.where.conditions = normalizeWhereValues(
+        contentToSave.dataset.where.conditions || [],
+        catalog,
+        contentToSave.dataset.schemaId,
+        contentToSave.dataset.joins
+      );
     }
     
     const req = {
@@ -392,7 +448,7 @@ export const ReportDesignerPage: React.FC = () => {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Navbar />
-        <main style={{ maxWidth: "800px", width: "100%", margin: "4rem auto", padding: "0 1.5rem", flex: 1 }}>
+        <main style={{ maxWidth: "1200px", width: "100%", margin: "4rem auto", padding: "0 1.5rem", flex: 1 }}>
           <div className="card">
             <h1 style={{ fontSize: "1.5rem", fontWeight: 700, margin: "0 0 0.5rem 0", display: "flex", alignItems: "center", gap: "0.5rem" }}>
               <Database size={24} style={{ color: "var(--primary-500)" }} />
@@ -547,7 +603,7 @@ export const ReportDesignerPage: React.FC = () => {
 
     return (
       <div style={{ width: "100%", height: "100%", overflowY: "auto", padding: "1.5rem" }}>
-        <div style={{ maxWidth: "800px", margin: "0 auto", width: "100%", paddingBottom: "2rem" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", width: "100%", paddingBottom: "2rem" }}>
           <h3 style={{ marginBottom: "0.5rem", fontWeight: 600 }}>Tabelas</h3>
           <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem", fontSize: "0.95rem" }}>
             {!isBaseSelected 
@@ -715,7 +771,7 @@ export const ReportDesignerPage: React.FC = () => {
   const renderStep3 = () => {
     const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
     
-    const filterFieldOptions: { label: string; fieldId: string; joinAlias: string }[] = [];
+    const filterFieldOptions: { label: string; fieldId: string; joinAlias: string; group: string }[] = [];
     const orderByFieldOptions: { label: string; fieldId: string; joinAlias: string; aggregation?: string }[] = [];
 
     activeSchemas.forEach(s => {
@@ -732,7 +788,8 @@ export const ReportDesignerPage: React.FC = () => {
           filterFieldOptions.push({
             label: `${f.name} (${s.name}${joinAlias ? ` - ${joinAlias}` : ''})`,
             fieldId: f.id,
-            joinAlias
+            joinAlias,
+            group: s.name + (joinAlias ? ` (${joinAlias})` : '')
           });
         }
         if (f.sortable !== false) {
@@ -799,6 +856,7 @@ export const ReportDesignerPage: React.FC = () => {
 
     const conditions = reportContent?.dataset.where?.conditions || [];
     const orderBys = reportContent?.dataset.orderBy || [];
+    const whereOperator = reportContent?.dataset.where?.operator || "and";
 
     const handleAddFilter = () => {
       if (!reportContent || filterFieldOptions.length === 0) return;
@@ -829,6 +887,48 @@ export const ReportDesignerPage: React.FC = () => {
       if (!reportContent?.dataset.where?.conditions) return;
       const newConditions = reportContent.dataset.where.conditions.filter((_, i) => i !== index);
       setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, where: { ...reportContent.dataset.where, conditions: newConditions } } });
+    };
+
+    const handleDuplicateFilter = (index: number) => {
+      if (!reportContent?.dataset.where?.conditions) return;
+      const original = reportContent.dataset.where.conditions[index];
+      const clone = JSON.parse(JSON.stringify(original));
+      const newConditions = [...reportContent.dataset.where.conditions];
+      newConditions.splice(index + 1, 0, clone);
+      setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, where: { ...reportContent.dataset.where, conditions: newConditions } } });
+    };
+
+    const handleToggleWhereOperator = () => {
+      if (!reportContent?.dataset.where) return;
+      const newOp = reportContent.dataset.where.operator === "and" ? "or" : "and";
+      setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, where: { ...reportContent.dataset.where, operator: newOp } } });
+    };
+
+    const handleReorderFilters = (fromIdx: number, toIdx: number) => {
+      if (!reportContent?.dataset.where?.conditions || fromIdx === toIdx) return;
+      const newConditions = [...reportContent.dataset.where.conditions];
+      const [moved] = newConditions.splice(fromIdx, 1);
+      newConditions.splice(toIdx, 0, moved);
+      setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, where: { ...reportContent.dataset.where, conditions: newConditions } } });
+      setFilterDragIdx(null);
+      setFilterDragOverIdx(null);
+      setFilterDragPos(null);
+    };
+
+    const handleFilterDragOver = (e: React.DragEvent, index: number) => {
+      e.preventDefault();
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      setFilterDragOverIdx(index);
+      setFilterDragPos(e.clientY < midY ? "above" : "below");
+    };
+
+    const handleFilterDrop = (e: React.DragEvent, index: number) => {
+      e.preventDefault();
+      if (filterDragIdx === null) return;
+      const targetIdx = filterDragPos === "below" ? index + 1 : index;
+      const adjustedTarget = filterDragIdx < targetIdx ? targetIdx - 1 : targetIdx;
+      handleReorderFilters(filterDragIdx, adjustedTarget);
     };
 
     const handleAddOrderBy = () => {
@@ -871,203 +971,306 @@ export const ReportDesignerPage: React.FC = () => {
       setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, orderBy: newOrderBys } });
     };
 
+    const handleReorderOrderBys = (fromIdx: number, toIdx: number) => {
+      if (!reportContent?.dataset.orderBy || fromIdx === toIdx) return;
+      const newOrderBys = [...reportContent.dataset.orderBy];
+      const [moved] = newOrderBys.splice(fromIdx, 1);
+      newOrderBys.splice(toIdx, 0, moved);
+      setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, orderBy: newOrderBys } });
+      setOrderDragIdx(null);
+      setOrderDragOverIdx(null);
+      setOrderDragPos(null);
+    };
+
+    const handleOrderDragOver = (e: React.DragEvent, index: number) => {
+      e.preventDefault();
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      setOrderDragOverIdx(index);
+      setOrderDragPos(e.clientY < midY ? "above" : "below");
+    };
+
+    const handleOrderDrop = (e: React.DragEvent, index: number) => {
+      e.preventDefault();
+      if (orderDragIdx === null) return;
+      const targetIdx = orderDragPos === "below" ? index + 1 : index;
+      const adjustedTarget = orderDragIdx < targetIdx ? targetIdx - 1 : targetIdx;
+      handleReorderOrderBys(orderDragIdx, adjustedTarget);
+    };
+
+    // Resolve field metadata for each filter row
+    const resolveField = (fieldId: string) => {
+      const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
+      for (const s of activeSchemas) {
+        const f = s.fields.find((f: any) => f.id === fieldId);
+        if (f) return f;
+      }
+      return null;
+    };
+
     return (
       <div style={{ width: "100%", height: "100%", overflowY: "auto", padding: "1.5rem" }}>
-        <div style={{ maxWidth: "800px", margin: "0 auto", width: "100%", paddingBottom: "2rem" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto", width: "100%", paddingBottom: "2rem" }}>
           
+          {/* ===== FILTERS SECTION ===== */}
           <div style={{ marginBottom: "2.5rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <div>
-                <h3 style={{ marginBottom: "0.25rem", fontWeight: 600 }}>Filtros (WHERE)</h3>
-                <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>
-                  Adicione condições para restringir os resultados do relatório.
-                </p>
+              <div
+                style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}
+                onClick={() => setFiltersExpanded(!filtersExpanded)}
+              >
+                <ChevronDown
+                  size={18}
+                  style={{
+                    color: "var(--text-secondary)",
+                    transition: "transform 0.2s ease",
+                    transform: filtersExpanded ? "rotate(0deg)" : "rotate(-90deg)",
+                  }}
+                />
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <h3 style={{ marginBottom: "0.25rem", fontWeight: 600 }}>Filtros (WHERE)</h3>
+                    {conditions.length > 0 && (
+                      <span
+                        style={{
+                          background: "var(--primary-500)",
+                          color: "#fff",
+                          fontSize: "0.7rem",
+                          fontWeight: 700,
+                          padding: "0.1rem 0.45rem",
+                          borderRadius: "10px",
+                          minWidth: "20px",
+                          textAlign: "center",
+                        }}
+                      >
+                        {conditions.length}
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>
+                    Adicione condições para restringir os resultados do relatório.
+                  </p>
+                </div>
               </div>
               <button className="btn btn-secondary" onClick={handleAddFilter}>
                 <Plus size={16} style={{ marginRight: "0.5rem" }} /> Adicionar Filtro
               </button>
             </div>
-            
-            {conditions.length === 0 ? (
-              <div style={{ padding: "2rem", textAlign: "center", background: "var(--surface-color)", borderRadius: "8px", border: "1px dashed var(--border-color)" }}>
-                <p style={{ color: "var(--text-secondary)" }}>Nenhum filtro aplicado. Todos os registros serão retornados.</p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                {conditions.map((c, index) => {
-                  let field: any = null;
-                  const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
-                  for (const s of activeSchemas) {
-                    const f = s.fields.find((f: any) => f.id === c.fieldId);
-                    if (f) {
-                      field = f;
-                      break;
-                    }
-                  }
 
-                  const allowedOps = field?.allowedOperators || ["=", "!=", ">", "<", ">=", "<=", "like", "not like", "in", "isNull", "isNotNull", "between"];
-                  const opLabel = (op: string) => {
-                    const labels: Record<string, string> = {
-                      "=": "Igual a (=)", "!=": "Diferente de (!=)", ">": "Maior que (>)", "<": "Menor que (<)",
-                      ">=": "Maior ou igual (>=)", "<=": "Menor ou igual (<=)", "like": "Contém", "not like": "Não contém",
-                      "in": "Na lista (IN)", "isNull": "É Nulo", "isNotNull": "Não é Nulo", "between": "Entre (Between)"
-                    };
-                    return labels[op] || op;
-                  };
-
-                  const isNoValue = c.operator === "isNull" || c.operator === "isNotNull";
-                  const isDate = field?.type?.toLowerCase().includes("date") || field?.type?.toLowerCase().includes("timestamp");
-                  const isVariable = isDate && typeof c.value === 'string' && c.value.startsWith("{{") && c.value.endsWith("}}");
-
-                  return (
-                    <div key={index} style={{ display: "flex", gap: "0.5rem", alignItems: "center", background: "var(--surface-color)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
-                      <span style={{ fontWeight: 600, color: "var(--primary-400)", minWidth: "40px", fontSize: "0.85rem" }}>
-                        {index === 0 ? "WHERE" : "AND"}
-                      </span>
-                      <select 
-                        className="form-input" 
-                        style={{ flex: 2 }}
-                        value={`${c.fieldId}|${c.joinAlias || ""}`}
-                        onChange={(e) => handleUpdateFilter(index, "field", e.target.value)}
-                      >
-                        {filterFieldOptions.map(opt => <option key={`${opt.fieldId}|${opt.joinAlias}`} value={`${opt.fieldId}|${opt.joinAlias}`}>{opt.label}</option>)}
-                      </select>
-                      <select 
-                        className="form-input" 
-                        style={{ flex: 1 }}
-                        value={c.operator}
-                        onChange={(e) => handleUpdateFilter(index, "operator", e.target.value)}
-                      >
-                        {allowedOps.map((op: string) => <option key={op} value={op}>{opLabel(op)}</option>)}
-                      </select>
-                      {!isNoValue && (
-                        <div style={{ flex: 2, display: "flex", gap: "0.25rem" }}>
-                          {isVariable ? (
-                            <select 
-                              className="form-input" 
-                              style={{ flex: 1 }}
-                              value={c.value as string}
-                              onChange={(e) => handleUpdateFilter(index, "value", e.target.value)}
-                            >
-                              <option value="">Selecione uma variável...</option>
-                              {DYNAMIC_VARIABLES.map(v => (
-                                <option key={v.id} value={v.id}>{v.label}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input 
-                              type={isDate && c.operator !== "in" && c.operator !== "between" ? "date" : "text"} 
-                              className="form-input" 
-                              style={{ flex: 1 }}
-                              placeholder={c.operator === "in" || c.operator === "between" ? "Valores separados por vírgula..." : "Valor..."}
-                              value={Array.isArray(c.value) ? c.value.join(", ") : (c.value as string || "")}
-                              onChange={(e) => handleUpdateFilter(index, "value", e.target.value)}
-                            />
-                          )}
-                          {isDate && (
-                            <button 
-                              type="button"
-                              className={`btn ${isVariable ? "btn-primary" : "btn-secondary"}`}
-                              style={{ padding: "0.25rem 0.5rem", minHeight: "auto", display: "flex", alignItems: "center", justifyContent: "center" }}
-                              onClick={() => {
-                                if (isVariable) {
-                                  handleUpdateFilter(index, "value", "");
-                                } else {
-                                  handleUpdateFilter(index, "value", "{{Today}}");
-                                }
-                              }}
-                              title={isVariable ? "Mudar para valor fixo" : "Usar variável dinâmica"}
-                            >
-                              {isVariable ? <Variable size={16} /> : <Calendar size={16} />}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      <button className="btn-icon" style={{ color: "var(--danger-500)" }} onClick={() => handleRemoveFilter(index)}>
-                        <X size={16} />
-                      </button>
-                    </div>
-                  );
-                })}
+            {/* AND/OR toggle */}
+            {filtersExpanded && conditions.length >= 2 && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>Combinar filtros com:</span>
+                <button
+                  onClick={handleToggleWhereOperator}
+                  style={{
+                    padding: "0.2rem 0.6rem",
+                    borderRadius: "6px",
+                    border: "1px solid",
+                    borderColor: whereOperator === "and" ? "var(--primary-500)" : "var(--warning-500, #f59e0b)",
+                    background: whereOperator === "and" ? "rgba(99, 102, 241, 0.1)" : "rgba(245, 158, 11, 0.1)",
+                    color: whereOperator === "and" ? "var(--primary-400)" : "var(--warning-500, #f59e0b)",
+                    fontSize: "0.75rem",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {whereOperator === "and" ? "AND — Todas devem ser verdadeiras" : "OR — Pelo menos uma deve ser verdadeira"}
+                </button>
               </div>
             )}
+            
+            <div
+              style={{
+                overflow: filtersExpanded ? "visible" : "hidden",
+                maxHeight: filtersExpanded ? "5000px" : "0px",
+                transition: "max-height 0.3s ease",
+              }}
+            >
+              {conditions.length === 0 ? (
+                <div
+                  style={{
+                    padding: "2.5rem",
+                    textAlign: "center",
+                    background: "var(--surface-color)",
+                    borderRadius: "8px",
+                    border: "1px dashed var(--border-color)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <Filter size={32} style={{ color: "var(--text-secondary)", opacity: 0.5, animation: "pulse 2s ease-in-out infinite" }} />
+                  <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+                    Nenhum filtro aplicado. Todos os registros serão retornados.
+                  </p>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ fontSize: "0.85rem", padding: "0.4rem 1rem" }}
+                    onClick={handleAddFilter}
+                  >
+                    <Plus size={14} style={{ marginRight: "0.25rem" }} /> Adicionar seu primeiro filtro
+                  </button>
+                </div>
+              ) : (
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnd={() => { setFilterDragIdx(null); setFilterDragOverIdx(null); setFilterDragPos(null); }}
+                >
+                  {conditions.map((c, index) => {
+                    const field = resolveField(c.fieldId || "");
+                    const allowedOps = field?.allowedOperators || ["=", "!=", ">", "<", ">=", "<=", "like", "not like", "in", "isNull", "isNotNull", "between"];
+                    const typeLower = (field?.type || "").toLowerCase();
+                    const isNumber = typeLower.includes("int") || typeLower.includes("decimal") || typeLower.includes("numeric") || typeLower.includes("float") || typeLower.includes("double") || typeLower.includes("real");
+                    const isDate = typeLower.includes("date") || typeLower.includes("timestamp") || typeLower.includes("time");
+                    const parsedFieldType = typeLower.includes("timestamp") || typeLower.includes("datetime") ? "datetime" : typeLower.includes("time") ? "time" : typeLower.includes("date") ? "date" : "string";
+
+                    return (
+                      <FilterRow
+                        key={index}
+                        index={index}
+                        condition={c as any}
+                        fieldOptions={filterFieldOptions}
+                        field={field}
+                        isDate={isDate}
+                        isNumber={isNumber}
+                        parsedFieldType={parsedFieldType as any}
+                        allowedOps={allowedOps}
+                        onUpdate={handleUpdateFilter}
+                        onRemove={handleRemoveFilter}
+                        onDuplicate={handleDuplicateFilter}
+                        onDragStart={(i) => setFilterDragIdx(i)}
+                        onDragOver={handleFilterDragOver}
+                        onDrop={handleFilterDrop}
+                        isDragOver={filterDragOverIdx === index && filterDragIdx !== index}
+                        dragPosition={filterDragOverIdx === index ? filterDragPos : null}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
+          {/* ===== ORDER BY SECTION ===== */}
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <div>
-                <h3 style={{ marginBottom: "0.25rem", fontWeight: 600 }}>Ordenação (ORDER BY)</h3>
-                <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>
-                  Defina a ordem em que os resultados aparecerão.
-                </p>
+              <div
+                style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "0.5rem" }}
+                onClick={() => setOrdersExpanded(!ordersExpanded)}
+              >
+                <ChevronDown
+                  size={18}
+                  style={{
+                    color: "var(--text-secondary)",
+                    transition: "transform 0.2s ease",
+                    transform: ordersExpanded ? "rotate(0deg)" : "rotate(-90deg)",
+                  }}
+                />
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <h3 style={{ marginBottom: "0.25rem", fontWeight: 600 }}>Ordenação (ORDER BY)</h3>
+                    {orderBys.length > 0 && (
+                      <span
+                        style={{
+                          background: "var(--primary-500)",
+                          color: "#fff",
+                          fontSize: "0.7rem",
+                          fontWeight: 700,
+                          padding: "0.1rem 0.45rem",
+                          borderRadius: "10px",
+                          minWidth: "20px",
+                          textAlign: "center",
+                        }}
+                      >
+                        {orderBys.length}
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>
+                    Defina a ordem em que os resultados aparecerão.
+                  </p>
+                </div>
               </div>
               <button className="btn btn-secondary" onClick={handleAddOrderBy}>
                 <Plus size={16} style={{ marginRight: "0.5rem" }} /> Adicionar Ordenação
               </button>
             </div>
             
-            {orderBys.length === 0 ? (
-              <div style={{ padding: "2rem", textAlign: "center", background: "var(--surface-color)", borderRadius: "8px", border: "1px dashed var(--border-color)" }}>
-                <p style={{ color: "var(--text-secondary)" }}>Nenhuma ordenação aplicada. A ordem será padrão do banco.</p>
-              </div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                {orderBys.map((o, index) => {
-                  let field: any = null;
-                  const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
-                  for (const s of activeSchemas) {
-                    const f = s.fields.find((f: any) => f.id === o.fieldId);
-                    if (f) {
-                      field = f;
-                      break;
+            <div
+              style={{
+                overflow: ordersExpanded ? "visible" : "hidden",
+                maxHeight: ordersExpanded ? "5000px" : "0px",
+                transition: "max-height 0.3s ease",
+              }}
+            >
+              {orderBys.length === 0 ? (
+                <div
+                  style={{
+                    padding: "2.5rem",
+                    textAlign: "center",
+                    background: "var(--surface-color)",
+                    borderRadius: "8px",
+                    border: "1px dashed var(--border-color)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <ArrowUpDown size={32} style={{ color: "var(--text-secondary)", opacity: 0.5, animation: "pulse 2s ease-in-out infinite" }} />
+                  <p style={{ color: "var(--text-secondary)", margin: 0 }}>
+                    Nenhuma ordenação aplicada. A ordem será padrão do banco.
+                  </p>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ fontSize: "0.85rem", padding: "0.4rem 1rem" }}
+                    onClick={handleAddOrderBy}
+                  >
+                    <Plus size={14} style={{ marginRight: "0.25rem" }} /> Adicionar sua primeira ordenação
+                  </button>
+                </div>
+              ) : (
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnd={() => { setOrderDragIdx(null); setOrderDragOverIdx(null); setOrderDragPos(null); }}
+                >
+                  {orderBys.map((o, index) => {
+                    const field = resolveField(o.fieldId || "");
+                    let compat: OrderByCompatibility = { compatible: true };
+                    if (field) {
+                      const currentGroupBy = synchronizeGroupBy(reportContent?.dataset.select || [], catalog);
+                      compat = validateOrderBy(o, reportContent?.dataset.select || [], currentGroupBy, field);
                     }
-                  }
+                    const backendWarning = previewData?.warnings?.find((w: any) => w.code === "report_execution.order_by_ignored" && w.itemIndex === index);
 
-                  let compat: OrderByCompatibility = { compatible: true };
-                  if (field) {
-                    const currentGroupBy = synchronizeGroupBy(reportContent?.dataset.select || [], catalog);
-                    compat = validateOrderBy(o, reportContent?.dataset.select || [], currentGroupBy, field);
-                  }
-
-                  const backendWarning = previewData?.warnings?.find((w: any) => w.code === "report_execution.order_by_ignored" && w.itemIndex === index);
-                  
-                  return (
-                    <div key={index}>
-                      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", background: "var(--surface-color)", padding: "0.75rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
-                        <span style={{ fontWeight: 600, color: "var(--primary-400)", minWidth: "40px", fontSize: "0.85rem" }}>
-                          {index === 0 ? "ORDER BY" : "THEN BY"}
-                        </span>
-                        <select 
-                          className="form-input" 
-                          style={{ flex: 2, borderColor: (!compat.compatible || backendWarning) ? "var(--warning-500)" : undefined }}
-                          value={`${(o as any).target === "rows" ? "ROWS" : o.fieldId}|${o.joinAlias || ""}|${o.aggregation || ""}`}
-                          onChange={(e) => handleUpdateOrderBy(index, "field", e.target.value)}
-                        >
-                          {orderByFieldOptions.map((opt: any) => <option key={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`} value={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`}>{opt.label}</option>)}
-                        </select>
-                        <select 
-                          className="form-input" 
-                          style={{ flex: 1 }}
-                          value={o.direction}
-                          onChange={(e) => handleUpdateOrderBy(index, "direction", e.target.value as "asc" | "desc")}
-                        >
-                          <option value="asc">Ascendente (A-Z, 0-9)</option>
-                          <option value="desc">Descendente (Z-A, 9-0)</option>
-                        </select>
-                        <button className="btn-icon" style={{ color: "var(--danger-500)" }} onClick={() => handleRemoveOrderBy(index)}>
-                          <X size={16} />
-                        </button>
-                      </div>
-                      {(!compat.compatible || backendWarning) && (
-                        <div style={{ fontSize: "0.8rem", color: "var(--warning-500)", marginTop: "0.25rem", marginLeft: "0.25rem" }}>
-                          {backendWarning ? backendWarning.message : `Campo ignorado ou incompatível com a forma atual da consulta (${compat.reason})`}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    return (
+                      <OrderByRow
+                        key={index}
+                        index={index}
+                        orderBy={o as any}
+                        fieldOptions={orderByFieldOptions as any}
+                        compat={compat}
+                        backendWarning={backendWarning}
+                        onUpdate={handleUpdateOrderBy}
+                        onRemove={handleRemoveOrderBy}
+                        onDragStart={(i) => setOrderDragIdx(i)}
+                        onDragOver={handleOrderDragOver}
+                        onDrop={handleOrderDrop}
+                        isDragOver={orderDragOverIdx === index && orderDragIdx !== index}
+                        dragPosition={orderDragOverIdx === index ? orderDragPos : null}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ marginTop: "3rem", paddingTop: "1.5rem", borderTop: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between" }}>
@@ -1087,18 +1290,21 @@ export const ReportDesignerPage: React.FC = () => {
       setPreviewLoading(true);
       setPreviewError(null);
       
-      const contentForPreview = { ...reportContent };
+      const contentForPreview = JSON.parse(JSON.stringify(reportContent));
       contentForPreview.dataset.groupBy = synchronizeGroupBy(contentForPreview.dataset.select || [], catalog);
       if (contentForPreview.dataset.where) {
+        contentForPreview.dataset.where.conditions = normalizeWhereValues(
+          contentForPreview.dataset.where.conditions || [],
+          catalog,
+          contentForPreview.dataset.schemaId,
+          contentForPreview.dataset.joins
+        );
         contentForPreview.dataset.where = resolveWhereNodeVariables(
           contentForPreview.dataset.where, 
           catalog, 
           contentForPreview.dataset.schemaId,
           contentForPreview.dataset.joins
         );
-      }
-      if (contentForPreview.dataset.where?.conditions) {
-        contentForPreview.dataset.where.conditions = normalizeWhereValues(contentForPreview.dataset.where.conditions);
       }
       
       const req = {
