@@ -7,11 +7,13 @@ export interface Organization {
   id: string;
   name: string;
   description: string | null;
+  timeZone: string;
 }
 
 export interface UpsertOrganizationRequest {
   name: string;
   description?: string | null;
+  timeZone: string;
 }
 
 export interface OrganizationMember {

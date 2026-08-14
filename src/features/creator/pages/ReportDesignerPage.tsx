@@ -10,9 +10,13 @@ import type { DataSource } from "../../catalog/types/catalogTypes";
 import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField } from "../types/creatorTypes";
 import { Database, Plus, X, ChevronRight, Check, Filter, ChevronDown, ArrowUpDown } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
-import { resolveWhereNodeVariables } from "../utils/dynamicVariables";
 import { FilterRow } from "../components/FilterRow";
 import { OrderByRow } from "../components/OrderByRow";
+import { ParameterEditor } from "../components/ParameterEditor";
+import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
+import { requiredParametersMissing, validateParameters } from "../utils/parameterUtils";
+import { collectParameterReferences, createInputParameter, createRelativePeriod, nextParameterName, parameterTypeForField, removeOrphanParameters } from "../utils/filterParameterUtils";
+import type { RelativePeriodPreset, ReportParameterDefinition, WhereNode } from "../types/creatorTypes";
 
 
 
@@ -97,9 +101,14 @@ function normalizeWhereValues(conditions: any[], catalog?: DesignerCatalog | nul
   let newConditions: any[] = [];
   
   conditions.forEach(c => {
+    if (Array.isArray(c.conditions)) {
+      newConditions.push({ ...c, conditions: normalizeWhereValues(c.conditions, catalog, baseSchemaId, joins) });
+      return;
+    }
     const isNoValue = c.operator === "isNull" || c.operator === "isNotNull";
     if (isNoValue) {
-      const { value, ...rest } = c;
+      const rest = { ...c };
+      delete rest.value;
       newConditions.push(rest);
       return;
     }
@@ -155,6 +164,16 @@ function normalizeWhereValues(conditions: any[], catalog?: DesignerCatalog | nul
   return newConditions;
 }
 
+function collectParameterNames(value: unknown, result = new Set<string>()): Set<string> {
+  if (Array.isArray(value)) value.forEach((item) => collectParameterNames(item, result));
+  else if (value && typeof value === "object") {
+    const object = value as Record<string, unknown>;
+    if (typeof object.parameter === "string") result.add(object.parameter);
+    else Object.values(object).forEach((item) => collectParameterNames(item, result));
+  }
+  return result;
+}
+
 export const ReportDesignerPage: React.FC = () => {
   const { organizationId, reportId } = useParams<{ organizationId: string; reportId?: string }>();
   const navigate = useNavigate();
@@ -171,6 +190,7 @@ export const ReportDesignerPage: React.FC = () => {
   // Designer state
   const [catalog, setCatalog] = useState<DesignerCatalog | null>(null);
   const [reportContent, setReportContent] = useState<ReportContentV1 | null>(null);
+  const [previewParameters, setPreviewParameters] = useState<Record<string, unknown>>({});
   
   // Wizard State
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
@@ -288,6 +308,7 @@ export const ReportDesignerPage: React.FC = () => {
       setCatalog(res.value);
       setReportContent({
         version: 1,
+        parameters: [],
         dataset: { schemaId: "", select: [] }
       });
     }
@@ -399,6 +420,11 @@ export const ReportDesignerPage: React.FC = () => {
 
   const handleSaveReport = async () => {
     if (!organizationId || !reportContent || !reportTitle.trim()) return;
+    const parameterErrors = validateParameters(reportContent.parameters || []);
+    const declaredNames = new Set((reportContent.parameters || []).map((parameter) => parameter.name));
+    const unknownReferences = [...collectParameterNames(reportContent.dataset.where)].filter((name) => !declaredNames.has(name));
+    if (unknownReferences.length > 0) parameterErrors.push(`Parâmetros não declarados: ${unknownReferences.join(", ")}`);
+    if (parameterErrors.length > 0) { setSaveError(parameterErrors.join(" • ")); return; }
     setIsSaving(true);
     setSaveError(null);
     
@@ -857,6 +883,7 @@ export const ReportDesignerPage: React.FC = () => {
     const conditions = reportContent?.dataset.where?.conditions || [];
     const orderBys = reportContent?.dataset.orderBy || [];
     const whereOperator = reportContent?.dataset.where?.operator || "and";
+    const referencedNames = collectParameterNames(reportContent?.dataset.where);
 
     const handleAddFilter = () => {
       if (!reportContent || filterFieldOptions.length === 0) return;
@@ -881,6 +908,60 @@ export const ReportDesignerPage: React.FC = () => {
       }
       
       setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, where: { ...reportContent.dataset.where, conditions: newConditions } } });
+    };
+
+    const replaceFilterAndParameters = (index: number, condition: WhereNode, parameters: ReportParameterDefinition[], oldCondition: WhereNode) => {
+      if (!reportContent?.dataset.where?.conditions) return;
+      const nextConditions = [...reportContent.dataset.where.conditions];
+      nextConditions[index] = condition;
+      const nextWhere = { ...reportContent.dataset.where, conditions: nextConditions };
+      const oldReferences = collectParameterReferences(oldCondition);
+      setReportContent({ ...reportContent, parameters: removeOrphanParameters(parameters, nextWhere, oldReferences), dataset: { ...reportContent.dataset, where: nextWhere } });
+    };
+
+    const handleValueModeChange = (index: number, mode: "fixed" | "input" | "automatic") => {
+      if (!reportContent?.dataset.where?.conditions) return;
+      const oldCondition = reportContent.dataset.where.conditions[index];
+      const base = oldCondition.ui?.kind === "relativePeriod" ? oldCondition.conditions?.[0] : oldCondition;
+      if (!base?.fieldId) return;
+      const field = resolveField(base.fieldId);
+      if (!field) return;
+      const reference = { fieldId: base.fieldId, ...(base.joinAlias ? { joinAlias: base.joinAlias } : {}) };
+      const existingParameters = reportContent.parameters || [];
+      if (mode === "fixed") {
+        const allowed = field.allowedOperators || [];
+        const operator = oldCondition.ui?.kind === "relativePeriod" ? (allowed.includes("eq") ? "eq" : allowed[0]) : base.operator;
+        replaceFilterAndParameters(index, { ...reference, operator, value: "" }, existingParameters, oldCondition);
+        return;
+      }
+      if (mode === "input") {
+        const parameter = createInputParameter(existingParameters, field.type, field.name);
+        const allowed = field.allowedOperators || [];
+        const operator = oldCondition.ui?.kind === "relativePeriod" ? (allowed.includes("eq") ? "eq" : allowed[0]) : base.operator;
+        replaceFilterAndParameters(index, { ...reference, operator, value: { parameter: parameter.name } }, [...existingParameters, parameter], oldCondition);
+        return;
+      }
+      if (parameterTypeForField(field.type) === "date") {
+        const parameter: ReportParameterDefinition = { name: nextParameterName(existingParameters, "current_date"), type: "date", source: "system", variable: "currentDate" };
+        replaceFilterAndParameters(index, { ...reference, operator: "eq", value: { parameter: parameter.name } }, [...existingParameters, parameter], oldCondition);
+      } else {
+        const generated = createRelativePeriod(base.fieldId, base.joinAlias, "today", existingParameters);
+        replaceFilterAndParameters(index, generated.condition, generated.parameters, oldCondition);
+      }
+    };
+
+    const handlePeriodPresetChange = (index: number, preset: RelativePeriodPreset) => {
+      if (!reportContent?.dataset.where?.conditions) return;
+      const oldCondition = reportContent.dataset.where.conditions[index];
+      const base = oldCondition.ui?.kind === "relativePeriod" ? oldCondition.conditions?.[0] : oldCondition;
+      if (!base?.fieldId) return;
+      const generated = createRelativePeriod(base.fieldId, base.joinAlias, preset, reportContent.parameters || []);
+      replaceFilterAndParameters(index, generated.condition, generated.parameters, oldCondition);
+    };
+
+    const handleParameterMetadataChange = (name: string, patch: Partial<ReportParameterDefinition>) => {
+      if (!reportContent) return;
+      setReportContent({ ...reportContent, parameters: (reportContent.parameters || []).map((parameter) => parameter.name === name ? { ...parameter, ...patch } : parameter) });
     };
 
     const handleRemoveFilter = (index: number) => {
@@ -1011,6 +1092,7 @@ export const ReportDesignerPage: React.FC = () => {
     return (
       <div style={{ width: "100%", height: "100%", overflowY: "auto", padding: "1.5rem" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", width: "100%", paddingBottom: "2rem" }}>
+          <ParameterEditor parameters={reportContent?.parameters || []} referencedNames={referencedNames} onChange={(parameters) => reportContent && setReportContent({ ...reportContent, parameters })} />
           
           {/* ===== FILTERS SECTION ===== */}
           <div style={{ marginBottom: "2.5rem" }}>
@@ -1123,7 +1205,8 @@ export const ReportDesignerPage: React.FC = () => {
                   onDragEnd={() => { setFilterDragIdx(null); setFilterDragOverIdx(null); setFilterDragPos(null); }}
                 >
                   {conditions.map((c, index) => {
-                    const field = resolveField(c.fieldId || "");
+                    const displayCondition = c.ui?.kind === "relativePeriod" && c.conditions?.[0] ? { ...c.conditions[0], operator: "relativePeriod", value: undefined, ui: c.ui } : c;
+                    const field = resolveField(displayCondition.fieldId || "");
                     const allowedOps = field?.allowedOperators || ["=", "!=", ">", "<", ">=", "<=", "like", "not like", "in", "isNull", "isNotNull", "between"];
                     const typeLower = (field?.type || "").toLowerCase();
                     const isNumber = typeLower.includes("int") || typeLower.includes("decimal") || typeLower.includes("numeric") || typeLower.includes("float") || typeLower.includes("double") || typeLower.includes("real");
@@ -1134,13 +1217,17 @@ export const ReportDesignerPage: React.FC = () => {
                       <FilterRow
                         key={index}
                         index={index}
-                        condition={c as any}
+                        condition={displayCondition as any}
                         fieldOptions={filterFieldOptions}
                         field={field}
                         isDate={isDate}
                         isNumber={isNumber}
                         parsedFieldType={parsedFieldType as any}
                         allowedOps={allowedOps}
+                        parameters={reportContent?.parameters || []}
+                        onValueModeChange={handleValueModeChange}
+                        onParameterMetadataChange={handleParameterMetadataChange}
+                        onPeriodPresetChange={handlePeriodPresetChange}
                         onUpdate={handleUpdateFilter}
                         onRemove={handleRemoveFilter}
                         onDuplicate={handleDuplicateFilter}
@@ -1299,17 +1386,12 @@ export const ReportDesignerPage: React.FC = () => {
           contentForPreview.dataset.schemaId,
           contentForPreview.dataset.joins
         );
-        contentForPreview.dataset.where = resolveWhereNodeVariables(
-          contentForPreview.dataset.where, 
-          catalog, 
-          contentForPreview.dataset.schemaId,
-          contentForPreview.dataset.joins
-        );
       }
       
       const req = {
         organizationId,
         content: contentForPreview,
+        parameters: previewParameters,
         filters: [],
         page: 1,
         pageSize: 50
@@ -1406,11 +1488,12 @@ export const ReportDesignerPage: React.FC = () => {
               >
                 {showDevJson ? "Ocultar JSON" : "Ver JSON Gerado"}
               </button>
-              <button className="btn btn-primary" onClick={handleExecutePreview} disabled={previewLoading}>
+              <button className="btn btn-primary" onClick={handleExecutePreview} disabled={previewLoading || requiredParametersMissing(reportContent?.parameters || [], previewParameters)}>
                 {previewLoading ? "Executando..." : "Executar Query"}
               </button>
             </div>
           </div>
+          <div className="card" style={{ marginBottom: "1rem" }}><ExecutionParameterForm parameters={reportContent?.parameters || []} values={previewParameters} onChange={setPreviewParameters} /></div>
           
           {showDevJson && reportContent && (
             <div style={{ marginBottom: "1.5rem", background: "#1e1e1e", borderRadius: "8px", border: "1px solid #444", overflow: "hidden", animation: "fadeIn 0.2s ease" }}>

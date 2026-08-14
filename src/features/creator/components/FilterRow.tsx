@@ -2,12 +2,15 @@ import React, { useState } from "react";
 import { GripVertical, Copy, X, Calendar, Hash, Type } from "lucide-react";
 import { SearchableFieldSelect, type FieldOption } from "./SearchableFieldSelect";
 import { DateFilterInput } from "./DateFilterInput";
+import type { RelativePeriodPreset, ReportParameterDefinition } from "../types/creatorTypes";
+import { PERIOD_PRESETS } from "../utils/filterParameterUtils";
 
 interface FilterCondition {
   fieldId: string;
   joinAlias?: string;
   operator: string;
   value?: unknown;
+  ui?: { kind: "relativePeriod"; preset: RelativePeriodPreset };
 }
 
 interface FilterRowProps {
@@ -20,6 +23,10 @@ interface FilterRowProps {
   isNumber: boolean;
   parsedFieldType: "date" | "datetime" | "time" | "string";
   allowedOps: string[];
+  parameters: ReportParameterDefinition[];
+  onValueModeChange: (index: number, mode: "fixed" | "input" | "automatic") => void;
+  onParameterMetadataChange: (name: string, patch: Partial<ReportParameterDefinition>) => void;
+  onPeriodPresetChange: (index: number, preset: RelativePeriodPreset) => void;
   onUpdate: (index: number, key: string, value: any) => void;
   onRemove: (index: number) => void;
   onDuplicate: (index: number) => void;
@@ -175,11 +182,15 @@ export const FilterRow: React.FC<FilterRowProps> = ({
   index,
   condition: c,
   fieldOptions,
-  field: _field,
+  field,
   isDate,
   isNumber,
   parsedFieldType,
   allowedOps,
+  parameters,
+  onValueModeChange,
+  onParameterMetadataChange,
+  onPeriodPresetChange,
   onUpdate,
   onRemove,
   onDuplicate,
@@ -196,6 +207,12 @@ export const FilterRow: React.FC<FilterRowProps> = ({
   const isBetween = op === "between";
   const isIn = op === "in" || op === "not in";
   const valArray = Array.isArray(c.value) ? c.value : [c.value || "", ""];
+  const parameterName = c.value && typeof c.value === "object" && !Array.isArray(c.value) && "parameter" in c.value ? String((c.value as { parameter: string }).parameter) : "";
+  const catalogType = String((field as { type?: string } | null)?.type || parsedFieldType).toLowerCase();
+  const expectedType = (["string", "integer", "number", "boolean", "uuid", "date", "datetime", "time"].includes(catalogType) ? catalogType : isNumber ? "number" : parsedFieldType);
+  const compatibleParameters = parameters.filter((parameter) => parameter.type === expectedType || (isNumber && parameter.type === "integer"));
+  const selectedParameter = parameters.find((parameter) => parameter.name === parameterName);
+  const valueMode = c.ui?.kind === "relativePeriod" || selectedParameter?.source === "system" ? "automatic" : parameterName ? "input" : "fixed";
 
   const hasValue = (() => {
     if (isNoValue) return false;
@@ -348,7 +365,7 @@ export const FilterRow: React.FC<FilterRowProps> = ({
         </div>
 
         {/* Operator select */}
-        <select
+        {valueMode === "automatic" ? <div className="form-input" style={{ flex: 1, minWidth: "110px", padding: "0.5rem", color: "var(--text-secondary)" }}>Período</div> : <select
           className="form-input"
           style={{ flex: 1, minWidth: "110px", padding: "0.5rem" }}
           value={c.operator}
@@ -359,12 +376,14 @@ export const FilterRow: React.FC<FilterRowProps> = ({
               {getOpLabel(op, isDate, isNumber)}
             </option>
           ))}
-        </select>
+        </select>}
 
         {/* Value input area */}
         {!isNoValue && (
-          <div style={{ flex: 2, display: "flex", gap: "0.25rem", minWidth: "120px" }}>
-            {isDate ? (
+          <div style={{ flex: 2, display: "flex", flexDirection: "column", gap: "0.4rem", minWidth: "220px" }}>
+            <div style={{ display: "flex", gap: ".35rem", alignItems: "center" }}>
+            {!isIn && !isBetween && <select className="form-input" aria-label="Como definir o valor?" style={{ maxWidth: "205px" }} value={valueMode} onChange={(e) => onValueModeChange(index, e.target.value as "fixed" | "input" | "automatic")}><option value="fixed">Valor fixo</option><option value="input">Perguntar ao executar</option>{isDate && parsedFieldType !== "time" && <option value="automatic">Data/período automático</option>}</select>}
+            {valueMode === "automatic" ? <select className="form-input" value={c.ui?.preset || "today"} onChange={(e) => onPeriodPresetChange(index, e.target.value as RelativePeriodPreset)}>{(parsedFieldType === "date" ? PERIOD_PRESETS.filter((preset) => preset.value === "today") : PERIOD_PRESETS).map((preset) => <option key={preset.value} value={preset.value}>{preset.label}</option>)}</select> : parameterName ? <span style={{ color: "var(--text-secondary)", fontSize: ".85rem" }}>O valor será solicitado antes da execução.</span> : isDate ? (
               <DateFilterInput
                 operator={c.operator}
                 value={c.value}
@@ -388,23 +407,9 @@ export const FilterRow: React.FC<FilterRowProps> = ({
               />
             ) : isBetween ? (
               <div style={{ flex: 1, display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <input
-                  type="text"
-                  className="form-input"
-                  style={{ flex: 1, minWidth: 0 }}
-                  placeholder="Min..."
-                  value={valArray[0] || ""}
-                  onChange={(e) => onUpdate(index, "value", [e.target.value, valArray[1] || ""])}
-                />
+                <BoundValue value={valArray[0]} parameters={compatibleParameters} placeholder="Min..." onChange={(value) => onUpdate(index, "value", [value, valArray[1] || ""])} />
                 <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>e</span>
-                <input
-                  type="text"
-                  className="form-input"
-                  style={{ flex: 1, minWidth: 0 }}
-                  placeholder="Max..."
-                  value={valArray[1] || ""}
-                  onChange={(e) => onUpdate(index, "value", [valArray[0] || "", e.target.value])}
-                />
+                <BoundValue value={valArray[1]} parameters={compatibleParameters} placeholder="Max..." onChange={(value) => onUpdate(index, "value", [valArray[0] || "", value])} />
               </div>
             ) : (
               <input
@@ -416,6 +421,12 @@ export const FilterRow: React.FC<FilterRowProps> = ({
                 onChange={(e) => onUpdate(index, "value", e.target.value)}
               />
             )}
+            </div>
+            {valueMode === "input" && selectedParameter && <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: ".35rem", padding: ".5rem", background: "var(--bg-primary)", borderRadius: 6 }}>
+              <input className="form-input" aria-label="Rótulo para o usuário" placeholder="Rótulo exibido" value={selectedParameter.label || ""} onChange={(e) => onParameterMetadataChange(selectedParameter.name, { label: e.target.value })}/>
+              <input className="form-input" aria-label="Exemplo do valor" placeholder="Exemplo ou placeholder" value={selectedParameter.placeholder || ""} onChange={(e) => onParameterMetadataChange(selectedParameter.name, { placeholder: e.target.value })}/>
+              <input className="form-input" style={{ gridColumn: "1 / -1" }} aria-label="Texto de ajuda" placeholder="Explique o que deve ser informado (opcional)" value={selectedParameter.description || ""} onChange={(e) => onParameterMetadataChange(selectedParameter.name, { description: e.target.value })}/>
+            </div>}
           </div>
         )}
 
@@ -442,3 +453,11 @@ export const FilterRow: React.FC<FilterRowProps> = ({
     </div>
   );
 };
+
+function BoundValue({ value, parameters, placeholder, onChange }: { value: unknown; parameters: ReportParameterDefinition[]; placeholder: string; onChange: (value: unknown) => void }) {
+  const parameterName = value && typeof value === "object" && "parameter" in value ? String((value as { parameter: string }).parameter) : "";
+  return <div style={{ flex: 1, display: "flex", gap: ".25rem" }}>
+    {parameters.length > 0 && <select className="form-input" style={{ maxWidth: 105 }} value={parameterName ? "parameter" : "literal"} onChange={(e) => onChange(e.target.value === "parameter" ? { parameter: parameters[0].name } : "")}><option value="literal">Literal</option><option value="parameter">Parâmetro</option></select>}
+    {parameterName ? <select className="form-input" value={parameterName} onChange={(e) => onChange({ parameter: e.target.value })}>{parameters.map((parameter) => <option key={parameter.name}>{parameter.name}</option>)}</select> : <input type="text" className="form-input" placeholder={placeholder} value={String(value || "")} onChange={(e) => onChange(e.target.value)} />}
+  </div>;
+}

@@ -18,6 +18,7 @@ import { ReportJoinTemplatesPage } from "../features/catalog/pages/ReportJoinTem
 import { CreatorWorkspacePage } from "../features/creator/pages/CreatorWorkspacePage";
 import { OrganizationCreatorDashboardPage } from "../features/creator/pages/OrganizationCreatorDashboardPage";
 import { ReportDesignerPage } from "../features/creator/pages/ReportDesignerPage";
+import { ReportRunnerPage } from "../features/creator/pages/ReportRunnerPage";
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -85,6 +86,10 @@ export const AppRoutes: React.FC = () => {
             <OrganizationCreatorDashboardPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/reports/:reportId/run"
+        element={<ProtectedRoute><ReportRunnerPage /></ProtectedRoute>}
       />
       <Route
         path="/organizations/:organizationId/creator/reports/new"
@@ -158,4 +163,3 @@ export const AppRoutes: React.FC = () => {
     </Routes>
   );
 };
-

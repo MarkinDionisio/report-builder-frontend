@@ -21,15 +21,18 @@ export const OrganizationFormModal: React.FC<OrganizationFormModalProps> = ({
 }) => {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [timeZone, setTimeZone] = useState("America/Sao_Paulo");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (initialData) {
       setName(initialData.name || "");
       setDescription(initialData.description || "");
+      setTimeZone(initialData.timeZone || "America/Sao_Paulo");
     } else {
       setName("");
       setDescription("");
+      setTimeZone("America/Sao_Paulo");
     }
   }, [initialData, isOpen]);
 
@@ -41,6 +44,7 @@ export const OrganizationFormModal: React.FC<OrganizationFormModalProps> = ({
     const success = await onSubmit({
       name: name.trim(),
       description: description.trim() ? description.trim() : null,
+      timeZone,
     });
     setIsSubmitting(false);
     if (success) {
@@ -99,6 +103,14 @@ export const OrganizationFormModal: React.FC<OrganizationFormModalProps> = ({
           </div>
 
           <div className="input-group">
+            <label className="input-label" htmlFor="org-time-zone">Fuso horário *</label>
+            <select id="org-time-zone" required className="input-field" value={timeZone} onChange={(e) => setTimeZone(e.target.value)} disabled={isSubmitting}>
+              {getTimeZones().map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+            </select>
+            <small style={{ color: "var(--text-muted)" }}>Define a virada do dia das variáveis temporais dos relatórios.</small>
+          </div>
+
+          <div className="input-group">
             <label className="input-label" htmlFor="org-description">
               Descrição (Opcional)
             </label>
@@ -137,3 +149,9 @@ export const OrganizationFormModal: React.FC<OrganizationFormModalProps> = ({
     </div>
   );
 };
+
+function getTimeZones(): string[] {
+  const supportedValuesOf = (Intl as typeof Intl & { supportedValuesOf?: (key: "timeZone") => string[] }).supportedValuesOf;
+  const zones = supportedValuesOf?.("timeZone") ?? ["America/Sao_Paulo", "America/Manaus", "America/Recife", "America/New_York", "Europe/Lisbon", "UTC"];
+  return zones.includes("America/Sao_Paulo") ? zones : ["America/Sao_Paulo", ...zones];
+}

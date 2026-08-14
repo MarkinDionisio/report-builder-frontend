@@ -211,6 +211,7 @@ export const OrganizationsListPage: React.FC = () => {
                 <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", minHeight: "2.8rem", marginBottom: "1.5rem" }}>
                   {org.description || <em style={{ color: "var(--text-muted)" }}>Sem descrição informada.</em>}
                 </p>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "1rem" }}>Fuso: {org.timeZone}</div>
 
                 <div
                   style={{

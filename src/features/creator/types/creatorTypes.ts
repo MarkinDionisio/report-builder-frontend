@@ -84,10 +84,30 @@ export interface WhereNode extends Partial<FieldReference> {
   operator: string;
   value?: unknown;
   conditions?: WhereNode[];
+  ui?: { kind: "relativePeriod"; preset: RelativePeriodPreset };
 }
+
+export type RelativePeriodPreset = "today" | "yesterday" | "currentWeek" | "previousWeek" | "currentMonth" | "previousMonth" | "currentYear" | "previousYear";
+
+export type ReportParameterType = "string" | "integer" | "number" | "boolean" | "uuid" | "date" | "datetime" | "time";
+export type ReportSystemVariable = "now" | "currentDate" | "startOfToday" | "startOfTomorrow" | "startOfYesterday" | "startOfWeek" | "startOfNextWeek" | "startOfPreviousWeek" | "startOfMonth" | "startOfNextMonth" | "startOfPreviousMonth" | "startOfYear" | "startOfNextYear" | "startOfPreviousYear";
+
+export interface ReportParameterDefinition {
+  name: string;
+  type: ReportParameterType;
+  source: "input" | "system";
+  variable?: ReportSystemVariable;
+  allowOverride?: boolean;
+  label?: string;
+  description?: string;
+  placeholder?: string;
+}
+
+export interface ParameterReference { parameter: string; }
 
 export interface ReportContentV1 {
   version: 1;
+  parameters?: ReportParameterDefinition[];
   dataset: {
     schemaId: string;
     select: SelectItem[];
@@ -205,6 +225,7 @@ export interface RuntimeFilter {
 }
 
 export interface ExecuteRequest {
+  parameters: Record<string, unknown>;
   filters: RuntimeFilter[];
   page: number;
   pageSize: number;
@@ -234,6 +255,7 @@ export interface ExecuteResponse {
 export interface PreviewRequest {
   organizationId: string;
   content: ReportContentV1;
+  parameters: Record<string, unknown>;
   filters: RuntimeFilter[];
   page: number;
   pageSize: number;

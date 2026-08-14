@@ -6,8 +6,8 @@ import { isOk, isErr, ok, err } from "../../shared/result/result";
 describe("Organizations API Service (Result Pattern)", () => {
   it("should list organizations returning Result Ok", async () => {
     const mockOrgs = [
-      { id: "org-1", name: "Operação Brasil", description: "Relatórios BR" },
-      { id: "org-2", name: "Operação Chile", description: null },
+      { id: "org-1", name: "Operação Brasil", description: "Relatórios BR", timeZone: "America/Sao_Paulo" },
+      { id: "org-2", name: "Operação Chile", description: null, timeZone: "America/Santiago" },
     ];
 
     const mockResponse = new Response(JSON.stringify(mockOrgs), {
@@ -159,7 +159,7 @@ describe("Organizations API Service (Result Pattern)", () => {
   });
 
   it("should update organization sending mandatory name and description", async () => {
-    const mockOrg = { id: "org-1", name: "Operação América do Sul", description: null };
+    const mockOrg = { id: "org-1", name: "Operação América do Sul", description: null, timeZone: "America/Sao_Paulo" };
     const mockResponse = new Response(JSON.stringify(mockOrg), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -170,13 +170,14 @@ describe("Organizations API Service (Result Pattern)", () => {
     const result = await organizationsApi.update("org-1", {
       name: "Operação América do Sul",
       description: null,
+      timeZone: "America/Sao_Paulo",
     });
 
     expect(isOk(result)).toBe(true);
     expect(fetchSpy).toHaveBeenCalledWith("/api/v1/organizations/org-1", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Operação América do Sul", description: null }),
+      body: JSON.stringify({ name: "Operação América do Sul", description: null, timeZone: "America/Sao_Paulo" }),
     });
   });
 

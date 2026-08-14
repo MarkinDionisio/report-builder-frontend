@@ -4,7 +4,7 @@ import { creatorApi } from "../../creator/api/creatorApi";
 import { isErr } from "../../../shared/result/result";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
-import { Loader2, Plus, FileBarChart, LayoutDashboard, Settings } from "lucide-react";
+import { Loader2, Plus, FileBarChart, LayoutDashboard, Settings, Play } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
 import { canOpenCreatorWorkspace } from "../../auth/utils/authUtils";
 import type { ReportListItem, DashboardListItem } from "../../creator/types/creatorTypes";
@@ -48,7 +48,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
         } else {
           setDashboards(dashRes.value.data.filter(d => d.organizationId === organizationId));
         }
-      } catch (err) {
+      } catch {
         setErrorMsg("Erro inesperado ao carregar dados do workspace.");
       } finally {
         setLoading(false);
@@ -165,6 +165,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
                         {new Date(report.createdAt).toLocaleDateString()}
                       </td>
                       <td style={{ textAlign: "right" }}>
+                        <Link to={`/reports/${report.id}/run`} className="btn btn-primary" style={{ padding: "0.35rem 0.5rem", marginRight: ".4rem" }} title="Executar Relatório"><Play size={16}/></Link>
                         <Link
                           to={`/organizations/${organizationId}/creator/reports/${report.id}`}
                           className="btn btn-secondary"

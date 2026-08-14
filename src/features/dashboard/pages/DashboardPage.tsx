@@ -1,10 +1,19 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import { Navbar } from "../../../shared/components/Navbar";
-import { User, Building2, Shield, Layers, Key, Activity, Users } from "lucide-react";
+import { User, Building2, Shield, Layers, Key, Activity, Users, FileBarChart, Play } from "lucide-react";
+import { creatorApi } from "../../creator/api/creatorApi";
+import { isErr } from "../../../shared/result/result";
+import type { ReportListItem } from "../../creator/types/creatorTypes";
 
 export const DashboardPage: React.FC = () => {
   const { state } = useAuth();
+  const [reports, setReports] = useState<ReportListItem[]>([]);
+
+  useEffect(() => {
+    void creatorApi.listReports(1, 100).then((response) => { if (!isErr(response)) setReports(response.value.data); });
+  }, []);
 
   if (state.status !== "authenticated" || !state.user) {
     return null;
@@ -96,6 +105,11 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Details Grid */}
+        <div className="glass-card animate-fade-in" style={{ padding: "1.5rem", marginBottom: "2rem" }}>
+          <h2 style={{ display: "flex", alignItems: "center", gap: ".5rem", marginBottom: "1rem" }}><FileBarChart size={20}/> Relatórios disponíveis</h2>
+          {reports.length === 0 ? <p style={{ color: "var(--text-muted)" }}>Nenhum relatório acessível.</p> : <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: ".75rem" }}>{reports.map((report) => <div key={report.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-input)", padding: "1rem", borderRadius: 8 }}><div><strong>{report.title}</strong><small style={{ display: "block", color: "var(--text-muted)" }}>{report.organizationName}</small></div><Link className="btn btn-primary" to={`/reports/${report.id}/run`}><Play size={15}/> Executar</Link></div>)}</div>}
+        </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "1.5rem" }}>
           
           {/* Main Column */}

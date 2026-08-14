@@ -57,6 +57,12 @@ export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string 
     title: "Nome em Uso",
     message: "Já existe uma organização cadastrada com este nome.",
   },
+  "organizations.time_zone_invalid": { title: "Fuso Inválido", message: "Selecione um identificador de fuso horário IANA válido." },
+  "report_parameters.required_missing": { title: "Parâmetro Obrigatório", message: "Preencha todos os parâmetros obrigatórios antes de executar." },
+  "report_parameters.unknown": { title: "Parâmetro Desconhecido", message: "A execução contém um parâmetro que não pertence ao relatório." },
+  "report_parameters.override_not_allowed": { title: "Substituição Não Permitida", message: "Uma variável automática não permite substituição manual." },
+  "report_parameters.type_invalid": { title: "Valor Inválido", message: "Um parâmetro possui valor incompatível com seu tipo." },
+  "report_definition.parameter_reference_invalid": { title: "Referência Inválida", message: "Um filtro referencia um parâmetro inexistente ou incompatível." },
   "organizations.not_found": {
     title: "Organização Não Encontrada",
     message: "A organização solicitada não foi encontrada.",
@@ -257,4 +263,3 @@ export const Alert: React.FC<{
     </div>
   );
 };
-
