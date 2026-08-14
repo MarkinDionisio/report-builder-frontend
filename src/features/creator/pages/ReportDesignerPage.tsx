@@ -17,6 +17,7 @@ import { ParameterEditor } from "../components/ParameterEditor";
 import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
 import { requiredParametersMissing, validateParameters } from "../utils/parameterUtils";
 import { collectParameterReferences, removeEmptyLogicalGroups, removeOrphanParameters } from "../utils/filterParameterUtils";
+import { defaultAggregationAlias, fillMissingColumnAliases, nextAvailableAlias, validateColumnAliases } from "../utils/columnAliasUtils";
 import type { ReportParameterDefinition, WhereNode } from "../types/creatorTypes";
 
 
@@ -24,6 +25,20 @@ import type { ReportParameterDefinition, WhereNode } from "../types/creatorTypes
 function availableAggregations(field: DesignerField): string[] {
   if (!field.aggregatable) return [];
   return field.allowedAggregations || [];
+}
+
+function resolveCatalogFieldName(fieldId: string | undefined, joinAlias: string | undefined, content: ReportContentV1, catalog: DesignerCatalog): string {
+  if (!fieldId) return "Coluna";
+  let schemaId = content.dataset.schemaId;
+  if (joinAlias) {
+    const selectedJoin = content.dataset.joins?.find((join) => join.alias === joinAlias);
+    const template = selectedJoin && catalog.joins.find((join) => join.joinTemplateId === selectedJoin.joinTemplateId);
+    if (template) schemaId = template.toSchemaId;
+  }
+  const schema = catalog.schemas.find((item) => item.id === schemaId);
+  return schema?.fields.find((field) => field.id === fieldId)?.name
+    || catalog.schemas.flatMap((item) => item.fields).find((field) => field.id === fieldId)?.name
+    || "Coluna";
 }
 
 function synchronizeGroupBy(select: any[], catalog: DesignerCatalog | null): any[] {
@@ -275,6 +290,7 @@ export const ReportDesignerPage: React.FC = () => {
             setErrorMsg("Erro ao carregar catálogo para o relatório.");
           } else {
             setCatalog(catRes.value);
+            setReportContent({ ...r.content, dataset: { ...r.content.dataset, select: fillMissingColumnAliases(r.content.dataset.select || [], (item) => resolveCatalogFieldName(item.fieldId, item.joinAlias, r.content, catRes.value)) } });
             // Rebuild selected schema IDs
             const selectedIds = [r.content.dataset.schemaId];
             r.content.dataset.joins?.forEach(j => {
@@ -396,10 +412,11 @@ export const ReportDesignerPage: React.FC = () => {
     );
     if (isDuplicate) return;
 
-    const newItem: any = { fieldId: field.id, joinAlias };
+    const baseAlias = aggregation ? defaultAggregationAlias(aggregation, field.name) : field.name;
+    const alias = nextAvailableAlias(baseAlias, (reportContent.dataset.select || []).flatMap((item) => item.alias ? [item.alias] : []));
+    const newItem: any = { fieldId: field.id, joinAlias, alias };
     if (aggregation) {
       newItem.aggregation = aggregation;
-      newItem.alias = `Total de ${field.name}`;
     }
 
     setReportContent({
@@ -423,6 +440,8 @@ export const ReportDesignerPage: React.FC = () => {
   const handleSaveReport = async () => {
     if (!organizationId || !reportContent || !reportTitle.trim()) return;
     const parameterErrors = validateParameters(reportContent.parameters || []);
+    const aliasErrors = validateColumnAliases(reportContent.dataset.select || []);
+    if (aliasErrors.size > 0) parameterErrors.push("Corrija os títulos das colunas antes de salvar.");
     const declaredNames = new Set((reportContent.parameters || []).map((parameter) => parameter.name));
     const unknownReferences = [...collectParameterNames(reportContent.dataset.where)].filter((name) => !declaredNames.has(name));
     if (unknownReferences.length > 0) parameterErrors.push(`Parâmetros não declarados: ${unknownReferences.join(", ")}`);
@@ -431,6 +450,7 @@ export const ReportDesignerPage: React.FC = () => {
     setSaveError(null);
     
     const contentToSave = JSON.parse(JSON.stringify(reportContent));
+    contentToSave.dataset.select = (contentToSave.dataset.select || []).map((item: any) => ({ ...item, alias: item.alias.trim() }));
     contentToSave.dataset.groupBy = synchronizeGroupBy(contentToSave.dataset.select || [], catalog);
     if (contentToSave.dataset.where) {
       contentToSave.dataset.where.conditions = normalizeWhereValues(
@@ -750,6 +770,7 @@ export const ReportDesignerPage: React.FC = () => {
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxWidth: "600px", paddingBottom: "1rem" }}>
                 {reportContent.dataset.select.map((col, index) => {
                   const details = getFieldDetails(col.fieldId, (col as any).target);
+                  const aliasError = validateColumnAliases(reportContent.dataset.select).get(index);
                   return (
                     <div key={`${col.fieldId}-${index}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--surface-color)", padding: "0.75rem 1rem", borderRadius: "8px", border: "1px solid var(--border-color)" }}>
                       <div>
@@ -759,6 +780,15 @@ export const ReportDesignerPage: React.FC = () => {
                         </div>
                         <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
                           {details.schemaName} {col.joinAlias ? `(Join: ${col.joinAlias})` : "(Base)"}
+                        </div>
+                        <div style={{ marginTop: ".65rem", maxWidth: "340px" }}>
+                          <label className="form-label" htmlFor={`column-alias-${index}`}>Título da coluna</label>
+                          <input id={`column-alias-${index}`} className="form-input" value={col.alias || ""} aria-invalid={Boolean(aliasError)} onChange={(event) => {
+                            const select = reportContent.dataset.select.map((item, itemIndex) => itemIndex === index ? { ...item, alias: event.target.value } : item);
+                            setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, select } });
+                            setPreviewData(null);
+                          }} />
+                          {aliasError && <small role="alert" style={{ display: "block", color: "var(--danger-500)", marginTop: ".25rem" }}>{aliasError}</small>}
                         </div>
                       </div>
                       <button className="btn-icon" style={{ padding: "0.3rem", color: "var(--danger-500)" }} title="Remover" onClick={() => {
@@ -778,7 +808,8 @@ export const ReportDesignerPage: React.FC = () => {
               style={{ alignSelf: "flex-start", marginTop: "1rem" }}
               onClick={() => {
                 if (!reportContent) return;
-                const newSelect = [...(reportContent.dataset.select || []), { target: "rows", aggregation: "count", alias: "Quantidade de Registros" } as any];
+                const alias = nextAvailableAlias("Quantidade de Registros", (reportContent.dataset.select || []).flatMap((item) => item.alias ? [item.alias] : []));
+                const newSelect = [...(reportContent.dataset.select || []), { target: "rows", aggregation: "count", alias } as any];
                 setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, select: newSelect } });
               }}
             >
@@ -1355,6 +1386,7 @@ export const ReportDesignerPage: React.FC = () => {
 
     const getColumnDisplayName = (col: any) => {
       if (!catalog || !reportContent) return col.alias;
+      if (col.alias) return col.alias;
       if (col.fieldId || col.target === "rows") {
         let schemaId = reportContent.dataset.schemaId;
         if (col.target === "rows") return col.alias || "Contagem de Linhas";
