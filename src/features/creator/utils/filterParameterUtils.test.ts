@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectParameterReferences, createInputParameter, createRelativePeriod, removeOrphanParameters } from "./filterParameterUtils";
+import { collectParameterReferences, createInputParameter, createRelativePeriod, removeEmptyLogicalGroups, removeOrphanParameters } from "./filterParameterUtils";
 
 describe("filter parameter helpers", () => {
   it("creates a business-friendly input parameter", () => {
@@ -22,5 +22,17 @@ describe("filter parameter helpers", () => {
     const where = { operator: "eq", fieldId: "field", value: { parameter: "input_1" } };
     expect(collectParameterReferences(where)).toEqual(new Set(["input_1"]));
     expect(removeOrphanParameters(parameters, where, new Set(["input_1", "unused"]))).toEqual([parameters[0]]);
+  });
+
+  it("omits an empty root logical filter", () => {
+    expect(removeEmptyLogicalGroups({ operator: "and", conditions: [] })).toBeUndefined();
+  });
+
+  it("removes empty nested groups and preserves valid conditions", () => {
+    const condition = { operator: "eq", fieldId: "field", value: "active" };
+    expect(removeEmptyLogicalGroups({
+      operator: "and",
+      conditions: [{ operator: "or", conditions: [] }, condition],
+    })).toEqual({ operator: "and", conditions: [condition] });
   });
 });

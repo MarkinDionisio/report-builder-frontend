@@ -15,7 +15,7 @@ import { OrderByRow } from "../components/OrderByRow";
 import { ParameterEditor } from "../components/ParameterEditor";
 import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
 import { requiredParametersMissing, validateParameters } from "../utils/parameterUtils";
-import { collectParameterReferences, createInputParameter, createRelativePeriod, nextParameterName, parameterTypeForField, removeOrphanParameters } from "../utils/filterParameterUtils";
+import { collectParameterReferences, createInputParameter, createRelativePeriod, nextParameterName, parameterTypeForField, removeEmptyLogicalGroups, removeOrphanParameters } from "../utils/filterParameterUtils";
 import type { RelativePeriodPreset, ReportParameterDefinition, WhereNode } from "../types/creatorTypes";
 
 
@@ -437,6 +437,7 @@ export const ReportDesignerPage: React.FC = () => {
         contentToSave.dataset.schemaId,
         contentToSave.dataset.joins
       );
+      contentToSave.dataset.where = removeEmptyLogicalGroups(contentToSave.dataset.where);
     }
     
     const req = {
@@ -1386,6 +1387,7 @@ export const ReportDesignerPage: React.FC = () => {
           contentForPreview.dataset.schemaId,
           contentForPreview.dataset.joins
         );
+        contentForPreview.dataset.where = removeEmptyLogicalGroups(contentForPreview.dataset.where);
       }
       
       const req = {

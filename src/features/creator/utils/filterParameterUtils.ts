@@ -59,3 +59,13 @@ export function removeOrphanParameters(parameters: ReportParameterDefinition[], 
   const references = collectParameterReferences(where);
   return parameters.filter((parameter) => !candidates?.has(parameter.name) || references.has(parameter.name));
 }
+
+export function removeEmptyLogicalGroups(where: WhereNode | undefined): WhereNode | undefined {
+  if (!where || !Array.isArray(where.conditions)) return where;
+
+  const conditions = where.conditions
+    .map(removeEmptyLogicalGroups)
+    .filter((condition): condition is WhereNode => condition !== undefined);
+
+  return conditions.length > 0 ? { ...where, conditions } : undefined;
+}
