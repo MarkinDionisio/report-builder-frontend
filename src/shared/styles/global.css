@@ -567,6 +567,11 @@ option {
 .report-results__footer select { width: auto; padding: .5rem 2rem .5rem .65rem; }
 .report-results__pagination { display: flex; align-items: center; gap: .65rem; }
 .report-results__pagination > span { color: var(--text-muted); font-size: .82rem; white-space: nowrap; }
+.report-metric { min-height: 280px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .55rem; padding: 2rem; text-align: center; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.report-metric__label { color: var(--text-muted); font-size: .9rem; font-weight: 600; }
+.report-metric__value { max-width: 100%; overflow-wrap: anywhere; font-size: clamp(2.5rem, 8vw, 5rem); line-height: 1; font-variant-numeric: tabular-nums; }
+.report-metric small, .report-metric--state span, .report-metric--error span { color: var(--text-muted); }
+.report-metric--error { border-color: color-mix(in srgb, var(--danger-500) 45%, var(--border-color)); }
 
 @media (max-width: 640px) {
   .report-runner__main { padding: 1rem .75rem 2rem; }

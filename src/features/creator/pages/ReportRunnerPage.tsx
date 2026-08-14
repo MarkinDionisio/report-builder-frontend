@@ -7,7 +7,7 @@ import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { isErr } from "../../../shared/result/result";
 import { creatorApi } from "../api/creatorApi";
 import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
-import { ReportResultsTable } from "../components/ReportResultsTable";
+import { ReportPresentationRenderer } from "../components/ReportPresentationRenderer";
 import { requiredParametersMissing } from "../utils/parameterUtils";
 import type { ExecuteResponse, ReportDetail } from "../types/creatorTypes";
 
@@ -49,7 +49,6 @@ export function ReportRunnerPage() {
   }, [reportId, runExecution]);
 
   const missingRequired = report ? requiredParametersMissing(report.content.parameters || [], parameters) : false;
-  const aggregationsByAlias = Object.fromEntries((report?.content.dataset.select || []).filter((item) => item.alias).map((item) => [item.alias!, item.aggregation]));
   const changePageSize = (nextPageSize: number) => { setPageSize(nextPageSize); setResult(null); setPage(1); void execute(1, nextPageSize); };
 
   return <div className="report-runner"><Navbar/><main className="report-runner__main">
@@ -61,7 +60,7 @@ export function ReportRunnerPage() {
         {parametersExpanded && <div className="report-parameters__content"><ExecutionParameterForm parameters={report.content.parameters || []} where={report.content.dataset.where} resolvedParameters={result?.resolvedParameters} values={parameters} onChange={(values) => { setParameters(values); setResult(null); setPage(1); setLastExecutedAt(null); setParametersExpanded(true); }}/>{missingRequired && <p className="report-parameters__required">Preencha os campos obrigatórios para executar.</p>}<div className="report-parameters__actions"><button className="btn btn-primary" disabled={executing || missingRequired} onClick={() => void execute(1)}><Play size={16}/>{executing ? "Executando..." : "Executar relatório"}</button></div></div>}
       </section>
       {result?.warnings?.length ? <div className="report-runner__warnings">{result.warnings.map((warning) => <Alert key={`${warning.itemIndex}-${warning.fieldId}`} type="warning" message={warning.message}/>)}</div> : null}
-      <ReportResultsTable result={result} loading={executing} page={page} pageSize={pageSize} aggregationsByAlias={aggregationsByAlias} onPageChange={(targetPage) => void execute(targetPage)} onPageSizeChange={changePageSize}/>
+      <ReportPresentationRenderer presentation={report.content.presentation} select={report.content.dataset.select} result={result} loading={executing} page={page} pageSize={pageSize} onPageChange={(targetPage) => void execute(targetPage)} onPageSizeChange={changePageSize}/>
     </>}
   </main></div>;
 }

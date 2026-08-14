@@ -105,9 +105,14 @@ export interface ReportParameterDefinition {
 
 export interface ParameterReference { parameter: string; }
 
+export type ReportPresentation =
+  | { type: "table" }
+  | { type: "metric"; valueColumnAlias: string; label?: string };
+
 export interface ReportContentV1 {
   version: 1;
   parameters?: ReportParameterDefinition[];
+  presentation?: ReportPresentation;
   dataset: {
     schemaId: string;
     select: SelectItem[];
@@ -171,7 +176,16 @@ export interface UpdateReportShareRequest {
 
 export interface DashboardItemRequest {
   reportId: string;
-  layout: Record<string, unknown>;
+  layout: DashboardItemLayout;
+}
+
+export interface DashboardItemLayout {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  presentation?: ReportPresentation;
+  [key: string]: unknown;
 }
 
 export interface CreateDashboardRequest {
@@ -212,8 +226,9 @@ export interface DashboardDetail {
   visibilityScope: VisibilityScope;
   myRole: ResourceRole;
   items: Array<{
+    itemId: string;
     reportId: string;
-    layout: Record<string, unknown>;
+    layout: DashboardItemLayout;
   }>;
 }
 

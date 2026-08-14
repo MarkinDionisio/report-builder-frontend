@@ -1,0 +1,22 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { ReportPresentationEditor } from "./ReportPresentationEditor";
+
+describe("ReportPresentationEditor", () => {
+  it("defaults legacy reports to table and disables incompatible metrics", () => {
+    render(<ReportPresentationEditor select={[{ fieldId: "name", alias: "Nome" }]} onChange={vi.fn()} />);
+    expect(screen.getByLabelText("Tipo de apresentação")).toHaveValue("table");
+    expect(screen.getByRole("option", { name: "Indicador" })).toBeDisabled();
+  });
+
+  it("creates and edits a metric presentation", () => {
+    const onChange = vi.fn();
+    const select = [{ fieldId: "total", alias: "Total", aggregation: "sum" }];
+    const { rerender } = render(<ReportPresentationEditor select={select} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText("Tipo de apresentação"), { target: { value: "metric" } });
+    expect(onChange).toHaveBeenCalledWith({ type: "metric", valueColumnAlias: "Total", label: "Total" });
+    rerender(<ReportPresentationEditor select={select} presentation={{ type: "metric", valueColumnAlias: "Total", label: "Total" }} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText("Label do indicador"), { target: { value: "Receita" } });
+    expect(onChange).toHaveBeenLastCalledWith({ type: "metric", valueColumnAlias: "Total", label: "Receita" });
+  });
+});

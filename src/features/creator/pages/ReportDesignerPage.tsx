@@ -15,10 +15,12 @@ import { FilterEditorModal } from "../components/FilterEditorModal";
 import { OrderByRow } from "../components/OrderByRow";
 import { ParameterEditor } from "../components/ParameterEditor";
 import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
+import { ReportPresentationRenderer } from "../components/ReportPresentationRenderer";
+import { ReportPresentationEditor } from "../components/ReportPresentationEditor";
 import { requiredParametersMissing, validateParameters } from "../utils/parameterUtils";
 import { collectParameterReferences, removeEmptyLogicalGroups, removeOrphanParameters } from "../utils/filterParameterUtils";
 import { defaultAggregationAlias, fillMissingColumnAliases, nextAvailableAlias, validateColumnAliases } from "../utils/columnAliasUtils";
-import { formatReportNumber, isReportNumericType } from "../utils/reportValueUtils";
+import { validateReportPresentation } from "../utils/reportPresentationUtils";
 import type { ReportParameterDefinition, WhereNode } from "../types/creatorTypes";
 
 
@@ -443,6 +445,8 @@ export const ReportDesignerPage: React.FC = () => {
     const parameterErrors = validateParameters(reportContent.parameters || []);
     const aliasErrors = validateColumnAliases(reportContent.dataset.select || []);
     if (aliasErrors.size > 0) parameterErrors.push("Corrija os títulos das colunas antes de salvar.");
+    const presentationError = validateReportPresentation({ ...reportContent, dataset: { ...reportContent.dataset, groupBy: synchronizeGroupBy(reportContent.dataset.select || [], catalog) } });
+    if (presentationError) parameterErrors.push(presentationError);
     const declaredNames = new Set((reportContent.parameters || []).map((parameter) => parameter.name));
     const unknownReferences = [...collectParameterNames(reportContent.dataset.where)].filter((name) => !declaredNames.has(name));
     if (unknownReferences.length > 0) parameterErrors.push(`Parâmetros não declarados: ${unknownReferences.join(", ")}`);
@@ -1385,57 +1389,6 @@ export const ReportDesignerPage: React.FC = () => {
       setPreviewLoading(false);
     };
 
-    const getColumnDisplayName = (col: any) => {
-      if (!catalog || !reportContent) return col.alias;
-      if (col.alias) return col.alias;
-      if (col.fieldId || col.target === "rows") {
-        let schemaId = reportContent.dataset.schemaId;
-        if (col.target === "rows") return col.alias || "Contagem de Linhas";
-        if (col.joinAlias) {
-          const joinInfo = reportContent.dataset.joins?.find(j => j.alias === col.joinAlias);
-          if (joinInfo) {
-            const joinTemplate = catalog.joins.find(j => j.joinTemplateId === joinInfo.joinTemplateId);
-            if (joinTemplate) schemaId = joinTemplate.toSchemaId;
-          }
-        }
-        const schema = catalog.schemas.find(s => s.id === schemaId);
-        if (schema) {
-          const field = schema.fields.find(f => f.id === col.fieldId);
-          if (field) {
-            return col.joinAlias ? `${field.name} (${schema.name})` : field.name;
-          }
-        }
-      }
-      return col.alias;
-    };
-
-    const formatCellValue = (val: any, type: string, aggregation?: string) => {
-      if (val === null || val === undefined) return "";
-      
-      const typeLower = (type || "").toLowerCase();
-      
-      if (typeLower.includes("date") || typeLower.includes("timestamp") || typeLower.includes("time")) {
-        try {
-          const date = new Date(val);
-          if (isNaN(date.getTime())) return String(val);
-          if (typeLower === "date") {
-            return date.toLocaleDateString("pt-BR");
-          }
-          return date.toLocaleString("pt-BR");
-        } catch {
-          return String(val);
-        }
-      }
-      
-      if (isReportNumericType(typeLower)) return formatReportNumber(val, typeLower, aggregation);
-      
-      if (typeof val === "boolean" || typeLower.includes("bool")) {
-        return val ? "Sim" : "Não";
-      }
-      
-      return String(val);
-    };
-
     return (
       <div style={{ width: "100%", height: "100%", overflowY: "auto", padding: "1.5rem" }}>
         <div style={{ maxWidth: "1000px", margin: "0 auto", width: "100%", display: "flex", flexDirection: "column" }}>
@@ -1459,6 +1412,9 @@ export const ReportDesignerPage: React.FC = () => {
               </button>
             </div>
           </div>
+          {reportContent && (
+            <ReportPresentationEditor presentation={reportContent.presentation} select={reportContent.dataset.select} groupBy={synchronizeGroupBy(reportContent.dataset.select || [], catalog)} onChange={(presentation) => { setReportContent({ ...reportContent, presentation }); setPreviewData(null); }}/>
+          )}
           <div className="card" style={{ marginBottom: "1rem" }}><ExecutionParameterForm parameters={reportContent?.parameters || []} where={reportContent?.dataset.where} resolvedParameters={previewData?.resolvedParameters} values={previewParameters} onChange={(values) => { setPreviewParameters(values); setPreviewData(null); }} /></div>
           
           {showDevJson && reportContent && (
@@ -1501,62 +1457,7 @@ export const ReportDesignerPage: React.FC = () => {
             </div>
           )}
           
-          <div style={{ display: "flex", flexDirection: "column", background: "var(--surface-color)", borderRadius: "8px", border: "1px solid var(--border-color)", overflow: "hidden", minHeight: "300px" }}>
-            {!previewData && !previewLoading && (
-              <div style={{ padding: "4rem 2rem", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <p style={{ color: "var(--text-secondary)" }}>Clique em Executar para visualizar os dados.</p>
-              </div>
-            )}
-            
-            {previewLoading && (
-              <div style={{ padding: "4rem 2rem", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <NeutralLoader />
-                <p style={{ marginTop: "1rem", color: "var(--text-secondary)", fontSize: "0.9rem" }}>Executando query no banco...</p>
-              </div>
-            )}
-            
-            {previewData && !previewLoading && (
-              <div style={{ width: "100%", overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                  <thead style={{ background: "var(--surface-color)" }}>
-                    <tr>
-                      {previewData.columns.map((col: any, idx: number) => (
-                        <th key={idx} style={{ padding: "0.75rem 1rem", borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)", fontWeight: 600, fontSize: "0.85rem", whiteSpace: "nowrap" }}>
-                          {getColumnDisplayName(col)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewData.rows.length === 0 ? (
-                      <tr>
-                        <td colSpan={previewData.columns.length} style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
-                          Nenhum registro retornado.
-                        </td>
-                      </tr>
-                    ) : (
-                      previewData.rows.map((row: any, rIdx: number) => (
-                        <tr key={rIdx} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                          {previewData.columns.map((col: any, cIdx: number) => (
-                            <td key={cIdx} style={{ padding: "0.75rem 1rem", fontSize: "0.9rem", whiteSpace: "nowrap" }}>
-                              {formatCellValue(row[col.alias], col.type, reportContent?.dataset.select.find((item) => item.alias === col.alias)?.aggregation)}
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            
-            {previewData && !previewLoading && (
-              <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid var(--border-color)", fontSize: "0.8rem", color: "var(--text-muted)", display: "flex", justifyContent: "space-between", background: "rgba(0,0,0,0.1)" }}>
-                <span>Mostrando {previewData.rows.length} de {previewData.rowCount} registros totais</span>
-                <span>Tempo de execução: {previewData.durationMs}ms</span>
-              </div>
-            )}
-          </div>
+          <ReportPresentationRenderer presentation={reportContent?.presentation} select={reportContent?.dataset.select || []} result={previewData} loading={previewLoading} page={1} pageSize={50} onPageChange={() => undefined} onPageSizeChange={() => undefined}/>
           <div style={{ 
             position: "sticky", 
             bottom: "-1.5rem", 

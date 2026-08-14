@@ -41,4 +41,14 @@ test.describe("E2E - Execução do relatório", () => {
     await expect(page.getByText("Relatório não encontrado.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Voltar ao início" })).toBeVisible();
   });
+
+  test("apresenta um relatório agregado como indicador", async ({ page }) => {
+    await mockSession(page);
+    await page.route("**/api/v1/reports/metric-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "metric-1", title: "Receita", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "viewer", allowedFilters: [], content: { version: 1, presentation: { type: "metric", valueColumnAlias: "Total", label: "Receita total" }, parameters: [], dataset: { schemaId: "schema-1", select: [{ fieldId: "total", alias: "Total", aggregation: "sum" }], groupBy: [] } } }) }));
+    await page.route("**/api/v1/reports/metric-1/execute", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ columns: [{ alias: "Total", type: "number", fieldId: "total", joinAlias: null }], rows: [{ Total: 9876.5 }], page: 1, pageSize: 50, rowCount: 1, durationMs: 11, resolvedParameters: {}, warnings: [] }) }));
+    await page.goto("/reports/metric-1/run");
+    await expect(page.getByText("Receita total")).toBeVisible();
+    await expect(page.getByText("9.876,50")).toBeVisible();
+    await expect(page.getByRole("table")).toHaveCount(0);
+  });
 });
