@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ReportParameterDefinition } from "../types/creatorTypes";
+import { DatePickerInput } from "./DatePickerInput";
 
 interface Props { parameters: ReportParameterDefinition[]; values: Record<string, unknown>; onChange: (values: Record<string, unknown>) => void; }
 
@@ -25,7 +26,7 @@ export function ExecutionParameterForm({ parameters, values, onChange }: Props) 
         <strong>{parameter.label || humanize(parameter.name)}{parameter.source === "input" ? " *" : ""}</strong>
         {parameter.description && <small style={{ color: "var(--text-muted)" }}>{parameter.description}</small>}
         {parameter.source === "system" && <label style={{ display: "flex", gap: ".4rem", alignItems: "center" }}><input type="checkbox" checked={showInput} onChange={(e) => { const next = new Set(manualOverrides); if (e.target.checked) next.add(parameter.name); else { next.delete(parameter.name); setValue(parameter, ""); } setManualOverrides(next); }}/>{showInput ? "Informar outro valor" : "Usar valor automático"}</label>}
-        {showInput && (parameter.type === "boolean" ? <select aria-label={parameter.label || humanize(parameter.name)} className="form-input" value={values[parameter.name] === undefined ? "" : String(values[parameter.name])} onChange={(e) => setValue(parameter, e.target.value)}><option value="">Selecione</option><option value="true">Sim</option><option value="false">Não</option></select> : <input aria-label={parameter.label || humanize(parameter.name)} className="form-input" placeholder={parameter.placeholder} type={inputType(parameter.type)} step={parameter.type === "integer" ? "1" : parameter.type === "number" ? "any" : undefined} required={parameter.source === "input"} value={displayValue(parameter, values[parameter.name])} onChange={(e) => setValue(parameter, e.target.value)} />)}
+        {showInput && (parameter.type === "boolean" ? <select aria-label={parameter.label || humanize(parameter.name)} className="form-input" value={values[parameter.name] === undefined ? "" : String(values[parameter.name])} onChange={(e) => setValue(parameter, e.target.value)}><option value="">Selecione</option><option value="true">Sim</option><option value="false">Não</option></select> : parameter.type === "date" || parameter.type === "datetime" ? <DatePickerInput type={parameter.type} value={values[parameter.name] === undefined ? "" : String(values[parameter.name])} onChange={(value) => setValue(parameter, value)} ariaLabel={parameter.label || humanize(parameter.name)} placeholder={parameter.placeholder} required={parameter.source === "input"} /> : <input aria-label={parameter.label || humanize(parameter.name)} className="form-input" placeholder={parameter.placeholder} type={inputType(parameter.type)} step={parameter.type === "integer" ? "1" : parameter.type === "number" ? "any" : undefined} required={parameter.source === "input"} value={displayValue(parameter, values[parameter.name])} onChange={(e) => setValue(parameter, e.target.value)} />)}
       </div>;
     })}
   </div>;
@@ -35,18 +36,11 @@ function humanize(name: string): string { return name.replace(/[_-]+/g, " ").rep
 
 function inputType(type: ReportParameterDefinition["type"]): string {
   if (type === "integer" || type === "number") return "number";
-  if (type === "date") return "date";
-  if (type === "datetime") return "datetime-local";
   if (type === "time") return "time";
   return "text";
 }
 
 function displayValue(parameter: ReportParameterDefinition, value: unknown): string {
   if (value === undefined || value === null) return "";
-  if (parameter.type === "datetime") {
-    const date = new Date(String(value));
-    const offset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
-  }
   return String(value).replace(/:00$/, parameter.type === "time" ? "" : ":00");
 }
