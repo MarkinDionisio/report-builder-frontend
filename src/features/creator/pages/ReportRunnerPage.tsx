@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { ChevronDown, ChevronUp, Clock3, Play, SlidersHorizontal } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
@@ -6,6 +7,7 @@ import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { isErr } from "../../../shared/result/result";
 import { creatorApi } from "../api/creatorApi";
 import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
+import { ReportResultsTable } from "../components/ReportResultsTable";
 import { requiredParametersMissing } from "../utils/parameterUtils";
 import type { ExecuteResponse, ReportDetail } from "../types/creatorTypes";
 
@@ -18,49 +20,48 @@ export function ReportRunnerPage() {
   const [pageSize, setPageSize] = useState(50);
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);
+  const [parametersExpanded, setParametersExpanded] = useState(true);
+  const [lastExecutedAt, setLastExecutedAt] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const execute = useCallback(async (targetPage: number, detail = report) => {
-    if (!reportId || !detail || requiredParametersMissing(detail.content.parameters || [], parameters)) return;
+  const runExecution = useCallback(async (targetPage: number, targetPageSize: number, detail: ReportDetail, targetParameters: Record<string, unknown>) => {
+    if (!reportId || !detail || requiredParametersMissing(detail.content.parameters || [], targetParameters)) return;
     setExecuting(true); setError(null);
-    const response = await creatorApi.executeReport(reportId, { parameters, filters: [], page: targetPage, pageSize });
+    const response = await creatorApi.executeReport(reportId, { parameters: targetParameters, filters: [], page: targetPage, pageSize: targetPageSize });
     setExecuting(false);
     if (isErr(response)) setError(response.error.detail || "Não foi possível executar o relatório.");
-    else { setResult(response.value); setPage(targetPage); }
-  }, [pageSize, parameters, report, reportId]);
-
-  useEffect(() => {
-    if (!reportId) return;
-    void creatorApi.getReport(reportId).then((response) => {
-      setLoading(false);
-      if (isErr(response)) { setError(response.error.detail || "Relatório não encontrado ou sem acesso."); return; }
-      setReport(response.value);
-      if (!requiredParametersMissing(response.value.content.parameters || [], {})) {
-        void creatorApi.executeReport(reportId, { parameters: {}, filters: [], page: 1, pageSize: 50 }).then((execution) => {
-          if (isErr(execution)) setError(execution.error.detail || "Não foi possível executar o relatório.");
-          else setResult(execution.value);
-        });
-      }
-    });
+    else { setResult(response.value); setPage(targetPage); setLastExecutedAt(new Date()); setParametersExpanded(false); }
   }, [reportId]);
 
-  return <div style={{ minHeight: "100vh" }}><Navbar/><main style={{ maxWidth: 1200, margin: "2rem auto", padding: "0 1.5rem" }}>
-    {loading ? <NeutralLoader/> : report && <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}><div><h1>{report.title}</h1><p style={{ color: "var(--text-muted)" }}>{report.organizationName}</p></div><Link className="btn btn-secondary" to="/dashboard">Voltar</Link></div>
+  const execute = useCallback((targetPage: number, targetPageSize = pageSize) => {
+    if (!report) return Promise.resolve();
+    return runExecution(targetPage, targetPageSize, report, parameters);
+  }, [pageSize, parameters, report, runExecution]);
+
+  useEffect(() => {
+    if (!reportId) { setLoading(false); setError("Relatório não especificado."); return; }
+    void creatorApi.getReport(reportId).then(async (response) => {
+      if (isErr(response)) { setLoading(false); setError(response.error.detail || "Relatório não encontrado ou sem acesso."); return; }
+      const detail = response.value;
+      setReport(detail); setLoading(false);
+      if (!requiredParametersMissing(detail.content.parameters || [], {})) await runExecution(1, 50, detail, {});
+    });
+  }, [reportId, runExecution]);
+
+  const missingRequired = report ? requiredParametersMissing(report.content.parameters || [], parameters) : false;
+  const aggregationsByAlias = Object.fromEntries((report?.content.dataset.select || []).filter((item) => item.alias).map((item) => [item.alias!, item.aggregation]));
+  const changePageSize = (nextPageSize: number) => { setPageSize(nextPageSize); setResult(null); setPage(1); void execute(1, nextPageSize); };
+
+  return <div className="report-runner"><Navbar/><main className="report-runner__main">
+    {loading ? <div className="report-runner__page-state"><NeutralLoader/><span>Carregando relatório...</span></div> : !report ? <div className="report-runner__page-state">{error && <Alert type="error" message={error}/>}<Link className="btn btn-secondary" to="/dashboard">Voltar ao início</Link></div> : <>
+      <header className="report-runner__header"><div><span className="report-runner__eyebrow">Relatório · {report.organizationName}</span><h1>{report.title}</h1><div className="report-runner__status"><Clock3 size={14}/>{executing ? "Executando agora..." : lastExecutedAt ? `Executado às ${lastExecutedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "Ainda não executado"}</div></div><Link className="btn btn-secondary" to="/dashboard">Voltar</Link></header>
       {error && <Alert type="error" message={error}/>}
-      <div className="card" style={{ marginBottom: "1rem" }}><h3 style={{ marginTop: 0 }}>Parâmetros</h3><ExecutionParameterForm parameters={report.content.parameters || []} where={report.content.dataset.where} resolvedParameters={result?.resolvedParameters} values={parameters} onChange={(values) => { setParameters(values); setResult(null); setPage(1); }}/><button className="btn btn-primary" style={{ marginTop: "1rem" }} disabled={executing || requiredParametersMissing(report.content.parameters || [], parameters)} onClick={() => void execute(1)}>{executing ? "Executando..." : "Executar"}</button></div>
-      {result && <div className="card" style={{ overflow: "hidden", padding: 0 }}><div style={{ overflowX: "auto" }}><table className="table" style={{ width: "100%" }}><thead><tr>{result.columns.map((column) => <th key={column.alias}>{column.alias}</th>)}</tr></thead><tbody>{result.rows.map((row, index) => <tr key={index}>{result.columns.map((column) => <td key={column.alias}>{formatValue(row[column.alias], column.type)}</td>)}</tr>)}</tbody></table></div>
-        {result.warnings?.map((warning) => <div key={`${warning.itemIndex}-${warning.fieldId}`} className="alert alert-warning">{warning.message}</div>)}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1rem" }}><span>{result.rowCount} linhas nesta página · {result.durationMs} ms</span><div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}><select className="form-input" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setResult(null); setPage(1); }}>{[25, 50, 100].map((size) => <option key={size}>{size}</option>)}</select><button className="btn btn-secondary" disabled={executing || page === 1} onClick={() => void execute(page - 1)}>Anterior</button><span>Página {page}</span><button className="btn btn-secondary" disabled={executing || result.rowCount < pageSize} onClick={() => void execute(page + 1)}>Próxima</button></div></div>
-      </div>}
+      <section className={`report-parameters${parametersExpanded ? " report-parameters--expanded" : ""}`}>
+        <button type="button" className="report-parameters__toggle" aria-expanded={parametersExpanded} onClick={() => setParametersExpanded((current) => !current)}><span><SlidersHorizontal size={18}/><span><strong>Parâmetros</strong><small>{missingRequired ? "Preencha os campos obrigatórios" : lastExecutedAt ? "Valores usados na execução" : "Revise antes de executar"}</small></span></span>{parametersExpanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</button>
+        {parametersExpanded && <div className="report-parameters__content"><ExecutionParameterForm parameters={report.content.parameters || []} where={report.content.dataset.where} resolvedParameters={result?.resolvedParameters} values={parameters} onChange={(values) => { setParameters(values); setResult(null); setPage(1); setLastExecutedAt(null); setParametersExpanded(true); }}/>{missingRequired && <p className="report-parameters__required">Preencha os campos obrigatórios para executar.</p>}<div className="report-parameters__actions"><button className="btn btn-primary" disabled={executing || missingRequired} onClick={() => void execute(1)}><Play size={16}/>{executing ? "Executando..." : "Executar relatório"}</button></div></div>}
+      </section>
+      {result?.warnings?.length ? <div className="report-runner__warnings">{result.warnings.map((warning) => <Alert key={`${warning.itemIndex}-${warning.fieldId}`} type="warning" message={warning.message}/>)}</div> : null}
+      <ReportResultsTable result={result} loading={executing} page={page} pageSize={pageSize} aggregationsByAlias={aggregationsByAlias} onPageChange={(targetPage) => void execute(targetPage)} onPageSizeChange={changePageSize}/>
     </>}
   </main></div>;
-}
-
-function formatValue(value: unknown, type: string): string {
-  if (value === null || value === undefined) return "—";
-  if (type === "boolean") return value ? "Sim" : "Não";
-  if (type === "number" || type === "integer") return Number(value).toLocaleString("pt-BR");
-  if (type === "date" || type === "datetime") return new Date(String(value)).toLocaleString("pt-BR");
-  return String(value);
 }

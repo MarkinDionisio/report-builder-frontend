@@ -18,6 +18,7 @@ import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
 import { requiredParametersMissing, validateParameters } from "../utils/parameterUtils";
 import { collectParameterReferences, removeEmptyLogicalGroups, removeOrphanParameters } from "../utils/filterParameterUtils";
 import { defaultAggregationAlias, fillMissingColumnAliases, nextAvailableAlias, validateColumnAliases } from "../utils/columnAliasUtils";
+import { formatReportNumber, isReportNumericType } from "../utils/reportValueUtils";
 import type { ReportParameterDefinition, WhereNode } from "../types/creatorTypes";
 
 
@@ -1408,7 +1409,7 @@ export const ReportDesignerPage: React.FC = () => {
       return col.alias;
     };
 
-    const formatCellValue = (val: any, type: string) => {
+    const formatCellValue = (val: any, type: string, aggregation?: string) => {
       if (val === null || val === undefined) return "";
       
       const typeLower = (type || "").toLowerCase();
@@ -1426,21 +1427,7 @@ export const ReportDesignerPage: React.FC = () => {
         }
       }
       
-      if (typeLower.includes("decimal") || typeLower.includes("numeric") || typeLower.includes("float") || typeLower.includes("double") || typeLower.includes("real") || typeLower.includes("number")) {
-        try {
-          return Number(val).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 });
-        } catch {
-          return String(val);
-        }
-      }
-      
-      if (typeLower.includes("int")) {
-        try {
-          return Number(val).toLocaleString("pt-BR");
-        } catch {
-          return String(val);
-        }
-      }
+      if (isReportNumericType(typeLower)) return formatReportNumber(val, typeLower, aggregation);
       
       if (typeof val === "boolean" || typeLower.includes("bool")) {
         return val ? "Sim" : "Não";
@@ -1552,7 +1539,7 @@ export const ReportDesignerPage: React.FC = () => {
                         <tr key={rIdx} style={{ borderBottom: "1px solid var(--border-color)" }}>
                           {previewData.columns.map((col: any, cIdx: number) => (
                             <td key={cIdx} style={{ padding: "0.75rem 1rem", fontSize: "0.9rem", whiteSpace: "nowrap" }}>
-                              {formatCellValue(row[col.alias], col.type)}
+                              {formatCellValue(row[col.alias], col.type, reportContent?.dataset.select.find((item) => item.alias === col.alias)?.aggregation)}
                             </td>
                           ))}
                         </tr>
