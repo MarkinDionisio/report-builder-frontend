@@ -14,6 +14,7 @@ interface SearchableFieldSelectProps {
   onChange: (value: string) => void;
   placeholder?: string;
   style?: React.CSSProperties;
+  inlineMenu?: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ export const SearchableFieldSelect: React.FC<SearchableFieldSelectProps> = ({
   onChange,
   placeholder = "Select a field...",
   style,
+  inlineMenu = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -122,11 +124,13 @@ export const SearchableFieldSelect: React.FC<SearchableFieldSelectProps> = ({
       {/* Dropdown panel */}
       {isOpen && (
         <div
+          className={`searchable-field-menu${inlineMenu ? " searchable-field-menu--inline" : ""}`}
           style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
+            position: inlineMenu ? "relative" : "absolute",
+            top: inlineMenu ? "auto" : "calc(100% + 4px)",
             left: 0,
             right: 0,
+            marginTop: inlineMenu ? "0.4rem" : 0,
             minWidth: "280px",
             background: "var(--bg-primary)",
             border: "1px solid var(--border-color)",

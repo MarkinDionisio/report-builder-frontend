@@ -17,4 +17,19 @@ describe("ExecutionParameterForm", () => {
     fireEvent.click(screen.getByRole("checkbox"));
     expect(screen.getByLabelText(/Início/)).toBeInTheDocument();
   });
+
+  it("shows a resolved automatic period as one business interval", () => {
+    render(<ExecutionParameterForm
+      parameters={[{ name: "start", type: "datetime", source: "system", variable: "startOfToday" }, { name: "end", type: "datetime", source: "system", variable: "startOfTomorrow" }]}
+      where={{ operator: "and", conditions: [{ operator: "and", ui: { kind: "relativePeriod", preset: "today", label: "Período de vendas" }, conditions: [{ fieldId: "sale-date", operator: "gte", value: { parameter: "start" } }, { fieldId: "sale-date", operator: "lt", value: { parameter: "end" } }] }] }}
+      resolvedParameters={{ start: "2026-08-14T03:00:00.000Z", end: "2026-08-15T03:00:00.000Z" }} values={{}} onChange={vi.fn()} />);
+    expect(screen.getByText("Período de vendas")).toBeInTheDocument();
+    expect(screen.getByText(/fim não incluído/)).toBeInTheDocument();
+    expect(screen.queryByText("start")).not.toBeInTheDocument();
+  });
+
+  it("shows the automatic-time-zone message before execution", () => {
+    render(<ExecutionParameterForm parameters={[]} where={{ operator: "and", ui: { kind: "relativePeriod", preset: "today", label: "Vendas de hoje" }, conditions: [] }} values={{}} onChange={vi.fn()} />);
+    expect(screen.getByText("O período será calculado automaticamente no fuso da organização.")).toBeInTheDocument();
+  });
 });

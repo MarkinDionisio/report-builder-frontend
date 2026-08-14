@@ -33,12 +33,12 @@ export function createInputParameter(parameters: ReportParameterDefinition[], fi
   return { name: nextParameterName(parameters), type: parameterTypeForField(fieldType), source: "input", label: fieldLabel, description: `Informe ${fieldLabel.toLowerCase()} para executar o relatório.`, placeholder: fieldLabel };
 }
 
-export function createRelativePeriod(fieldId: string, joinAlias: string | undefined, preset: RelativePeriodPreset, parameters: ReportParameterDefinition[]) {
+export function createRelativePeriod(fieldId: string, joinAlias: string | undefined, preset: RelativePeriodPreset, parameters: ReportParameterDefinition[], label?: string) {
   const [startVariable, endVariable] = BOUNDARIES[preset];
   const start: ReportParameterDefinition = { name: nextParameterName(parameters, "period_start"), type: "datetime", source: "system", variable: startVariable };
   const end: ReportParameterDefinition = { name: nextParameterName([...parameters, start], "period_end"), type: "datetime", source: "system", variable: endVariable };
   const reference = { fieldId, ...(joinAlias ? { joinAlias } : {}) };
-  const condition: WhereNode = { operator: "and", ui: { kind: "relativePeriod", preset }, conditions: [
+  const condition: WhereNode = { operator: "and", ui: { kind: "relativePeriod", preset, ...(label ? { label } : {}) }, conditions: [
     { ...reference, operator: "gte", value: { parameter: start.name } },
     { ...reference, operator: "lt", value: { parameter: end.name } },
   ] };

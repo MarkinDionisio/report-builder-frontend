@@ -84,7 +84,7 @@ export interface WhereNode extends Partial<FieldReference> {
   operator: string;
   value?: unknown;
   conditions?: WhereNode[];
-  ui?: { kind: "relativePeriod"; preset: RelativePeriodPreset };
+  ui?: { kind: "relativePeriod"; preset: RelativePeriodPreset; label?: string };
 }
 
 export type RelativePeriodPreset = "today" | "yesterday" | "currentWeek" | "previousWeek" | "currentMonth" | "previousMonth" | "currentYear" | "previousYear";
@@ -243,6 +243,7 @@ export interface ExecuteResponse {
   pageSize: number;
   rowCount: number;
   durationMs: number;
+  resolvedParameters: Record<string, unknown>;
   warnings?: Array<{
     code: "report_execution.order_by_ignored";
     message: string;
