@@ -1,32 +1,28 @@
-# React + TypeScript + Vite
+# Report Builder Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+SPA React, TypeScript e Vite do Report Builder.
 
-Currently, two official plugins are available:
+## Desenvolvimento
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm ci
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Configure `VITE_API_URL` em `.env`; o valor de produção é
+`https://reportsapi.fabricasistemas.com.br`.
+
+## Verificações
+
+```bash
+npm run lint
+npm test
+npm run build
+npm run test:e2e
+```
+
+## Deploy
+
+Releases de produção são imagens imutáveis publicadas no GHCR por tags
+`vX.Y.Z`. Consulte [docs/cicd-centos-stream-9.md](docs/cicd-centos-stream-9.md)
+para provisionamento, configuração do GitHub e rollback.
