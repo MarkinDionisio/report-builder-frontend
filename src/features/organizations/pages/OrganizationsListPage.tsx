@@ -187,19 +187,19 @@ export const OrganizationsListPage: React.FC = () => {
                   </div>
 
                   {isRoot && (
-                    <div style={{ display: "flex", gap: "0.4rem" }}>
+                    <div className="action-buttons">
                       <button
                         onClick={() => handleOpenEdit(org)}
-                        className="btn btn-secondary"
-                        style={{ padding: "0.35rem 0.6rem" }}
+                        className="btn-icon"
+                        aria-label={`Editar organização ${org.name}`}
                         title="Editar Organização"
                       >
                         <Edit2 size={15} />
                       </button>
                       <button
                         onClick={() => handleOpenDelete(org)}
-                        className="btn"
-                        style={{ padding: "0.35rem 0.6rem", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", border: "1px solid rgba(239, 68, 68, 0.3)" }}
+                        className="btn-icon btn-icon-danger"
+                        aria-label={`Excluir organização ${org.name}`}
                         title="Excluir Organização"
                       >
                         <Trash2 size={15} />

@@ -463,15 +463,8 @@ export const OrganizationMembersPage: React.FC = () => {
                           {actions.canRemove ? (
                             <button
                               onClick={() => handleOpenDelete(member)}
-                              className="btn"
+                              className="btn btn-danger btn-sm"
                               disabled={isUpdating}
-                              style={{
-                                padding: "0.35rem 0.65rem",
-                                background: "rgba(239, 68, 68, 0.15)",
-                                color: "#f87171",
-                                border: "1px solid rgba(239, 68, 68, 0.3)",
-                                fontSize: "0.8rem",
-                              }}
                             >
                               <Trash2 size={14} /> Remover
                             </button>

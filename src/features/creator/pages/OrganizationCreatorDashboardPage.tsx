@@ -119,7 +119,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
         </div>
       </header>
 
-      <main style={{ maxWidth: "1200px", width: "100%", margin: "2rem auto", padding: "0 1.5rem", flex: 1 }}>
+      <main className="creator-workspace-main" style={{ maxWidth: "1200px", width: "100%", margin: "0 auto 2rem", padding: "0 1.5rem", flex: 1 }}>
         {errorMsg && (
           <div style={{ marginBottom: "1.5rem" }}>
             <Alert type="error" message={errorMsg} />
@@ -165,15 +165,17 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
                         {new Date(report.createdAt).toLocaleDateString()}
                       </td>
                       <td style={{ textAlign: "right" }}>
-                        <Link to={`/reports/${report.id}/run`} className="btn btn-primary" style={{ padding: "0.35rem 0.5rem", marginRight: ".4rem" }} title="Executar Relatório"><Play size={16}/></Link>
-                        <Link
-                          to={`/organizations/${organizationId}/creator/reports/${report.id}`}
-                          className="btn btn-secondary"
-                          style={{ padding: "0.35rem 0.5rem" }}
-                          title="Editar Relatório"
-                        >
-                          <Settings size={16} />
-                        </Link>
+                        <div className="action-buttons">
+                          <Link to={`/reports/${report.id}/run`} className="btn-icon btn-icon-primary" aria-label={`Executar relatório ${report.title}`} title="Executar Relatório"><Play size={16}/></Link>
+                          <Link
+                            to={`/organizations/${organizationId}/creator/reports/${report.id}`}
+                            className="btn-icon"
+                            aria-label={`Editar relatório ${report.title}`}
+                            title="Editar Relatório"
+                          >
+                            <Settings size={16} />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -211,8 +213,8 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
                       <td style={{ textAlign: "right" }}>
                         <Link
                           to={`/organizations/${organizationId}/creator/dashboards/${dash.id}`}
-                          className="btn btn-secondary"
-                          style={{ padding: "0.35rem 0.5rem" }}
+                          className="btn-icon"
+                          aria-label={`Editar dashboard ${dash.title}`}
                           title="Editar Dashboard"
                         >
                           <Settings size={16} />

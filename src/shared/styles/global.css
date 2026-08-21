@@ -316,6 +316,49 @@ option {
   border-color: rgba(255, 255, 255, 0.2);
 }
 
+.btn-danger {
+  background: color-mix(in srgb, var(--danger-500) 16%, transparent);
+  color: var(--danger-500);
+  border: 1px solid color-mix(in srgb, var(--danger-500) 38%, transparent);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger-500) 24%, transparent);
+  border-color: color-mix(in srgb, var(--danger-500) 58%, transparent);
+}
+
+.btn-sm { min-height: 34px; padding: .4rem .7rem; gap: .4rem; font-size: .8rem; white-space: nowrap; }
+
+.action-buttons { display: inline-flex; align-items: center; justify-content: flex-end; gap: .4rem; white-space: nowrap; }
+
+.btn-icon {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  display: inline-flex;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .045);
+  color: var(--text-secondary);
+  box-shadow: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+}
+
+.btn-icon:hover:not(:disabled) { color: var(--text-primary); border-color: var(--border-color-hover); background: rgba(255, 255, 255, .09); transform: translateY(-1px); }
+.btn-icon:active:not(:disabled) { transform: translateY(0); }
+.btn-icon:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; }
+.btn-icon:disabled { opacity: .45; cursor: not-allowed; }
+.btn-icon-primary { color: var(--primary-400); border-color: color-mix(in srgb, var(--primary-500) 38%, var(--border-color)); background: color-mix(in srgb, var(--primary-500) 14%, transparent); }
+.btn-icon-primary:hover:not(:disabled) { color: #fff; border-color: var(--primary-500); background: color-mix(in srgb, var(--primary-500) 26%, transparent); }
+.btn-icon-danger, .btn-icon.text-danger { color: var(--danger-500); border-color: color-mix(in srgb, var(--danger-500) 32%, var(--border-color)); background: color-mix(in srgb, var(--danger-500) 10%, transparent); }
+.btn-icon-danger:hover:not(:disabled), .btn-icon.text-danger:hover:not(:disabled) { color: var(--danger-500); border-color: color-mix(in srgb, var(--danger-500) 55%, transparent); background: color-mix(in srgb, var(--danger-500) 18%, transparent); }
+
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -376,6 +419,7 @@ option {
 .has-app-shell { padding-left: var(--sidebar-width); transition: padding-left var(--transition-normal); }
 .has-app-shell main { padding-top: calc(var(--topbar-height) + 1.5rem) !important; }
 .creator-workspace-header { padding-top: calc(var(--topbar-height) + 2rem) !important; }
+.has-app-shell .creator-workspace-main { padding-top: 0 !important; }
 .has-collapsed-sidebar .app-topbar { left: var(--sidebar-collapsed-width); }
 .has-app-shell.has-collapsed-sidebar { padding-left: var(--sidebar-collapsed-width); }
 .app-sidebar-backdrop { display: none; }
