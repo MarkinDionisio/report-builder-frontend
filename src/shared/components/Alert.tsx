@@ -6,6 +6,10 @@ import type { ApiProblemDetails } from "../api/types";
  * Mapping of known/expected business and validation error codes to user-friendly messages.
  */
 export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string }> = {
+  "reports.edit_access_blocked": {
+    title: "Edição bloqueada",
+    message: "O acesso aos schemas ou campos deste relatório mudou. Recarregue a página ou solicite as permissões necessárias a um administrador.",
+  },
   // Auth
   "auth.invalid_credentials": {
     title: "Credenciais Inválidas",

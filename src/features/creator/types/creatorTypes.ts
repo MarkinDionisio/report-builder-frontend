@@ -147,6 +147,7 @@ export interface ReportDetail {
   content: ReportContentV1;
   allowedFilters: Array<{ field: string; type: string; options: string[] }>;
   canExecute: boolean;
+  canEdit: boolean;
   executionBlockCode: string | null;
   blockedSchemas: BlockedReportSchema[];
 }

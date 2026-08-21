@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "../../../shared/components/Navbar";
-import { Alert } from "../../../shared/components/Alert";
+import { Alert, KNOWN_ERROR_CODES } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { creatorApi } from "../api/creatorApi";
 import { isErr } from "../../../shared/result/result";
-import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField, CreatorDataSourceOption } from "../types/creatorTypes";
+import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField, CreatorDataSourceOption, ReportDetail } from "../types/creatorTypes";
 import { Database, Plus, X, ChevronRight, Check, Filter, ChevronDown, ArrowUpDown } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
 import { FilterRow } from "../components/FilterRow";
@@ -15,6 +15,7 @@ import { ParameterEditor } from "../components/ParameterEditor";
 import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
 import { ReportPresentationRenderer } from "../components/ReportPresentationRenderer";
 import { ReportPresentationEditor } from "../components/ReportPresentationEditor";
+import { ReportAccessBlockPanel } from "../components/ReportAccessBlockPanel";
 import { requiredParametersMissing, validateParameters } from "../utils/parameterUtils";
 import { collectParameterReferences, removeEmptyLogicalGroups, removeOrphanParameters } from "../utils/filterParameterUtils";
 import { defaultAggregationAlias, fillMissingColumnAliases, nextAvailableAlias, validateColumnAliases } from "../utils/columnAliasUtils";
@@ -199,6 +200,7 @@ export const ReportDesignerPage: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [editBlockedReport, setEditBlockedReport] = useState<ReportDetail | null>(null);
 
   // Setup state
   const [availableDataSources, setAvailableDataSources] = useState<CreatorDataSourceOption[]>([]);
@@ -250,11 +252,28 @@ export const ReportDesignerPage: React.FC = () => {
     const loadInitialState = async () => {
       setLoading(true);
       setErrorMsg(null);
+      setEditBlockedReport(null);
 
       if (!organizationId) {
         setErrorMsg("Organização não especificada.");
         setLoading(false);
         return;
+      }
+
+      let existingReport: ReportDetail | null = null;
+      if (reportId) {
+        const reportRes = await creatorApi.getReport(reportId);
+        if (isErr(reportRes)) {
+          setErrorMsg(reportRes.error.detail || "Erro ao carregar relatório.");
+          setLoading(false);
+          return;
+        }
+        existingReport = reportRes.value;
+        if (existingReport.canEdit === false) {
+          setEditBlockedReport(existingReport);
+          setLoading(false);
+          return;
+        }
       }
 
       const dsRes = await creatorApi.getCreatorDataSources(organizationId);
@@ -265,15 +284,8 @@ export const ReportDesignerPage: React.FC = () => {
       }
       setAvailableDataSources(dsRes.value);
 
-      if (reportId) {
-        const reportRes = await creatorApi.getReport(reportId);
-        if (isErr(reportRes)) {
-          setErrorMsg(reportRes.error.detail || "Erro ao carregar relatório.");
-          setLoading(false);
-          return;
-        }
-        
-        const r = reportRes.value;
+      if (existingReport) {
+        const r = existingReport;
         setReportTitle(r.title);
         setVisibilityScope(r.visibilityScope as any);
         setReportContent(r.content);
@@ -309,6 +321,24 @@ export const ReportDesignerPage: React.FC = () => {
     };
     loadInitialState();
   }, [organizationId, reportId]);
+
+  if (editBlockedReport && organizationId && reportId) {
+    return <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      <Navbar />
+      <main style={{ maxWidth: "960px", width: "100%", margin: "4rem auto", padding: "0 1.5rem", flex: 1 }}>
+        <header style={{ marginBottom: "1.5rem" }}><span style={{ color: "var(--text-muted)", fontSize: ".85rem" }}>Report Designer · {editBlockedReport.organizationName}</span><h1 style={{ margin: ".35rem 0 0" }}>{editBlockedReport.title}</h1></header>
+        <ReportAccessBlockPanel
+          blockedSchemas={editBlockedReport.blockedSchemas}
+          title="Este relatório não pode ser editado"
+          description="A edição exige acesso de execução a todos os schemas, campos e capacidades usados pelo relatório."
+        />
+        <div style={{ display: "flex", flexWrap: "wrap", gap: ".75rem", marginTop: "1.25rem" }}>
+          <Link className="btn btn-secondary" to={`/organizations/${organizationId}/creator`}>Voltar ao workspace</Link>
+          <Link className="btn btn-primary" to={`/reports/${reportId}/run`}>Abrir execução</Link>
+        </div>
+      </main>
+    </div>;
+  }
 
   // 2. Load Catalog
   const handleSelectDataSource = async (dsId: string) => {
@@ -488,7 +518,8 @@ export const ReportDesignerPage: React.FC = () => {
     setIsSaving(false);
     
     if (isErr(res)) {
-      setSaveError(res.error.detail || "Erro ao salvar relatório.");
+      const knownError = res.error.code ? KNOWN_ERROR_CODES[res.error.code] : null;
+      setSaveError(knownError?.message || res.error.detail || "Erro ao salvar relatório.");
     } else {
       setShowSaveModal(false);
       navigate(`/organizations/${organizationId}/creator`);

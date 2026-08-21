@@ -6,7 +6,7 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     await page.route("**/api/v1/me", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "user-1", name: "Creator", email: "creator@example.com", globalRole: "creator", profileIds: [], organizations: [{ id: "org-1", name: "Organização", organizationRole: "creator" }] }) }));
     await page.route("**/api/v1/organizations/org-1/data-sources", async (route) => route.fulfill({ status: 403, contentType: "application/problem+json", body: JSON.stringify({ code: "report_catalog.grant_management_forbidden", detail: "Only root and organization administrators can manage report catalog grants." }) }));
     await page.route("**/api/v1/organizations/org-1/report-designer/data-sources", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ id: "ds-1", name: "Vendas", provider: "postgresql", readOnlyVerificationStatus: "verified" }]) }));
-    await page.route("**/api/v1/reports/report-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "report-1", title: "Vendas por período", organizationId: "org-1", organizationName: "Organização", visibilityScope: "private", myRole: "creator", allowedFilters: [], content: { version: 1, parameters: [{ name: "period_start_1", type: "datetime", source: "system", variable: "startOfMonth" }, { name: "period_end_1", type: "datetime", source: "system", variable: "startOfNextMonth" }], dataset: { dataSourceId: "ds-1", schemaId: "schema-1", select: [{ fieldId: "amount", alias: "Total", aggregation: "sum" }, { fieldId: "sale-date" }], where: { operator: "and", conditions: [{ operator: "and", ui: { kind: "relativePeriod", preset: "currentMonth" }, conditions: [{ fieldId: "sale-date", operator: "gte", value: { parameter: "period_start_1" } }, { fieldId: "sale-date", operator: "lt", value: { parameter: "period_end_1" } }] }] }, groupBy: [], orderBy: [] } } }) }));
+    await page.route("**/api/v1/reports/report-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "report-1", title: "Vendas por período", organizationId: "org-1", organizationName: "Organização", visibilityScope: "private", myRole: "creator", allowedFilters: [], canExecute: true, canEdit: true, executionBlockCode: null, blockedSchemas: [], content: { version: 1, parameters: [{ name: "period_start_1", type: "datetime", source: "system", variable: "startOfMonth" }, { name: "period_end_1", type: "datetime", source: "system", variable: "startOfNextMonth" }], dataset: { dataSourceId: "ds-1", schemaId: "schema-1", select: [{ fieldId: "amount", alias: "Total", aggregation: "sum" }, { fieldId: "sale-date" }], where: { operator: "and", conditions: [{ operator: "and", ui: { kind: "relativePeriod", preset: "currentMonth" }, conditions: [{ fieldId: "sale-date", operator: "gte", value: { parameter: "period_start_1" } }, { fieldId: "sale-date", operator: "lt", value: { parameter: "period_end_1" } }] }] }, groupBy: [], orderBy: [] } } }) }));
     await page.route("**/api/v1/organizations/org-1/report-designer/catalog?dataSourceId=ds-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemas: [{ id: "schema-1", dataSourceId: "ds-1", dataSourceName: "Vendas", name: "Vendas com um nome propositalmente muito longo para validar o layout", type: "table", fields: [{ id: "sale-date", name: "Data da venda com descrição extensa", type: "datetime", nullable: false, selectable: true, filterable: true, sortable: true, groupable: true, aggregatable: false, allowedOperators: ["eq", "gte", "lt", "between"], allowedAggregations: [] }, { id: "amount", name: "Valor total", type: "number", nullable: false, selectable: true, filterable: true, sortable: true, groupable: false, aggregatable: true, allowedOperators: ["eq", "gte", "between"], allowedAggregations: ["sum"] }] }], joins: [] }) }));
     await page.addInitScript(() => localStorage.setItem("report-builder.session.v1", JSON.stringify({ refreshToken: "refresh" })));
   });
@@ -76,5 +76,41 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     await expect(page.getByRole("heading", { name: "Selecione o DataSource" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Vendas/ })).toBeVisible();
     await expect(page.getByText("Only root and organization administrators can manage report catalog grants.")).toHaveCount(0);
+  });
+
+  test("bloqueia o designer antes de consultar fontes, catálogo, preview ou update", async ({ page }) => {
+    let dataSourceCalls = 0;
+    let catalogCalls = 0;
+    let previewCalls = 0;
+    let updateCalls = 0;
+    await page.unroute("**/api/v1/organizations/org-1/report-designer/data-sources");
+    await page.unroute("**/api/v1/organizations/org-1/report-designer/catalog?dataSourceId=ds-1");
+    await page.unroute("**/api/v1/reports/report-1");
+    await page.route("**/api/v1/organizations/org-1/report-designer/data-sources", async (route) => { dataSourceCalls += 1; await route.fulfill({ status: 200, body: "[]" }); });
+    await page.route("**/api/v1/organizations/org-1/report-designer/catalog**", async (route) => { catalogCalls += 1; await route.fulfill({ status: 200, body: JSON.stringify({ schemas: [], joins: [] }) }); });
+    await page.route("**/api/v1/reports/preview", async (route) => { previewCalls += 1; await route.fulfill({ status: 200, body: "{}" }); });
+    await page.route("**/api/v1/reports/report-1", async (route) => {
+      if (route.request().method() === "PATCH") {
+        updateCalls += 1;
+        await route.fulfill({ status: 403, body: JSON.stringify({ code: "reports.edit_access_blocked" }) });
+        return;
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        id: "report-1", title: "Relatório restrito", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "creator",
+        allowedFilters: [], canExecute: false, canEdit: false, executionBlockCode: "report_definition.field_capability_unavailable",
+        blockedSchemas: [{ schemaId: "schema-1", schemaName: "Pedidos", reason: "capability_missing", blockedFields: [{ fieldId: "amount", fieldName: "Total", reason: "capability_missing", missingCapabilities: ["filterable", "aggregatable"] }] }],
+        content: { version: 1, parameters: [], dataset: { dataSourceId: "ds-1", schemaId: "schema-1", select: [{ fieldId: "amount" }] } }
+      }) });
+    });
+
+    await page.goto("/organizations/org-1/creator/reports/report-1");
+
+    await expect(page.getByRole("alert")).toContainText("Este relatório não pode ser editado");
+    await expect(page.getByRole("alert")).toContainText("Pedidos");
+    await expect(page.getByRole("alert")).toContainText("Total");
+    await expect(page.getByRole("alert")).toContainText("filtro, agregação");
+    await expect(page.getByRole("link", { name: "Voltar ao workspace" })).toHaveAttribute("href", "/organizations/org-1/creator");
+    await expect(page.getByRole("link", { name: "Abrir execução" })).toHaveAttribute("href", "/reports/report-1/run");
+    expect({ dataSourceCalls, catalogCalls, previewCalls, updateCalls }).toEqual({ dataSourceCalls: 0, catalogCalls: 0, previewCalls: 0, updateCalls: 0 });
   });
 });
