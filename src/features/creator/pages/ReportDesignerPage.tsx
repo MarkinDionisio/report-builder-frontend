@@ -770,13 +770,13 @@ export const ReportDesignerPage: React.FC = () => {
                   {isExpanded && (
                     <div style={{ paddingLeft: "1.25rem", paddingRight: "0.5rem", marginTop: "0.25rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
                       {fields.map(f => (
-                        <div key={f.id} style={{ padding: "0.3rem 0", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)" }}>
-                          <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "70%" }} title={f.name}>{f.name}</span>
-                          <div style={{ display: "flex", gap: "0.25rem", flexWrap: "wrap", justifyContent: "flex-end", maxWidth: "60%" }}>
+                        <div key={f.id} style={{ padding: "0.3rem 0", display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: "0.5rem", alignItems: "center", borderBottom: "1px solid var(--border-color)" }}>
+                          <span style={{ minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }} title={f.name}>{f.name}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", flexShrink: 0, whiteSpace: "nowrap" }}>
                             {availableAggregations(f).length > 0 && (
                               <select
                                 className="form-input"
-                                style={{ padding: "0.1rem 0.5rem", fontSize: "0.7rem", height: "auto", border: "1px solid var(--primary-500)", color: "var(--primary-500)", background: "rgba(168, 85, 247, 0.05)", borderRadius: "4px", width: "auto", cursor: "pointer" }}
+                                style={{ padding: "0.2rem 1.4rem 0.2rem 0.45rem", fontSize: "0.7rem", height: "28px", border: "1px solid var(--primary-500)", color: "var(--primary-500)", background: "rgba(168, 85, 247, 0.05)", borderRadius: "4px", width: "86px", cursor: "pointer" }}
                                 value=""
                                 onChange={(e) => { if (e.target.value) handleAddFieldToSelect(s, f, e.target.value); }}
                               >
