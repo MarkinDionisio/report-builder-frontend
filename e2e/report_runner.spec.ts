@@ -42,6 +42,22 @@ test.describe("E2E - Execução do relatório", () => {
     await expect(page.getByRole("link", { name: "Voltar ao início" })).toBeVisible();
   });
 
+  test("não executa e apresenta schemas e campos bloqueadores", async ({ page }) => {
+    await mockSession(page);
+    let executionRequests = 0;
+    await page.route("**/api/v1/reports/blocked-report", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "blocked-report", title: "Relatório restrito", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "viewer", allowedFilters: [], canExecute: false, executionBlockCode: "report_definition.field_capability_unavailable", blockedSchemas: [{ schemaId: "schema-1", schemaName: "Pedidos", reason: "capability_missing", blockedFields: [{ fieldId: "field-1", fieldName: "Total", reason: "capability_missing", missingCapabilities: ["filterable", "aggregatable"] }] }], content: { version: 1, parameters: [], dataset: { schemaId: "schema-1", select: [{ fieldId: "field-1", alias: "Total" }] } } }) }));
+    await page.route("**/api/v1/reports/blocked-report/execute", async (route) => { executionRequests += 1; await route.abort(); });
+
+    await page.goto("/reports/blocked-report/run");
+
+    await expect(page.getByRole("heading", { name: "Relatório restrito" })).toBeVisible();
+    await expect(page.getByText("Este relatório não pode ser executado")).toBeVisible();
+    await expect(page.getByText("Pedidos")).toBeVisible();
+    await expect(page.getByText(/permissões ausentes: filtro, agregação/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Executar relatório" })).toBeDisabled();
+    await expect.poll(() => executionRequests).toBe(0);
+  });
+
   test("apresenta um relatório agregado como indicador", async ({ page }) => {
     await mockSession(page);
     await page.route("**/api/v1/reports/metric-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "metric-1", title: "Receita", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "viewer", allowedFilters: [], content: { version: 1, presentation: { type: "metric", valueColumnAlias: "Total", label: "Receita total" }, parameters: [], dataset: { schemaId: "schema-1", select: [{ fieldId: "total", alias: "Total", aggregation: "sum" }], groupBy: [] } } }) }));

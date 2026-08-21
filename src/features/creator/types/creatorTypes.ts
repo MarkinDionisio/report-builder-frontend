@@ -146,6 +146,25 @@ export interface ReportDetail {
   myRole: ResourceRole;
   content: ReportContentV1;
   allowedFilters: Array<{ field: string; type: string; options: string[] }>;
+  canExecute: boolean;
+  executionBlockCode: string | null;
+  blockedSchemas: BlockedReportSchema[];
+}
+
+export type ReportFieldCapability = "selectable" | "filterable" | "sortable" | "groupable" | "aggregatable";
+
+export interface BlockedReportField {
+  fieldId: string;
+  fieldName: string | null;
+  reason: "field_grant_missing" | "field_unavailable" | "capability_missing";
+  missingCapabilities: ReportFieldCapability[];
+}
+
+export interface BlockedReportSchema {
+  schemaId: string;
+  schemaName: string | null;
+  reason: "schema_grant_missing" | "schema_unavailable" | "field_unavailable" | "capability_missing";
+  blockedFields: BlockedReportField[];
 }
 
 export interface UpsertReportRequest {

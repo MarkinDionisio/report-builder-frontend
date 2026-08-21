@@ -534,6 +534,18 @@ option {
 .report-runner__status { display: flex; align-items: center; gap: .35rem; color: var(--text-muted); font-size: .82rem; }
 .report-runner__page-state { min-height: 55vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; }
 .report-runner__warnings { display: grid; gap: .5rem; margin: 1rem 0; }
+.report-execution-block { margin: 0 0 1rem; padding: 1rem 1.1rem; color: var(--text-primary); background: rgba(245, 158, 11, .08); border: 1px solid rgba(245, 158, 11, .35); border-radius: var(--radius-lg); }
+.report-execution-block__header { display: flex; align-items: flex-start; gap: .65rem; color: #d97706; }
+.report-execution-block__header > div { display: grid; gap: .2rem; }
+.report-execution-block__header span { color: var(--text-muted); font-size: .85rem; }
+.report-execution-block__schemas { display: grid; gap: .7rem; margin: .9rem 0 0; padding: 0; list-style: none; }
+.report-execution-block__schemas > li { padding: .75rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+.report-execution-block__schemas > li > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem .65rem; }
+.report-execution-block__schemas code { color: var(--text-muted); font-size: .72rem; overflow-wrap: anywhere; }
+.report-execution-block__schemas span { color: var(--text-muted); font-size: .82rem; }
+.report-execution-block__schemas ul { display: grid; gap: .35rem; margin: .65rem 0 0; padding: .65rem 0 0 1.1rem; border-top: 1px solid var(--border-color); }
+.report-execution-block__schemas ul li { padding-left: .15rem; }
+.report-execution-block__schemas ul code { display: block; margin-top: .1rem; }
 .report-parameters { margin-bottom: 1rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
 .report-parameters__toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.15rem; color: var(--text-primary); background: transparent; border: 0; cursor: pointer; text-align: left; }
 .report-parameters__toggle > span { display: flex; align-items: center; gap: .7rem; min-width: 0; }
