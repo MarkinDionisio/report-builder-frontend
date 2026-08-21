@@ -126,7 +126,7 @@ export const ReportJoinTemplatesPage: React.FC = () => {
           <ShieldAlert size={64} style={{ color: "#ef4444", marginBottom: "1rem" }} />
           <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>Acesso Negado</h1>
           <p style={{ color: "var(--text-secondary)", maxWidth: "400px", textAlign: "center" }}>
-            O gerenciamento de templates de join é restrito ao papel global <code>root</code>.
+            O gerenciamento de templates de join é restrito a usuários Root.
           </p>
         </div>
       </div>

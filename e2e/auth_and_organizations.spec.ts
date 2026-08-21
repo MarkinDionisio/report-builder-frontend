@@ -70,7 +70,7 @@ test.describe("E2E - Fluxo de Autenticação e Navegação", () => {
     await page.waitForURL("/dashboard");
     await expect(page.locator("h1")).toContainText("Bem-vindo ao Report Builder");
     await expect(page.getByText("Maria Silva")).toBeVisible();
-    await expect(page.getByText("root")).toBeVisible();
+    await expect(page.getByText("Root")).toBeVisible();
     await expect(page.getByText("Operação Brasil")).toBeVisible();
   });
 });

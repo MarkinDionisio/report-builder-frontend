@@ -916,7 +916,7 @@ export const OrganizationDetailPage: React.FC = () => {
               </div>
               <div style={{ padding: "1.25rem" }}>
                 <p style={{ margin: "0 0 1rem 0" }}>
-                  Exibindo <strong>{viewingFieldsSchema.publicName}</strong> (Visualização de Admin)
+                  Exibindo <strong>{viewingFieldsSchema.publicName}</strong> (Visualização de Administrador)
                 </p>
                 {!(viewingFieldsSchema as any)._availableFields || (viewingFieldsSchema as any)._availableFields.length === 0 ? (
                   <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)", background: "var(--bg-secondary)", borderRadius: "8px" }}>

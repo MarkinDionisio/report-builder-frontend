@@ -5,6 +5,7 @@ import type { OrganizationInvitation, OrganizationRole, OrganizationUserLookup }
 import { organizationsApi } from "../api/organizationsApi";
 import { isOk } from "../../../shared/result/result";
 import { UserPlus, Loader2, X, Search, CheckCircle, MailWarning } from "lucide-react";
+import { getOrganizationRoleLabel } from "../../../shared/utils/roles";
 
 interface AddMemberModalProps {
   isOpen: boolean;
@@ -237,7 +238,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
             >
               {assignableRoles.map((r) => (
                 <option key={r} value={r} style={{ background: "#0f172a", color: "#f8fafc" }}>
-                  {r === "administrator" ? "Administrador (administrator)" : r === "creator" ? "Criador (creator)" : "Visualizador (viewer)"}
+                  {getOrganizationRoleLabel(r)}
                 </option>
               ))}
             </select>

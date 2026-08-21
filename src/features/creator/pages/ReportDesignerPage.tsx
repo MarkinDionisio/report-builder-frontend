@@ -1533,7 +1533,7 @@ export const ReportDesignerPage: React.FC = () => {
           <div style={{ background: "var(--bg-primary)", padding: "2rem", borderRadius: "12px", width: "100%", maxWidth: "450px", border: "1px solid var(--border-color)", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
             <h3 style={{ marginBottom: "1rem", fontWeight: 600, fontSize: "1.25rem" }}>Salvar Relatório</h3>
             <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
-              Dê um nome ao seu relatório para salvá-lo no Creator Workspace.
+              Dê um nome ao seu relatório para salvá-lo na área de criação.
             </p>
             
             {saveError && (

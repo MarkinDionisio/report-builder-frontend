@@ -163,7 +163,7 @@ export const OrganizationProfilesPage: React.FC = () => {
             <ShieldAlert size={48} style={{ color: "var(--danger-500)", marginBottom: "1rem" }} />
             <h2>Acesso Negado</h2>
             <p style={{ color: "var(--text-secondary)", maxWidth: "500px", margin: "0 auto 1.5rem auto" }}>
-              Apenas o papel <code>root</code> ou o papel de <code>administrator</code> na organização podem gerenciar os Perfis e Grants.
+              Apenas usuários Root ou Administradores podem gerenciar os perfis e suas permissões.
             </p>
           </div>
         </main>

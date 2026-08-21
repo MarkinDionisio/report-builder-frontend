@@ -101,7 +101,7 @@ export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string 
   },
   "organizations.root_access_required": {
     title: "Acesso Restrito",
-    message: "Esta ação requer privilégios de Administrador Root.",
+    message: "Esta ação requer acesso Root.",
   },
   "organizations.member_view_forbidden": {
     title: "Acesso Negado",
@@ -113,7 +113,7 @@ export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string 
   },
   "organizations.administrator_assignment_forbidden": {
     title: "Permissão Insuficiente",
-    message: "Apenas Administradores Root podem atribuir o papel de Administrador.",
+    message: "Apenas usuários Root podem atribuir o papel Administrador.",
   },
   "organizations.target_user_management_forbidden": {
     title: "Permissão Insuficiente",
@@ -147,7 +147,7 @@ export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string 
   },
   "invitations.assign_administrator_forbidden": {
     title: "Permissão Insuficiente",
-    message: "Apenas Administradores Root podem convidar com papel de Administrador.",
+    message: "Apenas usuários Root podem convidar com o papel Administrador.",
   },
   "invitations.manage_target_forbidden": {
     title: "Acesso Negado",
@@ -169,7 +169,7 @@ export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string 
   },
   "users.root_access_required": {
     title: "Acesso Restrito",
-    message: "Apenas Administradores Root podem alterar o papel global de usuários.",
+    message: "Apenas usuários Root podem alterar o papel global de usuários.",
   },
 };
 

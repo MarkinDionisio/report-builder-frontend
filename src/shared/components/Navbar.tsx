@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../../features/auth/context/AuthContext";
 import { LogOut, LayoutDashboard, Building2, Menu, X, Server, FileText, Link as LinkIcon, PenTool, PanelLeftClose, PanelLeftOpen, ChevronDown } from "lucide-react";
 import { getUserCapabilities } from "../utils/capabilities";
+import { getGlobalRoleLabel } from "../utils/roles";
 
 export const Navbar: React.FC = () => {
   const { state, logout } = useAuth();
@@ -61,7 +62,7 @@ export const Navbar: React.FC = () => {
             <span className="app-avatar">{user.name.slice(0, 1).toUpperCase()}</span>
             <span><strong>{user.name}</strong><small>{user.email}</small></span><ChevronDown size={16}/>
           </button>
-          {userMenuOpen && <div className="app-user-menu__popover"><span className="status-badge">{user.globalRole}</span><button onClick={logout}><LogOut size={16}/> Sair da conta</button></div>}
+          {userMenuOpen && <div className="app-user-menu__popover"><span className="status-badge">{getGlobalRoleLabel(user.globalRole)}</span><button onClick={logout}><LogOut size={16}/> Sair da conta</button></div>}
         </div>
       </header>
       {isOpen && <button className="app-sidebar-backdrop" aria-label="Fechar menu de navegação" onClick={() => setIsOpen(false)}/>}

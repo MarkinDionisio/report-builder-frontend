@@ -8,6 +8,7 @@ import { Loader2, Plus, FileBarChart, LayoutDashboard, Settings, Play } from "lu
 import { useAuth } from "../../auth/context/AuthContext";
 import { canOpenCreatorWorkspace } from "../../auth/utils/authUtils";
 import type { ReportListItem, DashboardListItem } from "../../creator/types/creatorTypes";
+import { getResourceRoleLabel } from "../../../shared/utils/roles";
 
 export const OrganizationCreatorDashboardPage: React.FC = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
@@ -63,7 +64,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Navbar />
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
-          <Alert type="error" message="Acesso negado ao Workspace nesta organização." />
+          <Alert type="error" message="Acesso negado à área de criação desta organização." />
         </div>
       </div>
     );
@@ -77,7 +78,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "2rem" }}>
             <div>
-              <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem 0" }}>Workspace do Creator</h1>
+              <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem 0" }}>Área de criação</h1>
               <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>Gerencie relatórios e dashboards desta organização</p>
             </div>
             <div style={{ display: "flex", gap: "0.75rem" }}>
@@ -159,7 +160,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
                         </span>
                       </td>
                       <td style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                        {report.myRole === "root" ? "Administrador (Root)" : report.myRole === "administrator" ? "Administrador" : report.myRole === "creator" ? "Criador" : report.myRole === "viewer" ? "Leitor" : report.myRole}
+                        {getResourceRoleLabel(report.myRole)}
                       </td>
                       <td style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
                         {new Date(report.createdAt).toLocaleDateString()}

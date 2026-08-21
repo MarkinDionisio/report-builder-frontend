@@ -7,6 +7,7 @@ import { Building2, ArrowRight, Loader2 } from "lucide-react";
 import { organizationsApi } from "../../organizations/api/organizationsApi";
 import type { Organization } from "../../organizations/types";
 import { isErr } from "../../../shared/result/result";
+import { getGlobalRoleLabel, getOrganizationRoleLabel } from "../../../shared/utils/roles";
 
 export const CreatorWorkspacePage: React.FC = () => {
   const { state } = useAuth();
@@ -32,7 +33,7 @@ export const CreatorWorkspacePage: React.FC = () => {
         if (isErr(res)) {
           setErrorMsg(res.error.detail || "Erro ao buscar organizações.");
         } else {
-          setAllowedOrgs(res.value.map(org => ({ ...org, roleLabel: user.globalRole })));
+          setAllowedOrgs(res.value.map(org => ({ ...org, roleLabel: getGlobalRoleLabel(user.globalRole) })));
         }
       } else {
         // Filter from user memberships
@@ -44,7 +45,7 @@ export const CreatorWorkspacePage: React.FC = () => {
           id: org.id, 
           name: org.name, 
           description: "", 
-          roleLabel: org.organizationRole 
+          roleLabel: getOrganizationRoleLabel(org.organizationRole)
         } as Organization & { roleLabel?: string })));
       }
       setLoading(false);
@@ -90,7 +91,7 @@ export const CreatorWorkspacePage: React.FC = () => {
       <main style={{ maxWidth: "1200px", width: "100%", margin: "2rem auto", padding: "0 1.5rem", flex: 1 }}>
         <div style={{ marginBottom: "2rem" }}>
           <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem 0", color: "var(--text-color)" }}>
-            Workspace do Creator
+            Área de criação
           </h1>
           <p style={{ color: "var(--text-secondary)", margin: 0 }}>
             Selecione uma organização para gerenciar relatórios e dashboards.

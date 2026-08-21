@@ -1,5 +1,44 @@
 import type { GlobalRole, MeResponse } from "../api/types";
 import type { OrganizationMember, OrganizationRole } from "../../features/organizations/types";
+import type { ResourceRole } from "../../features/creator/types/creatorTypes";
+
+const GLOBAL_ROLE_LABELS: Record<GlobalRole, string> = {
+  root: "Root",
+  administrator: "Administrador",
+  creator: "Criador",
+  viewer: "Leitor",
+  unassigned: "Sem papel",
+};
+
+const ORGANIZATION_ROLE_LABELS: Record<OrganizationRole, string> = {
+  administrator: "Administrador",
+  creator: "Criador",
+  viewer: "Leitor",
+};
+
+const RESOURCE_ROLE_LABELS: Record<ResourceRole, string> = {
+  root: "Root",
+  owner: "Proprietário",
+  administrator: "Administrador",
+  creator: "Criador",
+  viewer: "Leitor",
+};
+
+function unknownRoleLabel(role: string | null | undefined): string {
+  return role?.trim() || "Papel não informado";
+}
+
+export function getGlobalRoleLabel(role: GlobalRole | string | null | undefined): string {
+  return GLOBAL_ROLE_LABELS[role as GlobalRole] || unknownRoleLabel(role);
+}
+
+export function getOrganizationRoleLabel(role: OrganizationRole | string | null | undefined): string {
+  return ORGANIZATION_ROLE_LABELS[role as OrganizationRole] || unknownRoleLabel(role);
+}
+
+export function getResourceRoleLabel(role: ResourceRole | string | null | undefined): string {
+  return RESOURCE_ROLE_LABELS[role as ResourceRole] || unknownRoleLabel(role);
+}
 
 const ROLE_RANK: Record<GlobalRole | OrganizationRole, number> = {
   root: 5,

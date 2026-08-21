@@ -292,7 +292,7 @@ export const ReportSchemasPage: React.FC = () => {
             <ShieldAlert size={48} style={{ color: "var(--danger-500)", marginBottom: "1rem" }} />
             <h2>Acesso Negado</h2>
             <p style={{ color: "var(--text-secondary)", maxWidth: "500px", margin: "0 auto 1.5rem auto" }}>
-              Apenas administradores globais (<code>root</code>) possuem permissão para gerenciar os Schemas do Catálogo Global.
+              Apenas usuários Root podem gerenciar os schemas do catálogo global.
             </p>
           </div>
         </main>

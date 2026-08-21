@@ -4,11 +4,35 @@ import {
   canManageOrganization,
   assignableRoles,
   memberActions,
+  getGlobalRoleLabel,
+  getOrganizationRoleLabel,
+  getResourceRoleLabel,
 } from "./roles";
 import type { MeResponse } from "../api/types";
 import type { OrganizationMember } from "../../features/organizations/types";
 
 describe("Role Utilities", () => {
+  it("returns standardized labels for global roles", () => {
+    expect(getGlobalRoleLabel("root")).toBe("Root");
+    expect(getGlobalRoleLabel("administrator")).toBe("Administrador");
+    expect(getGlobalRoleLabel("creator")).toBe("Criador");
+    expect(getGlobalRoleLabel("viewer")).toBe("Leitor");
+    expect(getGlobalRoleLabel("unassigned")).toBe("Sem papel");
+  });
+
+  it("returns contextual labels for organization and resource roles", () => {
+    expect(getOrganizationRoleLabel("administrator")).toBe("Administrador");
+    expect(getOrganizationRoleLabel("creator")).toBe("Criador");
+    expect(getOrganizationRoleLabel("viewer")).toBe("Leitor");
+    expect(getResourceRoleLabel("owner")).toBe("Proprietário");
+    expect(getResourceRoleLabel("root")).toBe("Root");
+  });
+
+  it("keeps unknown roles visible and handles missing values", () => {
+    expect(getGlobalRoleLabel("future-role")).toBe("future-role");
+    expect(getOrganizationRoleLabel(undefined)).toBe("Papel não informado");
+  });
+
   it("should calculate effective role using cumulative hierarchy", () => {
     expect(getEffectiveRole("root", "viewer")).toBe("root");
     expect(getEffectiveRole("administrator", "viewer")).toBe("administrator");

@@ -25,7 +25,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-import { assignableRoles, canManageOrganization, memberActions } from "../../../shared/utils/roles";
+import { assignableRoles, canManageOrganization, getGlobalRoleLabel, getOrganizationRoleLabel, memberActions } from "../../../shared/utils/roles";
 
 interface MemberProfileSelectorProps {
   profiles: Profile[];
@@ -161,7 +161,7 @@ export const OrganizationMembersPage: React.FC = () => {
       setActionProblem(res.error);
     } else {
       setMembers((prev) => prev.map((m) => (m.id === member.id ? res.value : m)));
-      setSuccessMessage(`Papel de ${member.name} atualizado para ${newRole} com sucesso!`);
+      setSuccessMessage(`Papel de ${member.name} atualizado para ${getOrganizationRoleLabel(newRole)} com sucesso!`);
       setTimeout(() => setSuccessMessage(null), 4000);
 
       // If updating current user, refresh /me
@@ -188,7 +188,7 @@ export const OrganizationMembersPage: React.FC = () => {
       setMembers((prev) =>
         prev.map((m) => (m.id === member.id ? { ...m, globalRole: newRole } : m))
       );
-      setSuccessMessage(`Papel global de ${member.name} atualizado para ${newRole} com sucesso!`);
+      setSuccessMessage(`Papel global de ${member.name} atualizado para ${getGlobalRoleLabel(newRole)} com sucesso!`);
       setTimeout(() => setSuccessMessage(null), 4000);
 
       // If updating current user, refresh /me
@@ -389,8 +389,8 @@ export const OrganizationMembersPage: React.FC = () => {
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)" }}>
                     <th style={{ padding: "0.75rem 1rem" }}>Nome</th>
-                    <th style={{ padding: "0.75rem 1rem" }}>Papel Global</th>
-                    <th style={{ padding: "0.75rem 1rem" }}>Papel na Organização</th>
+                    <th style={{ padding: "0.75rem 1rem" }}>Papel global</th>
+                    <th style={{ padding: "0.75rem 1rem" }}>Papel na organização</th>
                     <th style={{ padding: "0.75rem 1rem" }}>Perfis</th>
                     <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Ações</th>
                   </tr>
@@ -415,14 +415,14 @@ export const OrganizationMembersPage: React.FC = () => {
                               >
                                 {["unassigned", "root", "administrator", "creator", "viewer"].map((gr) => (
                                   <option key={gr} value={gr} style={{ background: "#0f172a" }}>
-                                    {gr}
+                                    {getGlobalRoleLabel(gr)}
                                   </option>
                                 ))}
                               </select>
                             </div>
                           ) : (
                             <span style={{ fontSize: "0.8rem", padding: "0.2rem 0.5rem", borderRadius: "4px", background: "rgba(255,255,255,0.06)" }}>
-                              {member.globalRole}
+                              {getGlobalRoleLabel(member.globalRole)}
                             </span>
                           )}
                         </td>
@@ -438,7 +438,7 @@ export const OrganizationMembersPage: React.FC = () => {
                               >
                                 {availableRoles.map((r) => (
                                   <option key={r} value={r} style={{ background: "#0f172a" }}>
-                                    {r}
+                                    {getOrganizationRoleLabel(r)}
                                   </option>
                                 ))}
                               </select>
@@ -446,7 +446,7 @@ export const OrganizationMembersPage: React.FC = () => {
                             </div>
                           ) : (
                             <span style={{ fontWeight: 600, color: "var(--primary-500)" }}>
-                              {member.organizationRole}
+                              {getOrganizationRoleLabel(member.organizationRole)}
                             </span>
                           )}
                         </td>

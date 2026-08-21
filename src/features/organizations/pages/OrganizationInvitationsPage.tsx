@@ -19,7 +19,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-import { canManageOrganization } from "../../../shared/utils/roles";
+import { canManageOrganization, getOrganizationRoleLabel } from "../../../shared/utils/roles";
 
 export const OrganizationInvitationsPage: React.FC = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
@@ -206,7 +206,7 @@ export const OrganizationInvitationsPage: React.FC = () => {
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)" }}>
                   <th style={{ padding: "0.75rem 1rem" }}>E-mail</th>
-                  <th style={{ padding: "0.75rem 1rem" }}>Papel Atribuído</th>
+                  <th style={{ padding: "0.75rem 1rem" }}>Papel atribuído</th>
                   <th style={{ padding: "0.75rem 1rem" }}>Status</th>
                   <th style={{ padding: "0.75rem 1rem" }}>Expiração / Aceite</th>
                   <th style={{ padding: "0.75rem 1rem", textAlign: "right" }}>Ações</th>
@@ -220,7 +220,7 @@ export const OrganizationInvitationsPage: React.FC = () => {
                       <td style={{ padding: "1rem", fontWeight: 600 }}>{inv.email}</td>
                       <td style={{ padding: "1rem" }}>
                         <span style={{ fontSize: "0.8rem", padding: "0.2rem 0.5rem", borderRadius: "4px", background: "rgba(255,255,255,0.06)" }}>
-                          {inv.organizationRole}
+                          {getOrganizationRoleLabel(inv.organizationRole)}
                         </span>
                       </td>
                       <td style={{ padding: "1rem" }}>
