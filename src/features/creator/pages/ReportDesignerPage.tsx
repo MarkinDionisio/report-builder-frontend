@@ -3,11 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
-import { catalogApi } from "../../catalog/api/catalogApi";
 import { creatorApi } from "../api/creatorApi";
 import { isErr } from "../../../shared/result/result";
-import type { DataSource } from "../../catalog/types/catalogTypes";
-import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField } from "../types/creatorTypes";
+import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField, CreatorDataSourceOption } from "../types/creatorTypes";
 import { Database, Plus, X, ChevronRight, Check, Filter, ChevronDown, ArrowUpDown } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
 import { FilterRow } from "../components/FilterRow";
@@ -203,7 +201,7 @@ export const ReportDesignerPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Setup state
-  const [availableDataSources, setAvailableDataSources] = useState<DataSource[]>([]);
+  const [availableDataSources, setAvailableDataSources] = useState<CreatorDataSourceOption[]>([]);
   const [selectedDataSourceId, setSelectedDataSourceId] = useState<string>("");
   
   // Designer state
@@ -259,7 +257,7 @@ export const ReportDesignerPage: React.FC = () => {
         return;
       }
 
-      const dsRes = await catalogApi.listDataSources(organizationId);
+      const dsRes = await creatorApi.getCreatorDataSources(organizationId);
       if (isErr(dsRes)) {
         setErrorMsg(dsRes.error.detail || "Erro ao carregar fontes de dados.");
         setLoading(false);

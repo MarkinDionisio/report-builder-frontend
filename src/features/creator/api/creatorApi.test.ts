@@ -4,6 +4,14 @@ import { ok } from "../../../shared/result/result";
 import { creatorApi } from "./creatorApi";
 
 describe("creator execution API", () => {
+  it("uses the creator data-source discovery endpoint", async () => {
+    const fetchSpy = vi.spyOn(client, "apiFetch").mockResolvedValueOnce(ok(new Response(JSON.stringify([]), { status: 200, headers: { "Content-Type": "application/json" } })));
+
+    await creatorApi.getCreatorDataSources("org-1");
+
+    expect(fetchSpy).toHaveBeenCalledWith("/api/v1/organizations/org-1/report-designer/data-sources");
+  });
+
   it("sends typed execution parameters", async () => {
     const fetchSpy = vi.spyOn(client, "apiFetch").mockResolvedValueOnce(ok(new Response(JSON.stringify({ columns: [], rows: [], page: 1, pageSize: 50, rowCount: 0, durationMs: 1 }), { status: 200, headers: { "Content-Type": "application/json" } })));
     await creatorApi.executeReport("report-1", { parameters: { start: "2026-08-14T03:00:00.000Z", storeId: "store-1" }, filters: [], page: 1, pageSize: 50 });
