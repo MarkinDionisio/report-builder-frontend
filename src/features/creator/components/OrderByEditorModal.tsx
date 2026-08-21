@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { SearchableFieldSelect } from "./SearchableFieldSelect";
+import type { DateGranularity } from "../types/creatorTypes";
 
 export interface OrderByOption {
   label: string;
   fieldId: string;
   joinAlias: string;
   aggregation?: string;
+  dateGranularity?: DateGranularity;
   group?: string;
 }
 
@@ -15,6 +17,7 @@ export interface OrderByDraft {
   joinAlias?: string;
   target?: "rows";
   aggregation?: string;
+  dateGranularity?: DateGranularity;
   direction: "asc" | "desc";
 }
 
@@ -25,8 +28,8 @@ interface Props {
   onSave: (orderBy: OrderByDraft) => void;
 }
 
-const optionValue = (option: OrderByOption) => `${option.fieldId}|${option.joinAlias}|${option.aggregation || ""}`;
-const draftValue = (draft?: OrderByDraft) => draft ? `${draft.target === "rows" ? "ROWS" : draft.fieldId || ""}|${draft.joinAlias || ""}|${draft.aggregation || ""}` : "";
+const optionValue = (option: OrderByOption) => `${option.fieldId}|${option.joinAlias}|${option.aggregation || ""}|${option.dateGranularity || ""}`;
+const draftValue = (draft?: OrderByDraft) => draft ? `${draft.target === "rows" ? "ROWS" : draft.fieldId || ""}|${draft.joinAlias || ""}|${draft.aggregation || ""}|${draft.dateGranularity || ""}` : "";
 
 export function OrderByEditorModal({ orderBy, options, onClose, onSave }: Props) {
   const [fieldKey, setFieldKey] = useState(draftValue(orderBy));
@@ -35,10 +38,10 @@ export function OrderByEditorModal({ orderBy, options, onClose, onSave }: Props)
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!fieldKey) return;
-    const [fieldId, joinAlias, aggregation] = fieldKey.split("|");
+    const [fieldId, joinAlias, aggregation, dateGranularity] = fieldKey.split("|");
     onSave(fieldId === "ROWS"
       ? { target: "rows", aggregation: aggregation || "count", direction }
-      : { fieldId, ...(joinAlias ? { joinAlias } : {}), ...(aggregation ? { aggregation } : {}), direction });
+      : { fieldId, ...(joinAlias ? { joinAlias } : {}), ...(aggregation ? { aggregation } : {}), ...(dateGranularity ? { dateGranularity: dateGranularity as DateGranularity } : {}), direction });
   };
 
   return <div className="modal-backdrop filter-editor-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>

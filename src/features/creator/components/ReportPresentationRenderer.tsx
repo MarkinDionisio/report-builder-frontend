@@ -16,7 +16,8 @@ interface Props {
 
 export function ReportPresentationRenderer({ presentation = { type: "table" }, select, result, loading, page, pageSize, onPageChange, onPageSizeChange }: Props) {
   const aggregations = Object.fromEntries(select.filter((item) => item.alias).map((item) => [item.alias!, item.aggregation]));
-  if (presentation.type === "table") return <ReportResultsTable result={result} loading={loading} page={page} pageSize={pageSize} aggregationsByAlias={aggregations} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange}/>;
+  const dateGranularities = Object.fromEntries(select.filter((item) => item.alias).map((item) => [item.alias!, item.dateGranularity]));
+  if (presentation.type === "table") return <ReportResultsTable result={result} loading={loading} page={page} pageSize={pageSize} aggregationsByAlias={aggregations} dateGranularitiesByAlias={dateGranularities} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange}/>;
   if (loading && !result) return <section className="report-metric report-metric--state"><NeutralLoader/><span>Calculando indicador...</span></section>;
   if (!result) return <section className="report-metric report-metric--state"><strong>Pronto para executar</strong><span>Execute o relatório para calcular o indicador.</span></section>;
   if (result.rows.length > 1) return <section className="report-metric report-metric--error" role="alert"><strong>Não foi possível apresentar o indicador</strong><span>O relatório retornou mais de uma linha.</span></section>;

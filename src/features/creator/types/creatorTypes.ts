@@ -68,7 +68,10 @@ export interface FieldReference {
   fieldId?: string;
   joinAlias?: string;
   target?: "rows";
+  dateGranularity?: DateGranularity;
 }
+
+export type DateGranularity = "day" | "month" | "year";
 
 export interface SelectItem extends FieldReference {
   alias?: string;

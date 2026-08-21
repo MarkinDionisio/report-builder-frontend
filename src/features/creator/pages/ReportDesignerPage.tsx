@@ -5,7 +5,7 @@ import { Alert, KNOWN_ERROR_CODES } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { creatorApi } from "../api/creatorApi";
 import { isErr } from "../../../shared/result/result";
-import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField, CreatorDataSourceOption, ReportDetail } from "../types/creatorTypes";
+import type { ReportContentV1, DesignerCatalog, DesignerSchema, DesignerField, CreatorDataSourceOption, DateGranularity, ReportDetail } from "../types/creatorTypes";
 import { Database, Plus, X, ChevronRight, Check, Filter, ChevronDown, ArrowUpDown } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
 import { FilterRow } from "../components/FilterRow";
@@ -53,7 +53,7 @@ function synchronizeGroupBy(select: any[], catalog: DesignerCatalog | null): any
 
   for (const item of select) {
     if (item.aggregation) continue;
-    const key = `${item.joinAlias ?? ""}:${item.fieldId}`;
+    const key = `${item.joinAlias ?? ""}:${item.fieldId}:${item.dateGranularity ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);
     
@@ -67,7 +67,7 @@ function synchronizeGroupBy(select: any[], catalog: DesignerCatalog | null): any
     }
     
     if (isGroupable) {
-      groupBy.push({ fieldId: item.fieldId, joinAlias: item.joinAlias });
+      groupBy.push({ fieldId: item.fieldId, joinAlias: item.joinAlias, ...(item.dateGranularity ? { dateGranularity: item.dateGranularity } : {}) });
     }
   }
 
@@ -81,7 +81,7 @@ interface OrderByCompatibility {
 
 function referenceKey(reference: any): string {
   if (reference.target === "rows") return "TARGET_ROWS";
-  return `${reference.joinAlias?.trim() ?? ""}:${reference.fieldId}`;
+  return `${reference.joinAlias?.trim() ?? ""}:${reference.fieldId}:${reference.dateGranularity ?? ""}`;
 }
 
 function validateOrderBy(
@@ -471,12 +471,12 @@ export const ReportDesignerPage: React.FC = () => {
   };
 
   const getFieldDetails = (fieldId?: string, target?: string) => {
-    if (target === "rows") return { schemaName: "Sistema", fieldName: "Linhas" };
+    if (target === "rows") return { schemaName: "Sistema", fieldName: "Linhas", field: undefined };
     for (const schema of catalog?.schemas || []) {
       const field = schema.fields.find(f => f.id === fieldId);
-      if (field) return { schemaName: schema.name, fieldName: field.name };
+      if (field) return { schemaName: schema.name, fieldName: field.name, field };
     }
-    return { schemaName: "Unknown", fieldName: "Unknown" };
+    return { schemaName: "Unknown", fieldName: "Unknown", field: undefined };
   };
 
   const handleSaveReport = async () => {
@@ -835,6 +835,25 @@ export const ReportDesignerPage: React.FC = () => {
                           }} />
                           {aliasError && <small role="alert" style={{ display: "block", color: "var(--danger-500)", marginTop: ".25rem" }}>{aliasError}</small>}
                         </div>
+                        {!col.aggregation && (details.field?.type === "date" || details.field?.type === "datetime") && details.field.groupable && <div style={{ marginTop: ".65rem", maxWidth: "340px" }}>
+                          <label className="form-label" htmlFor={`date-granularity-${index}`}>Agrupar data por</label>
+                          <select id={`date-granularity-${index}`} className="form-input" value={col.dateGranularity || ""} onChange={(event) => {
+                            const dateGranularity = event.target.value as DateGranularity | "";
+                            const select = reportContent.dataset.select.map((item, itemIndex) => itemIndex === index
+                              ? { ...item, dateGranularity: dateGranularity || undefined }
+                              : item);
+                            const orderBy = reportContent.dataset.orderBy?.map((item) => !item.aggregation && item.fieldId === col.fieldId && (item.joinAlias || "") === (col.joinAlias || "")
+                              ? { ...item, dateGranularity: dateGranularity || undefined }
+                              : item);
+                            setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, select, orderBy } });
+                            setPreviewData(null);
+                          }}>
+                            <option value="">Data e hora original</option>
+                            <option value="day">Dia</option>
+                            <option value="month">Mês</option>
+                            <option value="year">Ano</option>
+                          </select>
+                        </div>}
                       </div>
                       <button className="btn-icon" style={{ padding: "0.3rem", color: "var(--danger-500)" }} title="Remover" onClick={() => {
                         const newContent = { ...reportContent };
@@ -877,7 +896,7 @@ export const ReportDesignerPage: React.FC = () => {
     const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
     
     const filterFieldOptions: { label: string; fieldId: string; joinAlias: string; group: string }[] = [];
-    const orderByFieldOptions: { label: string; fieldId: string; joinAlias: string; aggregation?: string; group: string }[] = [];
+    const orderByFieldOptions: { label: string; fieldId: string; joinAlias: string; aggregation?: string; dateGranularity?: DateGranularity; group: string }[] = [];
 
     activeSchemas.forEach(s => {
       let joinAlias = "";
@@ -898,14 +917,16 @@ export const ReportDesignerPage: React.FC = () => {
           });
         }
         if (f.sortable !== false) {
-          const item = { fieldId: f.id, joinAlias };
+          const selectedDimension = reportContent?.dataset.select?.find((selected) => !selected.aggregation && selected.fieldId === f.id && (selected.joinAlias || "") === joinAlias);
+          const item = { fieldId: f.id, joinAlias, dateGranularity: selectedDimension?.dateGranularity };
           const currentGroupBy = synchronizeGroupBy(reportContent?.dataset.select || [], catalog);
           const compat = validateOrderBy(item, reportContent?.dataset.select || [], currentGroupBy, f);
           if (compat.compatible) {
             orderByFieldOptions.push({
-              label: `${f.name} (${s.name}${joinAlias ? ` - ${joinAlias}` : ''})`,
+              label: `${selectedDimension?.dateGranularity ? `${{ day: "Dia", month: "Mês", year: "Ano" }[selectedDimension.dateGranularity]}: ` : ""}${f.name} (${s.name}${joinAlias ? ` - ${joinAlias}` : ''})`,
               fieldId: f.id,
               joinAlias,
+              ...(selectedDimension?.dateGranularity ? { dateGranularity: selectedDimension.dateGranularity } : {}),
               group: s.name
             });
           }

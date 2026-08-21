@@ -18,7 +18,7 @@ interface Props {
 
 export function OrderBySummaryRow({ index, orderBy, options, warning, onEdit, onRemove, onDragStart, onDragOver, onDrop, isDragOver, dragPosition }: Props) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const selected = options.find((option) => option.fieldId === (orderBy.target === "rows" ? "ROWS" : orderBy.fieldId) && option.joinAlias === (orderBy.joinAlias || "") && (option.aggregation || "") === (orderBy.aggregation || ""));
+  const selected = options.find((option) => option.fieldId === (orderBy.target === "rows" ? "ROWS" : orderBy.fieldId) && option.joinAlias === (orderBy.joinAlias || "") && (option.aggregation || "") === (orderBy.aggregation || "") && (option.dateGranularity || "") === (orderBy.dateGranularity || ""));
   const fieldName = selected?.label || "Campo indisponível";
   if (confirmingDelete) return <div className="filter-summary filter-summary--confirm"><span>Remover a ordenação “{fieldName}”?</span><div className="filter-summary__actions"><button type="button" className="btn btn-secondary" onClick={() => setConfirmingDelete(false)}>Cancelar</button><button type="button" className="btn filter-summary__danger" onClick={() => onRemove(index)}>Remover</button></div></div>;
 

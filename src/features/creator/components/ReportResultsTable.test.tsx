@@ -30,6 +30,22 @@ describe("ReportResultsTable", () => {
     expect(screen.queryByText("1.234,00")).not.toBeInTheDocument();
   });
 
+  it("formats grouped dates as day, month and year", () => {
+    const groupedResult = {
+      ...result,
+      columns: [
+        { alias: "Dia", type: "date", fieldId: "date", joinAlias: null },
+        { alias: "Mês", type: "date", fieldId: "date", joinAlias: null },
+        { alias: "Ano", type: "date", fieldId: "date", joinAlias: null },
+      ],
+      rows: [{ Dia: "2026-08-14", Mês: "2026-08-01", Ano: "2026-01-01" }],
+    };
+    render(<ReportResultsTable result={groupedResult} loading={false} page={1} pageSize={50} dateGranularitiesByAlias={{ Dia: "day", Mês: "month", Ano: "year" }} onPageChange={vi.fn()} onPageSizeChange={vi.fn()} />);
+    expect(screen.getByText("14/08/2026")).toBeInTheDocument();
+    expect(screen.getByText("08/2026")).toBeInTheDocument();
+    expect(screen.getByText("2026")).toBeInTheDocument();
+  });
+
   it("shows loading, ready and empty states", () => {
     const props = { page: 1, pageSize: 50, onPageChange: vi.fn(), onPageSizeChange: vi.fn() };
     const { rerender } = render(<ReportResultsTable {...props} result={null} loading />);
