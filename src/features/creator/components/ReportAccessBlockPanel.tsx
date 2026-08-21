@@ -17,8 +17,8 @@ function fieldBlockMessage(reason: string, capabilities: string[]) {
 }
 
 function schemaBlockMessage(reason: string) {
-  if (reason === "schema_grant_missing") return "acesso ao schema não concedido";
-  if (reason === "schema_unavailable") return "schema indisponível";
+  if (reason === "schema_grant_missing") return "acesso ao esquema não concedido";
+  if (reason === "schema_unavailable") return "esquema indisponível";
   return "um ou mais campos não estão disponíveis";
 }
 
@@ -31,13 +31,13 @@ interface ReportAccessBlockPanelProps {
 export function ReportAccessBlockPanel({
   blockedSchemas,
   title = "Este relatório não pode ser executado",
-  description = "Solicite a um administrador acesso aos schemas e campos abaixo.",
+  description = "Solicite ao administrador da organização acesso aos esquemas, campos e capacidades abaixo.",
 }: ReportAccessBlockPanelProps) {
   return <section className="report-execution-block" role="alert" aria-labelledby="report-access-block-title">
     <div className="report-execution-block__header"><AlertTriangle size={20}/><div><strong id="report-access-block-title">{title}</strong><span>{description}</span></div></div>
-    <ul className="report-execution-block__schemas">{blockedSchemas.map((schema) => <li key={schema.schemaId}>
-      <div><strong>{schema.schemaName || "Schema sem nome"}</strong><code>{schema.schemaId}</code><span>{schemaBlockMessage(schema.reason)}</span></div>
+    {blockedSchemas.length === 0 ? <p className="report-execution-block__empty">O acesso ao relatório está bloqueado. O administrador da organização pode revisar suas permissões.</p> : <ul className="report-execution-block__schemas">{blockedSchemas.map((schema) => <li key={schema.schemaId}>
+      <div><strong>{schema.schemaName || "Esquema sem nome"}</strong><code>{schema.schemaId}</code><span>{schemaBlockMessage(schema.reason)}</span></div>
       {schema.blockedFields.length > 0 && <ul>{schema.blockedFields.map((field) => <li key={field.fieldId}><span><strong>{field.fieldName || "Campo sem nome"}</strong> — {fieldBlockMessage(field.reason, field.missingCapabilities)}</span><code>{field.fieldId}</code></li>)}</ul>}
-    </li>)}</ul>
+    </li>)}</ul>}
   </section>;
 }

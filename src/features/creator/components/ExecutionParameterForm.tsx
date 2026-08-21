@@ -27,7 +27,7 @@ export function ExecutionParameterForm({ parameters, values, onChange, where, re
       const resolvedEnd = end ? resolvedParameters?.[end] : undefined;
       return <div key={`${period.ui?.label || "period"}-${index}`} style={{ fontSize: ".85rem" }}>
         <strong>{period.ui?.label || "Período"}</strong>
-        <div style={{ color: "var(--text-muted)", marginTop: ".2rem" }}>{resolvedStart !== undefined && resolvedEnd !== undefined ? `${formatResolvedValue(resolvedStart)} até ${formatResolvedValue(resolvedEnd)} (fim não incluído)` : "O período será calculado automaticamente no fuso da organização."}</div>
+        <div style={{ color: "var(--text-muted)", marginTop: ".2rem" }}>{resolvedStart !== undefined && resolvedEnd !== undefined ? formatResolvedPeriod(resolvedStart, resolvedEnd) : "O período será calculado automaticamente no fuso da organização."}</div>
       </div>;
     })}</div>}
     {periods.length === 0 && editable.length === 0 && <p style={{ color: "var(--text-muted)", fontSize: ".85rem", margin: 0 }}>Variáveis automáticas serão resolvidas pelo backend no fuso da organização.</p>}
@@ -54,10 +54,22 @@ function getParameterName(value: unknown): string | undefined {
   return value && typeof value === "object" && !Array.isArray(value) && "parameter" in value ? String((value as { parameter: string }).parameter) : undefined;
 }
 
-function formatResolvedValue(value: unknown): string {
-  if (typeof value !== "string") return String(value);
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(parsed);
+function formatResolvedPeriod(startValue: unknown, exclusiveEndValue: unknown): string {
+  if (typeof startValue !== "string" || typeof exclusiveEndValue !== "string") return `${String(startValue)} a ${String(exclusiveEndValue)}`;
+  const start = calendarDate(startValue);
+  const exclusiveEnd = calendarDate(exclusiveEndValue);
+  if (!start || !exclusiveEnd || exclusiveEnd <= start) return `${startValue} a ${exclusiveEndValue}`;
+  const inclusiveEnd = new Date(exclusiveEnd.getTime() - 86_400_000);
+  const formatter = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeZone: "UTC" });
+  const startText = formatter.format(start);
+  const endText = formatter.format(inclusiveEnd);
+  return startText === endText ? startText : `De ${startText} a ${endText}`;
+}
+
+function calendarDate(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
 }
 
 function humanize(name: string): string { return name.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()); }

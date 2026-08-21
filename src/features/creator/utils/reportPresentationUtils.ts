@@ -10,7 +10,7 @@ export function canUseMetric(select: SelectItem[], groupBy: unknown[] = []): boo
 
 export function validateReportPresentation(content: ReportContentV1, presentation: ReportPresentation = content.presentation || { type: "table" }): string | null {
   if (presentation.type === "table") return null;
-  if (!canUseMetric(content.dataset.select, content.dataset.groupBy || [])) return "O indicador exige um relatório sem agrupamento e apenas com colunas agregadas.";
+  if (!canUseMetric(content.dataset.select, content.dataset.groupBy || [])) return "Para usar um indicador, deixe apenas uma coluna com cálculo, como soma, média ou contagem. Remova as demais colunas selecionadas.";
   if (!aggregatedColumns(content.dataset.select).some((item) => item.alias === presentation.valueColumnAlias)) return "Selecione uma coluna agregada válida para o indicador.";
   return null;
 }

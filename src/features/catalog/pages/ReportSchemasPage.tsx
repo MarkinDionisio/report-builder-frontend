@@ -28,6 +28,8 @@ import {
   Layers,
   Search,
 } from "lucide-react";
+import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
+import { matchesTextSearch } from "../../../shared/utils/textSearch";
 
 export const ReportSchemasPage: React.FC = () => {
   const { state, refreshUser } = useAuth();
@@ -43,6 +45,8 @@ export const ReportSchemasPage: React.FC = () => {
   const [selectedOrgId, setSelectedOrgId] = useState<string>("");
   const [selectedDsId, setSelectedDsId] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [matchCase, setMatchCase] = useState(false);
+  const [exactMatch, setExactMatch] = useState(false);
 
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingDataSources, setLoadingDataSources] = useState(false);
@@ -299,10 +303,10 @@ export const ReportSchemasPage: React.FC = () => {
   // Filter schemas
   const filteredSchemas = schemas.filter((schema) => {
     if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    const publicNameMatch = schema.publicName.toLowerCase().includes(term);
-    const descMatch = schema.description?.toLowerCase().includes(term);
-    const internalMatch = `${schema.internalSchemaName}.${schema.internalObjectName}`.toLowerCase().includes(term);
+    const options = { matchCase, exactMatch };
+    const publicNameMatch = matchesTextSearch(schema.publicName, searchTerm, options);
+    const descMatch = matchesTextSearch(schema.description, searchTerm, options);
+    const internalMatch = matchesTextSearch(`${schema.internalSchemaName}.${schema.internalObjectName}`, searchTerm, options);
     return publicNameMatch || descMatch || internalMatch;
   });
 
@@ -442,11 +446,8 @@ export const ReportSchemasPage: React.FC = () => {
         ) : (
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
             <div style={{ background: "var(--surface-color)", padding: "0.85rem 1.25rem", borderBottom: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-              <div style={{ fontSize: "0.9rem", color: "var(--text-secondary)" }}>
-                Schemas do DataSource <strong>{currentDs?.name}</strong> (Organização: <strong>{currentOrg?.name}</strong>)
-              </div>
               <div style={{ display: "flex", gap: "1rem", alignItems: "center", flex: "1", justifyContent: "flex-end", minWidth: "300px" }}>
-                <div style={{ position: "relative", width: "100%", maxWidth: "350px" }}>
+                <div className="search-with-options" style={{ width: "100%", maxWidth: "350px" }}><div style={{ position: "relative" }}>
                   <Search size={16} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
                   <input
                     type="text"
@@ -465,7 +466,7 @@ export const ReportSchemasPage: React.FC = () => {
                       <X size={16} />
                     </button>
                   )}
-                </div>
+                </div><SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch}/></div>
                 <span className="badge badge-info" style={{ whiteSpace: "nowrap" }}>
                   {filteredSchemas.length} {filteredSchemas.length === 1 ? "Schema" : "Schemas"}
                 </span>

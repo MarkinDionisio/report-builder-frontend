@@ -51,7 +51,7 @@ test.describe("E2E - Execução do relatório", () => {
     await page.goto("/reports/blocked-report/run");
 
     await expect(page.getByRole("heading", { name: "Relatório restrito" })).toBeVisible();
-    await expect(page.getByText("Este relatório não pode ser executado")).toBeVisible();
+    await expect(page.getByText("Execução bloqueada", { exact: true })).toBeVisible();
     await expect(page.getByText("Pedidos")).toBeVisible();
     await expect(page.getByText(/permissões ausentes: filtro, agregação/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Executar relatório" })).toBeDisabled();

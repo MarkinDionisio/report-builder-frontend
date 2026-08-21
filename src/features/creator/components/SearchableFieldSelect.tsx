@@ -6,6 +6,7 @@ export interface FieldOption {
   fieldId: string;
   joinAlias: string;
   group?: string;
+  value?: string;
 }
 
 interface SearchableFieldSelectProps {
@@ -25,7 +26,7 @@ export const SearchableFieldSelect: React.FC<SearchableFieldSelectProps> = ({
   options,
   value,
   onChange,
-  placeholder = "Select a field...",
+  placeholder = "Selecione um campo...",
   style,
   inlineMenu = false,
 }) => {
@@ -55,7 +56,7 @@ export const SearchableFieldSelect: React.FC<SearchableFieldSelectProps> = ({
 
   // Find the currently selected option's label
   const selectedOption = options.find(
-    (opt) => `${opt.fieldId}|${opt.joinAlias}` === value
+    (opt) => (opt.value ?? `${opt.fieldId}|${opt.joinAlias}`) === value
   );
   const displayLabel = selectedOption?.label || placeholder;
 
@@ -76,7 +77,7 @@ export const SearchableFieldSelect: React.FC<SearchableFieldSelectProps> = ({
   });
 
   const handleSelect = (opt: FieldOption) => {
-    onChange(`${opt.fieldId}|${opt.joinAlias}`);
+    onChange(opt.value ?? `${opt.fieldId}|${opt.joinAlias}`);
     setIsOpen(false);
     setSearch("");
   };
@@ -165,7 +166,7 @@ export const SearchableFieldSelect: React.FC<SearchableFieldSelectProps> = ({
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Search field..."
+                placeholder="Buscar campo..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="form-input"
@@ -189,7 +190,7 @@ export const SearchableFieldSelect: React.FC<SearchableFieldSelectProps> = ({
                   fontSize: "0.85rem",
                 }}
               >
-                No fields found.
+                Nenhum campo encontrado.
               </div>
             ) : (
               Array.from(groups.entries()).map(([groupName, groupOptions]) => (
@@ -213,7 +214,7 @@ export const SearchableFieldSelect: React.FC<SearchableFieldSelectProps> = ({
                   </div>
                   {/* Group items */}
                   {groupOptions.map((opt) => {
-                    const optValue = `${opt.fieldId}|${opt.joinAlias}`;
+                    const optValue = opt.value ?? `${opt.fieldId}|${opt.joinAlias}`;
                     const isSelected = optValue === value;
                     return (
                       <div

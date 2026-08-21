@@ -24,8 +24,18 @@ describe("ExecutionParameterForm", () => {
       where={{ operator: "and", conditions: [{ operator: "and", ui: { kind: "relativePeriod", preset: "today", label: "Período de vendas" }, conditions: [{ fieldId: "sale-date", operator: "gte", value: { parameter: "start" } }, { fieldId: "sale-date", operator: "lt", value: { parameter: "end" } }] }] }}
       resolvedParameters={{ start: "2026-08-14T03:00:00.000Z", end: "2026-08-15T03:00:00.000Z" }} values={{}} onChange={vi.fn()} />);
     expect(screen.getByText("Período de vendas")).toBeInTheDocument();
-    expect(screen.getByText(/fim não incluído/)).toBeInTheDocument();
+    expect(screen.getByText("14/08/2026")).toBeInTheDocument();
+    expect(screen.queryByText(/fim não incluído/)).not.toBeInTheDocument();
     expect(screen.queryByText("start")).not.toBeInTheDocument();
+  });
+
+  it("shows a full-year period without technical midnight boundaries", () => {
+    render(<ExecutionParameterForm
+      parameters={[{ name: "start", type: "datetime", source: "system", variable: "startOfYear" }, { name: "end", type: "datetime", source: "system", variable: "startOfNextYear" }]}
+      where={{ operator: "and", ui: { kind: "relativePeriod", preset: "currentYear", label: "Ano de referência" }, conditions: [{ fieldId: "sale-date", operator: "gte", value: { parameter: "start" } }, { fieldId: "sale-date", operator: "lt", value: { parameter: "end" } }] }}
+      resolvedParameters={{ start: "2026-01-01T03:00:00.000Z", end: "2027-01-01T03:00:00.000Z" }} values={{}} onChange={vi.fn()} />);
+    expect(screen.getByText("De 01/01/2026 a 31/12/2026")).toBeInTheDocument();
+    expect(screen.queryByText(/00:00/)).not.toBeInTheDocument();
   });
 
   it("shows the automatic-time-zone message before execution", () => {

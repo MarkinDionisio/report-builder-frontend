@@ -35,16 +35,8 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        padding: "1.5rem",
-      }}
-    >
-      <div className="glass-card animate-fade-in" style={{ maxWidth: "440px" }}>
+    <div className="auth-shell">
+      <div className="auth-card glass-card animate-fade-in">
         <div style={{ marginBottom: "2rem", textAlign: "center" }}>
           <div
             style={{

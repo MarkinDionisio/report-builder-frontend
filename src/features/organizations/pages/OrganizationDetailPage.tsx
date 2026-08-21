@@ -16,6 +16,8 @@ import { canManageOrganization } from "../../../shared/utils/roles";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
+import { matchesTextSearch } from "../../../shared/utils/textSearch";
 import { DataSourceModal } from "../../catalog/components/DataSourceModal";
 import { IntrospectionModal } from "../../catalog/components/IntrospectionModal";
 import { BootstrapModal } from "../../catalog/components/BootstrapModal";
@@ -60,6 +62,8 @@ export const OrganizationDetailPage: React.FC = () => {
   const initialExpandedDsId = searchParams.get("ds");
   const [expandedDsId, setExpandedDsId] = useState<string | null>(initialExpandedDsId);
   const [schemaSearchTerms, setSchemaSearchTerms] = useState<Record<string, string>>({});
+  const [schemaSearchMatchCase, setSchemaSearchMatchCase] = useState(false);
+  const [schemaSearchExactMatch, setSchemaSearchExactMatch] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -502,25 +506,34 @@ export const OrganizationDetailPage: React.FC = () => {
                               Schemas Catalogados do DataSource ({dsSchemas.length})
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                              <div style={{ position: "relative" }}>
-                                <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
-                                <input
-                                  type="text"
-                                  className="form-input"
-                                  placeholder="Buscar schema..."
-                                  style={{ paddingLeft: "30px", paddingRight: "30px", fontSize: "0.8rem", height: "30px", width: "200px" }}
-                                  value={schemaSearchTerms[ds.id] || ""}
-                                  onChange={(e) => setSchemaSearchTerms(prev => ({ ...prev, [ds.id]: e.target.value }))}
+                              <div className="search-with-options">
+                                <div style={{ position: "relative" }}>
+                                  <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
+                                  <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Buscar schema..."
+                                    style={{ paddingLeft: "30px", paddingRight: "30px", fontSize: "0.8rem", height: "30px", width: "200px" }}
+                                    value={schemaSearchTerms[ds.id] || ""}
+                                    onChange={(e) => setSchemaSearchTerms(prev => ({ ...prev, [ds.id]: e.target.value }))}
+                                  />
+                                  {schemaSearchTerms[ds.id] && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSchemaSearchTerms(prev => ({ ...prev, [ds.id]: "" }))}
+                                      style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
+                                      title="Limpar busca"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  )}
+                                </div>
+                                <SearchMatchOptions
+                                  matchCase={schemaSearchMatchCase}
+                                  exactMatch={schemaSearchExactMatch}
+                                  onMatchCaseChange={setSchemaSearchMatchCase}
+                                  onExactMatchChange={setSchemaSearchExactMatch}
                                 />
-                                {schemaSearchTerms[ds.id] && (
-                                  <button
-                                    onClick={() => setSchemaSearchTerms(prev => ({ ...prev, [ds.id]: "" }))}
-                                    style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
-                                    title="Limpar busca"
-                                  >
-                                    <X size={14} />
-                                  </button>
-                                )}
                               </div>
                               {isRoot && (
                                 <button
@@ -535,11 +548,12 @@ export const OrganizationDetailPage: React.FC = () => {
                           </div>
 
                           {(() => {
-                            const st = schemaSearchTerms[ds.id]?.toLowerCase() || "";
-                            const filteredSchemas = dsSchemas.filter(s => 
-                              s.publicName.toLowerCase().includes(st) || 
-                              s.internalSchemaName.toLowerCase().includes(st) || 
-                              s.internalObjectName.toLowerCase().includes(st)
+                            const st = schemaSearchTerms[ds.id] || "";
+                            const searchOptions = { matchCase: schemaSearchMatchCase, exactMatch: schemaSearchExactMatch };
+                            const filteredSchemas = dsSchemas.filter(s =>
+                              matchesTextSearch(s.publicName, st, searchOptions) ||
+                              matchesTextSearch(s.internalSchemaName, st, searchOptions) ||
+                              matchesTextSearch(s.internalObjectName, st, searchOptions)
                             );
 
                             if (filteredSchemas.length === 0) {

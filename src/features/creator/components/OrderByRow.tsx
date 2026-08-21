@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { GripVertical, X, ArrowUp, ArrowDown } from "lucide-react";
+import { SearchableFieldSelect } from "./SearchableFieldSelect";
 
 interface OrderByItem {
   fieldId?: string;
@@ -17,7 +18,7 @@ interface OrderByCompatibility {
 interface OrderByRowProps {
   index: number;
   orderBy: OrderByItem;
-  fieldOptions: Array<{ label: string; fieldId: string; joinAlias: string; aggregation?: string }>;
+  fieldOptions: Array<{ label: string; fieldId: string; joinAlias: string; aggregation?: string; group?: string }>;
   compat: OrderByCompatibility;
   backendWarning?: { message: string } | null;
   onUpdate: (index: number, key: string, value: any) => void;
@@ -185,25 +186,13 @@ export const OrderByRow: React.FC<OrderByRowProps> = ({
           </div>
 
           {/* Field selector */}
-          <select
-            className="form-input"
-            style={{
-              flex: 2,
-              padding: "0.5rem",
-              borderColor: hasWarning ? "var(--warning-500)" : undefined,
-            }}
-            value={`${(o as any).target === "rows" ? "ROWS" : o.fieldId}|${o.joinAlias || ""}|${o.aggregation || ""}`}
-            onChange={(e) => onUpdate(index, "field", e.target.value)}
-          >
-            {fieldOptions.map((opt: any) => (
-              <option
-                key={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`}
-                value={`${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}`}
-              >
-                {opt.label}
-              </option>
-            ))}
-          </select>
+          <SearchableFieldSelect
+            options={fieldOptions.map((opt) => ({ ...opt, value: `${opt.fieldId}|${opt.joinAlias}|${opt.aggregation || ""}` }))}
+            value={`${o.target === "rows" ? "ROWS" : o.fieldId}|${o.joinAlias || ""}|${o.aggregation || ""}`}
+            onChange={(value) => onUpdate(index, "field", value)}
+            placeholder="Selecione o campo para ordenar..."
+            style={{ flex: 2, minWidth: 0, ...(hasWarning ? { outline: "1px solid var(--warning-500)", borderRadius: "8px" } : {}) }}
+          />
 
           {/* Direction toggle */}
           <button

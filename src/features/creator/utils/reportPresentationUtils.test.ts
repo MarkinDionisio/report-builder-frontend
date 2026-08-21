@@ -12,4 +12,8 @@ describe("reportPresentationUtils", () => {
     expect(canUseMetric([{ fieldId: "total", alias: "Total", aggregation: "sum" }], [{ fieldId: "group" }])).toBe(false);
     expect(validateReportPresentation(content([{ fieldId: "total", alias: "Total", aggregation: "sum" }]), { type: "metric", valueColumnAlias: "Missing" })).toMatch(/coluna agregada válida/);
   });
+  it("explains metric requirements without technical grouping language", () => {
+    expect(validateReportPresentation(content([{ fieldId: "name", alias: "Nome" }]), { type: "metric", valueColumnAlias: "Nome" }))
+      .toBe("Para usar um indicador, deixe apenas uma coluna com cálculo, como soma, média ou contagem. Remova as demais colunas selecionadas.");
+  });
 });

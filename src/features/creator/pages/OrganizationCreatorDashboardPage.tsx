@@ -73,7 +73,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
       
-      <header style={{ background: "var(--surface-color)", borderBottom: "1px solid var(--border-color)", padding: "2rem 1.5rem 0 1.5rem" }}>
+      <header className="creator-workspace-header" style={{ background: "var(--surface-color)", borderBottom: "1px solid var(--border-color)", padding: "2rem 1.5rem 0 1.5rem" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "2rem" }}>
             <div>

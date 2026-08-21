@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import { Navbar } from "../../../shared/components/Navbar";
@@ -21,9 +22,76 @@ import {
   Trash2,
   Mail,
   Check,
+  ChevronDown,
 } from "lucide-react";
 
 import { assignableRoles, canManageOrganization, memberActions } from "../../../shared/utils/roles";
+
+interface MemberProfileSelectorProps {
+  profiles: Profile[];
+  selectedIds: string[];
+  disabled: boolean;
+  organizationId: string;
+  onToggle: (profileId: string, checked: boolean) => void;
+}
+
+const MemberProfileSelector: React.FC<MemberProfileSelectorProps> = ({ profiles, selectedIds, disabled, organizationId, onToggle }) => {
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 300, maxHeight: 280 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const gap = 8;
+    const horizontalMargin = 12;
+    const desiredHeight = Math.min(320, 86 + Math.max(profiles.length, 1) * 52);
+    const spaceBelow = window.innerHeight - rect.bottom - gap - horizontalMargin;
+    const spaceAbove = rect.top - gap - horizontalMargin;
+    const placeAbove = spaceBelow < Math.min(desiredHeight, 220) && spaceAbove > spaceBelow;
+    const maxHeight = Math.max(150, Math.min(desiredHeight, placeAbove ? spaceAbove : spaceBelow));
+    const width = Math.min(340, window.innerWidth - horizontalMargin * 2);
+    const left = Math.max(horizontalMargin, Math.min(rect.left, window.innerWidth - width - horizontalMargin));
+    const top = placeAbove ? Math.max(horizontalMargin, rect.top - maxHeight - gap) : rect.bottom + gap;
+    setPosition({ top, left, width, maxHeight });
+  }, [profiles.length]);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") { setOpen(false); triggerRef.current?.focus(); } };
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open, updatePosition]);
+
+  return <div className="profile-selector">
+    <button ref={triggerRef} type="button" className="profile-selector__trigger" disabled={disabled} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <span><strong>Selecionar perfis</strong><small>{selectedIds.length} selecionado(s)</small></span><ChevronDown size={16}/>
+    </button>
+    {open && createPortal(<div ref={menuRef} className="profile-selector__popover" role="dialog" aria-label="Selecionar perfis do membro" style={{ top: position.top, left: position.left, width: position.width, maxHeight: position.maxHeight }}>
+      <div className="profile-selector__menu-header"><strong>Perfis disponíveis</strong><small>Marque um ou mais perfis para este membro.</small></div>
+      <div className="profile-selector__options">{profiles.map((profile) => <label key={profile.id} className="profile-selector__option">
+        <input type="checkbox" checked={selectedIds.includes(profile.id)} disabled={disabled} onChange={(event) => onToggle(profile.id, event.target.checked)}/>
+        <span><strong>{profile.name}</strong>{profile.description && <small>{profile.description}</small>}</span>
+      </label>)}</div>
+      {profiles.length === 0 && <div className="profile-selector__empty"><span>Nenhum perfil criado.</span><Link to={`/organizations/${organizationId}/profiles`}>Criar perfil</Link></div>}
+    </div>, document.body)}
+  </div>;
+};
 
 export const OrganizationMembersPage: React.FC = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
@@ -316,12 +384,11 @@ export const OrganizationMembersPage: React.FC = () => {
           </div>
         ) : (
           <div className="glass-card" style={{ padding: "1.5rem" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
+            <div className="members-table-scroller">
+              <table className="members-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)" }}>
                     <th style={{ padding: "0.75rem 1rem" }}>Nome</th>
-                    <th style={{ padding: "0.75rem 1rem" }}>E-mail</th>
                     <th style={{ padding: "0.75rem 1rem" }}>Papel Global</th>
                     <th style={{ padding: "0.75rem 1rem" }}>Papel na Organização</th>
                     <th style={{ padding: "0.75rem 1rem" }}>Perfis</th>
@@ -335,9 +402,8 @@ export const OrganizationMembersPage: React.FC = () => {
 
                     return (
                       <tr key={member.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                        <td style={{ padding: "1rem", fontWeight: 600 }}>{member.name}</td>
-                        <td style={{ padding: "1rem", color: "var(--text-secondary)" }}>{member.email}</td>
-                        <td style={{ padding: "1rem" }}>
+                        <td data-label="Membro" style={{ padding: "1rem" }}><span className="member-identity"><strong>{member.name}</strong><small>{member.email}</small></span></td>
+                        <td data-label="Papel global" style={{ padding: "1rem" }}>
                           {me?.globalRole === "root" ? (
                             <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
                               <select
@@ -360,7 +426,7 @@ export const OrganizationMembersPage: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: "1rem" }}>
+                        <td data-label="Papel na organização" style={{ padding: "1rem" }}>
                           {actions.canChangeRole ? (
                             <div style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
                               <select
@@ -384,69 +450,16 @@ export const OrganizationMembersPage: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: "1rem" }}>
+                        <td data-label="Perfis" style={{ padding: "1rem" }}>
                           {actions.canChangeRole ? (
-                            <details style={{ position: "relative" }}>
-                              <summary
-                                className="input-field"
-                                style={{
-                                  padding: "0.35rem 0.6rem",
-                                  fontSize: "0.85rem",
-                                  cursor: "pointer",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  gap: "0.5rem",
-                                  listStyle: "none",
-                                }}
-                              >
-                                {member.profileIds?.length || 0} perfis selecionados
-                              </summary>
-                              <div
-                                style={{
-                                  position: "absolute",
-                                  top: "100%",
-                                  left: 0,
-                                  marginTop: "0.25rem",
-                                  background: "#0f172a",
-                                  border: "1px solid var(--border-color)",
-                                  borderRadius: "6px",
-                                  padding: "0.5rem",
-                                  zIndex: 10,
-                                  minWidth: "200px",
-                                  boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "0.4rem",
-                                  maxHeight: "200px",
-                                  overflowY: "auto",
-                                }}
-                              >
-                                {profiles.map((p) => {
-                                  const isChecked = (member.profileIds || []).includes(p.id);
-                                  return (
-                                    <label key={p.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", cursor: "pointer" }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        disabled={isUpdating}
-                                        onChange={(e) => handleProfileToggle(member, p.id, e.target.checked)}
-                                      />
-                                      <span style={{ color: "var(--text-primary)" }}>{p.name}</span>
-                                    </label>
-                                  );
-                                })}
-                                {profiles.length === 0 && (
-                                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Nenhum perfil criado.</span>
-                                )}
-                              </div>
-                            </details>
+                            <MemberProfileSelector profiles={profiles} selectedIds={member.profileIds || []} disabled={isUpdating} organizationId={organizationId || ""} onToggle={(profileId, checked) => void handleProfileToggle(member, profileId, checked)}/>
                           ) : (
                             <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
                               {member.profileIds?.length || 0} perfil(s)
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: "1rem", textAlign: "right" }}>
+                        <td data-label="Ações" style={{ padding: "1rem", textAlign: "right" }}>
                           {actions.canRemove ? (
                             <button
                               onClick={() => handleOpenDelete(member)}

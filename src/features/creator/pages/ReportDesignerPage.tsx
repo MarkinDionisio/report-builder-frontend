@@ -10,7 +10,8 @@ import { Database, Plus, X, ChevronRight, Check, Filter, ChevronDown, ArrowUpDow
 import { useAuth } from "../../auth/context/AuthContext";
 import { FilterRow } from "../components/FilterRow";
 import { FilterEditorModal } from "../components/FilterEditorModal";
-import { OrderByRow } from "../components/OrderByRow";
+import { OrderBySummaryRow } from "../components/OrderBySummaryRow";
+import { OrderByEditorModal, type OrderByDraft } from "../components/OrderByEditorModal";
 import { ParameterEditor } from "../components/ParameterEditor";
 import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
 import { ReportPresentationRenderer } from "../components/ReportPresentationRenderer";
@@ -246,6 +247,7 @@ export const ReportDesignerPage: React.FC = () => {
   const [orderDragIdx, setOrderDragIdx] = useState<number | null>(null);
   const [orderDragOverIdx, setOrderDragOverIdx] = useState<number | null>(null);
   const [orderDragPos, setOrderDragPos] = useState<"above" | "below" | null>(null);
+  const [orderEditorIndex, setOrderEditorIndex] = useState<number | "new" | null>(null);
 
   // 1. Initial Load
   useEffect(() => {
@@ -322,15 +324,24 @@ export const ReportDesignerPage: React.FC = () => {
     loadInitialState();
   }, [organizationId, reportId]);
 
+  if (loading && reportId) {
+    return <div className="report-designer-loading-page">
+      <Navbar />
+      <main className="report-designer-loading" aria-live="polite" aria-busy="true">
+        <NeutralLoader message="Carregando relatório..." minHeight="auto" />
+      </main>
+    </div>;
+  }
+
   if (editBlockedReport && organizationId && reportId) {
     return <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
       <main style={{ maxWidth: "960px", width: "100%", margin: "4rem auto", padding: "0 1.5rem", flex: 1 }}>
-        <header style={{ marginBottom: "1.5rem" }}><span style={{ color: "var(--text-muted)", fontSize: ".85rem" }}>Report Designer · {editBlockedReport.organizationName}</span><h1 style={{ margin: ".35rem 0 0" }}>{editBlockedReport.title}</h1></header>
+        <header style={{ marginBottom: "1.5rem" }}><span style={{ color: "var(--text-muted)", fontSize: ".85rem" }}>Editor de relatório · {editBlockedReport.organizationName}</span><h1 style={{ margin: ".35rem 0 0" }}>{editBlockedReport.title}</h1></header>
         <ReportAccessBlockPanel
           blockedSchemas={editBlockedReport.blockedSchemas}
           title="Este relatório não pode ser editado"
-          description="A edição exige acesso de execução a todos os schemas, campos e capacidades usados pelo relatório."
+          description="A edição exige acesso a todos os esquemas, campos e capacidades utilizados. Solicite a revisão ao administrador da organização."
         />
         <div style={{ display: "flex", flexWrap: "wrap", gap: ".75rem", marginTop: "1.25rem" }}>
           <Link className="btn btn-secondary" to={`/organizations/${organizationId}/creator`}>Voltar ao workspace</Link>
@@ -575,7 +586,7 @@ export const ReportDesignerPage: React.FC = () => {
     ];
     
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "1rem 1.5rem", background: "var(--surface-color)", borderBottom: "1px solid var(--border-color)" }}>
+      <div className="report-designer__steps" style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "1rem 1.5rem", background: "var(--surface-color)", borderBottom: "1px solid var(--border-color)" }}>
         {steps.map((s, idx) => {
           const isActive = currentStep === s.id;
           const isPassed = currentStep > s.id;
@@ -866,7 +877,7 @@ export const ReportDesignerPage: React.FC = () => {
     const activeSchemas = (catalog?.schemas || []).filter(s => selectedSchemaIds.includes(s.id));
     
     const filterFieldOptions: { label: string; fieldId: string; joinAlias: string; group: string }[] = [];
-    const orderByFieldOptions: { label: string; fieldId: string; joinAlias: string; aggregation?: string }[] = [];
+    const orderByFieldOptions: { label: string; fieldId: string; joinAlias: string; aggregation?: string; group: string }[] = [];
 
     activeSchemas.forEach(s => {
       let joinAlias = "";
@@ -894,7 +905,8 @@ export const ReportDesignerPage: React.FC = () => {
             orderByFieldOptions.push({
               label: `${f.name} (${s.name}${joinAlias ? ` - ${joinAlias}` : ''})`,
               fieldId: f.id,
-              joinAlias
+              joinAlias,
+              group: s.name
             });
           }
         }
@@ -908,7 +920,8 @@ export const ReportDesignerPage: React.FC = () => {
             label: `${sel.aggregation.toUpperCase()}: ${sel.alias || "Linhas"} (Sistema)`,
             fieldId: "ROWS",
             joinAlias: "",
-            aggregation: sel.aggregation
+            aggregation: sel.aggregation,
+            group: "Resultados calculados"
           });
           return;
         }
@@ -941,6 +954,7 @@ export const ReportDesignerPage: React.FC = () => {
               label: `${sel.aggregation.toUpperCase()}: ${fieldName} (${schemaName}${sel.joinAlias ? ` - ${sel.joinAlias}` : ''})`,
               fieldId: sel.fieldId,
               joinAlias: sel.joinAlias || "",
+              group: schemaName,
               ...({ aggregation: sel.aggregation })
             } as any);
           }
@@ -1028,36 +1042,17 @@ export const ReportDesignerPage: React.FC = () => {
 
     const handleAddOrderBy = () => {
       if (!reportContent || orderByFieldOptions.length === 0) return;
-      const opt = orderByFieldOptions[0] as any;
-      const newOrder: any = { fieldId: opt.fieldId, joinAlias: opt.joinAlias, direction: "asc" as "asc" | "desc" };
-      if (opt.aggregation) newOrder.aggregation = opt.aggregation;
-      setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, orderBy: [...(reportContent.dataset.orderBy || []), newOrder] } });
+      setOrderEditorIndex("new");
     };
 
-    const handleUpdateOrderBy = (index: number, key: string, value: any) => {
-      if (!reportContent?.dataset.orderBy) return;
-      const newOrderBys = [...reportContent.dataset.orderBy];
-      
-      if (key === "field") {
-        const [fieldId, joinAlias, aggregation] = value.split("|");
-        if (fieldId === "ROWS") {
-          newOrderBys[index] = { ...newOrderBys[index], target: "rows", aggregation: aggregation || "count" };
-          delete newOrderBys[index].fieldId;
-          delete newOrderBys[index].joinAlias;
-        } else {
-          newOrderBys[index] = { ...newOrderBys[index], fieldId, joinAlias: joinAlias || undefined };
-          if (aggregation && aggregation !== "undefined") {
-            newOrderBys[index].aggregation = aggregation;
-          } else {
-            delete newOrderBys[index].aggregation;
-          }
-          delete newOrderBys[index].target;
-        }
-      } else {
-        newOrderBys[index] = { ...newOrderBys[index], [key]: value };
-      }
-      
-      setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, orderBy: newOrderBys } });
+    const handleSaveOrderBy = (draft: OrderByDraft) => {
+      if (!reportContent || orderEditorIndex === null) return;
+      const next = [...(reportContent.dataset.orderBy || [])];
+      if (orderEditorIndex === "new") next.push(draft);
+      else next[orderEditorIndex] = draft;
+      setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, orderBy: next } });
+      setPreviewData(null);
+      setOrderEditorIndex(null);
     };
 
     const handleRemoveOrderBy = (index: number) => {
@@ -1349,14 +1344,13 @@ export const ReportDesignerPage: React.FC = () => {
                     const backendWarning = previewData?.warnings?.find((w: any) => w.code === "report_execution.order_by_ignored" && w.itemIndex === index);
 
                     return (
-                      <OrderByRow
+                      <OrderBySummaryRow
                         key={index}
                         index={index}
                         orderBy={o as any}
-                        fieldOptions={orderByFieldOptions as any}
-                        compat={compat}
-                        backendWarning={backendWarning}
-                        onUpdate={handleUpdateOrderBy}
+                        options={orderByFieldOptions}
+                        warning={backendWarning?.message || (!compat.compatible ? `Campo incompatível com a configuração atual (${compat.reason})` : undefined)}
+                        onEdit={setOrderEditorIndex}
                         onRemove={handleRemoveOrderBy}
                         onDragStart={(i) => setOrderDragIdx(i)}
                         onDragOver={handleOrderDragOver}
@@ -1369,6 +1363,7 @@ export const ReportDesignerPage: React.FC = () => {
                 </div>
               )}
             </div>
+            {orderEditorIndex !== null && <OrderByEditorModal orderBy={orderEditorIndex === "new" ? undefined : orderBys[orderEditorIndex] as OrderByDraft} options={orderByFieldOptions} onClose={() => setOrderEditorIndex(null)} onSave={handleSaveOrderBy}/>}
           </div>
 
           <div style={{ marginTop: "3rem", paddingTop: "1.5rem", borderTop: "1px solid var(--border-color)", display: "flex", justifyContent: "space-between" }}>
@@ -1507,7 +1502,7 @@ export const ReportDesignerPage: React.FC = () => {
   };
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div className="report-designer-shell" style={{ height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Navbar />
       
       {errorMsg && (
@@ -1517,16 +1512,16 @@ export const ReportDesignerPage: React.FC = () => {
       )}
 
       {/* Header toolbar */}
-      <header style={{ background: "var(--surface-color)", borderBottom: "1px solid var(--border-color)", padding: "1rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 600 }}>Report Designer</h2>
-          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{reportId ? "Editando" : "Novo Relatório"}</span>
+      <header className="report-designer__header" style={{ background: "var(--surface-color)", borderBottom: "1px solid var(--border-color)", padding: "1rem 1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+        <div className="report-designer__identity">
+          <span>{reportId ? "Editando relatório" : "Novo relatório"}</span>
+          <h2 title={reportId ? reportTitle : undefined}>{reportId ? reportTitle || "Relatório" : "Criar relatório"}</h2>
         </div>
       </header>
 
       {renderBreadcrumbs()}
 
-      <main style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <main className="report-designer__content" style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {currentStep === 1 && renderStep1()}
         {currentStep === 2 && renderStep2()}
         {currentStep === 3 && renderStep3()}

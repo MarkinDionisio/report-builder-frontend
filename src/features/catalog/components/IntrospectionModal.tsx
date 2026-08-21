@@ -9,6 +9,8 @@ import type {
   CreateReportSchemaRequest,
   UpsertReportFieldRequest,
 } from "../types/catalogTypes";
+import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
+import { matchesTextSearch } from "../../../shared/utils/textSearch";
 import { catalogApi } from "../api/catalogApi";
 import { isErr } from "../../../shared/result/result";
 import { Alert } from "../../../shared/components/Alert";
@@ -45,6 +47,8 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [matchCase, setMatchCase] = useState(false);
+  const [exactMatch, setExactMatch] = useState(false);
 
   useEffect(() => {
     async function loadObjects() {
@@ -221,10 +225,9 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
     onSuccess();
   };
 
-  const filteredObjects = objects.filter(
-    (o) =>
-      o.objectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      o.schemaName.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredObjects = objects.filter((object) =>
+    matchesTextSearch(object.objectName, searchTerm, { matchCase, exactMatch }) ||
+    matchesTextSearch(object.schemaName, searchTerm, { matchCase, exactMatch })
   );
 
   return (
@@ -284,7 +287,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
                 <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.5rem", flexShrink: 0 }}>
                   Objetos Descobertos ({objects.length})
                 </div>
-                <div style={{ position: "relative", marginBottom: "0.75rem", flexShrink: 0 }}>
+                <div className="search-with-options" style={{ marginBottom: "0.75rem", flexShrink: 0 }}><div style={{ position: "relative" }}>
                   <Search size={14} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
                   <input
                     type="text"
@@ -303,7 +306,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
                       <X size={14} />
                     </button>
                   )}
-                </div>
+                </div><SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch}/></div>
 
                 {loadingObjects ? (
                   <div style={{ textAlign: "center", padding: "2rem 0", color: "var(--text-secondary)" }}>

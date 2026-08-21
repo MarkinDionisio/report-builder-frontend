@@ -222,13 +222,13 @@ export const OrganizationsListPage: React.FC = () => {
                     paddingTop: "1rem",
                   }}
                 >
-                  <Link
+                  {userCanManage && <Link
                     to={`/organizations/${org.id}`}
                     className="btn btn-primary"
                     style={{ width: "100%", justifyContent: "center", fontSize: "0.85rem", padding: "0.55rem" }}
                   >
                     <Building2 size={16} /> Acessar Central da Organização
-                  </Link>
+                  </Link>}
 
                   {userCanManage && (
                     <div style={{ display: "flex", gap: "0.5rem" }}>

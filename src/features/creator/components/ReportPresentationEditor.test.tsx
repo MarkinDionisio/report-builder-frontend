@@ -7,12 +7,14 @@ describe("ReportPresentationEditor", () => {
     render(<ReportPresentationEditor select={[{ fieldId: "name", alias: "Nome" }]} onChange={vi.fn()} />);
     expect(screen.getByLabelText("Tipo de apresentação")).toHaveValue("table");
     expect(screen.getByRole("option", { name: "Indicador" })).toBeDisabled();
+    expect(screen.getByRole("note")).toHaveTextContent("Para usar um indicador");
   });
 
   it("creates and edits a metric presentation", () => {
     const onChange = vi.fn();
     const select = [{ fieldId: "total", alias: "Total", aggregation: "sum" }];
     const { rerender } = render(<ReportPresentationEditor select={select} onChange={onChange} />);
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("Tipo de apresentação"), { target: { value: "metric" } });
     expect(onChange).toHaveBeenCalledWith({ type: "metric", valueColumnAlias: "Total", label: "Total" });
     rerender(<ReportPresentationEditor select={select} presentation={{ type: "metric", valueColumnAlias: "Total", label: "Total" }} onChange={onChange} />);
