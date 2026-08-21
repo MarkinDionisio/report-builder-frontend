@@ -21,4 +21,15 @@ describe("ReportPresentationEditor", () => {
     fireEvent.change(screen.getByLabelText("Label do indicador"), { target: { value: "Receita" } });
     expect(onChange).toHaveBeenLastCalledWith({ type: "metric", valueColumnAlias: "Total", label: "Receita" });
   });
+
+  it("configures a grouped table with column and direction", () => {
+    const onChange = vi.fn();
+    const select = [{ fieldId: "date", alias: "Data" }, { fieldId: "total", alias: "Total", aggregation: "sum" }];
+    const { rerender } = render(<ReportPresentationEditor select={select} groupedTableOptions={[select[0]]} onChange={onChange}/>);
+    fireEvent.change(screen.getByLabelText("Tipo de apresentação"), { target: { value: "groupedTable" } });
+    expect(onChange).toHaveBeenCalledWith({ type: "groupedTable", groupColumnAlias: "Data", direction: "asc" });
+    rerender(<ReportPresentationEditor select={select} groupedTableOptions={[select[0]]} presentation={{ type: "groupedTable", groupColumnAlias: "Data", direction: "asc" }} onChange={onChange}/>);
+    fireEvent.change(screen.getByLabelText("Direção do agrupamento"), { target: { value: "desc" } });
+    expect(onChange).toHaveBeenLastCalledWith({ type: "groupedTable", groupColumnAlias: "Data", direction: "desc" });
+  });
 });

@@ -20,7 +20,7 @@ import { ReportAccessBlockPanel } from "../components/ReportAccessBlockPanel";
 import { requiredParametersMissing, validateParameters } from "../utils/parameterUtils";
 import { collectParameterReferences, removeEmptyLogicalGroups, removeOrphanParameters } from "../utils/filterParameterUtils";
 import { defaultAggregationAlias, fillMissingColumnAliases, nextAvailableAlias, validateColumnAliases } from "../utils/columnAliasUtils";
-import { validateReportPresentation } from "../utils/reportPresentationUtils";
+import { synchronizeGroupedTableOrderBy, validateReportPresentation } from "../utils/reportPresentationUtils";
 import type { ReportParameterDefinition, WhereNode } from "../types/creatorTypes";
 
 
@@ -484,7 +484,8 @@ export const ReportDesignerPage: React.FC = () => {
     const parameterErrors = validateParameters(reportContent.parameters || []);
     const aliasErrors = validateColumnAliases(reportContent.dataset.select || []);
     if (aliasErrors.size > 0) parameterErrors.push("Corrija os títulos das colunas antes de salvar.");
-    const presentationError = validateReportPresentation({ ...reportContent, dataset: { ...reportContent.dataset, groupBy: synchronizeGroupBy(reportContent.dataset.select || [], catalog) } });
+    const validationContent = synchronizeGroupedTableOrderBy({ ...reportContent, dataset: { ...reportContent.dataset, groupBy: synchronizeGroupBy(reportContent.dataset.select || [], catalog) } });
+    const presentationError = validateReportPresentation(validationContent);
     if (presentationError) parameterErrors.push(presentationError);
     const declaredNames = new Set((reportContent.parameters || []).map((parameter) => parameter.name));
     const unknownReferences = [...collectParameterNames(reportContent.dataset.where)].filter((name) => !declaredNames.has(name));
@@ -496,6 +497,7 @@ export const ReportDesignerPage: React.FC = () => {
     const contentToSave = JSON.parse(JSON.stringify(reportContent));
     contentToSave.dataset.select = (contentToSave.dataset.select || []).map((item: any) => ({ ...item, alias: item.alias.trim() }));
     contentToSave.dataset.groupBy = synchronizeGroupBy(contentToSave.dataset.select || [], catalog);
+    contentToSave.dataset.orderBy = synchronizeGroupedTableOrderBy(contentToSave).dataset.orderBy;
     if (contentToSave.dataset.where) {
       contentToSave.dataset.where.conditions = normalizeWhereValues(
         contentToSave.dataset.where.conditions || [],
@@ -1406,6 +1408,7 @@ export const ReportDesignerPage: React.FC = () => {
       
       const contentForPreview = JSON.parse(JSON.stringify(reportContent));
       contentForPreview.dataset.groupBy = synchronizeGroupBy(contentForPreview.dataset.select || [], catalog);
+      contentForPreview.dataset.orderBy = synchronizeGroupedTableOrderBy(contentForPreview).dataset.orderBy;
       if (contentForPreview.dataset.where) {
         contentForPreview.dataset.where.conditions = normalizeWhereValues(
           contentForPreview.dataset.where.conditions || [],
@@ -1458,7 +1461,7 @@ export const ReportDesignerPage: React.FC = () => {
             </div>
           </div>
           {reportContent && (
-            <ReportPresentationEditor presentation={reportContent.presentation} select={reportContent.dataset.select} groupBy={synchronizeGroupBy(reportContent.dataset.select || [], catalog)} onChange={(presentation) => { setReportContent({ ...reportContent, presentation }); setPreviewData(null); }}/>
+            <ReportPresentationEditor presentation={reportContent.presentation} select={reportContent.dataset.select} groupBy={synchronizeGroupBy(reportContent.dataset.select || [], catalog)} groupedTableOptions={reportContent.dataset.select.filter((item) => !item.aggregation && getFieldDetails(item.fieldId, item.target).field?.sortable)} onChange={(presentation) => { setReportContent(synchronizeGroupedTableOrderBy({ ...reportContent, presentation })); setPreviewData(null); }}/>
           )}
           <div className="card" style={{ marginBottom: "1rem" }}><ExecutionParameterForm parameters={reportContent?.parameters || []} where={reportContent?.dataset.where} resolvedParameters={previewData?.resolvedParameters} values={previewParameters} onChange={(values) => { setPreviewParameters(values); setPreviewData(null); }} /></div>
           
@@ -1469,13 +1472,13 @@ export const ReportDesignerPage: React.FC = () => {
                 <span style={{ fontSize: "0.75rem", color: "#999", fontWeight: 400 }}>Apenas visível para Creators</span>
               </div>
               <pre style={{ margin: 0, padding: "1rem", color: "#a6e22e", overflowX: "auto", fontSize: "0.85rem", maxHeight: "400px", overflowY: "auto" }}>
-                {JSON.stringify({
+                {JSON.stringify(synchronizeGroupedTableOrderBy({
                   ...reportContent, 
                   dataset: {
                     ...reportContent.dataset,
                     groupBy: synchronizeGroupBy(reportContent.dataset.select || [], catalog)
                   }
-                }, null, 2)}
+                }), null, 2)}
               </pre>
             </div>
           )}

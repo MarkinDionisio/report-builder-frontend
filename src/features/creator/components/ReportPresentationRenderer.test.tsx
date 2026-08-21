@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ExecuteResponse } from "../types/creatorTypes";
 import { ReportPresentationRenderer } from "./ReportPresentationRenderer";
@@ -29,5 +29,31 @@ describe("ReportPresentationRenderer", () => {
     expect(screen.getByText("—")).toBeInTheDocument();
     rerender(<ReportPresentationRenderer {...props} presentation={presentation} result={{ ...result, rows: [{ Total: 1 }, { Total: 2 }] }} loading={false} />);
     expect(screen.getByRole("alert")).toHaveTextContent("mais de uma linha");
+  });
+
+  it("groups detail rows, hides the group column and allows collapsing", () => {
+    const groupedResult: ExecuteResponse = {
+      ...result,
+      columns: [
+        { alias: "Dia", type: "date", fieldId: "date", joinAlias: null },
+        { alias: "Produto", type: "string", fieldId: "product", joinAlias: null },
+      ],
+      rows: [
+        { Dia: "2026-08-14", Produto: "A" },
+        { Dia: "2026-08-14", Produto: "B" },
+        { Dia: "2026-08-15", Produto: "C" },
+      ],
+      rowCount: 3,
+    };
+    render(<ReportPresentationRenderer select={[{ fieldId: "date", alias: "Dia", dateGranularity: "day" }, { fieldId: "product", alias: "Produto" }]} presentation={{ type: "groupedTable", groupColumnAlias: "Dia", direction: "asc" }} result={groupedResult} loading={false} page={1} pageSize={50} onPageChange={vi.fn()} onPageSizeChange={vi.fn()}/>);
+    expect(screen.queryByRole("columnheader", { name: "Dia" })).not.toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Produto" })).toBeInTheDocument();
+    expect(screen.getByText("2 itens nesta página")).toBeInTheDocument();
+    const firstGroup = screen.getByRole("button", { name: /14\/08\/2026/ });
+    expect(firstGroup).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(firstGroup);
+    expect(firstGroup).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("A")).not.toBeInTheDocument();
+    expect(screen.getByText("C")).toBeInTheDocument();
   });
 });

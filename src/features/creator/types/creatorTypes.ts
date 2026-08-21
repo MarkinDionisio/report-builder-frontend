@@ -110,6 +110,7 @@ export interface ParameterReference { parameter: string; }
 
 export type ReportPresentation =
   | { type: "table" }
+  | { type: "groupedTable"; groupColumnAlias: string; direction: "asc" | "desc" }
   | { type: "metric"; valueColumnAlias: string; label?: string };
 
 export interface ReportContentV1 {

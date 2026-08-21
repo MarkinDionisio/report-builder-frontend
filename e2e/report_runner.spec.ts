@@ -67,4 +67,22 @@ test.describe("E2E - Execução do relatório", () => {
     await expect(page.getByText("9.876,50")).toBeVisible();
     await expect(page.getByRole("table")).toHaveCount(0);
   });
+
+  test("apresenta detalhes agrupados por dia e permite recolher o grupo", async ({ page }) => {
+    await mockSession(page);
+    await page.route("**/api/v1/reports/grouped-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "grouped-1", title: "Vendas por dia", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "viewer", allowedFilters: [], content: { version: 1, presentation: { type: "groupedTable", groupColumnAlias: "Dia", direction: "desc" }, parameters: [], dataset: { schemaId: "schema-1", select: [{ fieldId: "sold-at", alias: "Dia", dateGranularity: "day" }, { fieldId: "product", alias: "Produto" }], orderBy: [{ fieldId: "sold-at", dateGranularity: "day", direction: "desc" }] } } }) }));
+    await page.route("**/api/v1/reports/grouped-1/execute", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ columns: [{ alias: "Dia", type: "date", fieldId: "sold-at", joinAlias: null }, { alias: "Produto", type: "string", fieldId: "product", joinAlias: null }], rows: [{ Dia: "2026-08-15", Produto: "Produto A" }, { Dia: "2026-08-15", Produto: "Produto B" }, { Dia: "2026-08-14", Produto: "Produto C" }], page: 1, pageSize: 50, rowCount: 3, durationMs: 13, resolvedParameters: {}, warnings: [] }) }));
+
+    await page.goto("/reports/grouped-1/run");
+
+    await expect(page.getByRole("columnheader", { name: "Dia" })).toHaveCount(0);
+    await expect(page.getByRole("columnheader", { name: "Produto" })).toBeVisible();
+    const group = page.getByRole("button", { name: /15\/08\/2026.*2 itens nesta página/ });
+    await expect(group).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByText("Produto A")).toBeVisible();
+    await group.click();
+    await expect(group).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByText("Produto A")).toHaveCount(0);
+    await expect(page.getByText("Produto C")).toBeVisible();
+  });
 });

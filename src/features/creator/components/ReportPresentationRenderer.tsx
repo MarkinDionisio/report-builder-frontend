@@ -2,6 +2,7 @@ import type { ExecuteResponse, ReportPresentation, SelectItem } from "../types/c
 import { formatReportNumber, isReportNumericType } from "../utils/reportValueUtils";
 import { ReportResultsTable } from "./ReportResultsTable";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { GroupedReportResultsTable } from "./GroupedReportResultsTable";
 
 interface Props {
   presentation?: ReportPresentation;
@@ -18,6 +19,7 @@ export function ReportPresentationRenderer({ presentation = { type: "table" }, s
   const aggregations = Object.fromEntries(select.filter((item) => item.alias).map((item) => [item.alias!, item.aggregation]));
   const dateGranularities = Object.fromEntries(select.filter((item) => item.alias).map((item) => [item.alias!, item.dateGranularity]));
   if (presentation.type === "table") return <ReportResultsTable result={result} loading={loading} page={page} pageSize={pageSize} aggregationsByAlias={aggregations} dateGranularitiesByAlias={dateGranularities} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange}/>;
+  if (presentation.type === "groupedTable") return <GroupedReportResultsTable result={result} loading={loading} page={page} pageSize={pageSize} groupColumnAlias={presentation.groupColumnAlias} aggregationsByAlias={aggregations} dateGranularitiesByAlias={dateGranularities} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange}/>;
   if (loading && !result) return <section className="report-metric report-metric--state"><NeutralLoader/><span>Calculando indicador...</span></section>;
   if (!result) return <section className="report-metric report-metric--state"><strong>Pronto para executar</strong><span>Execute o relatório para calcular o indicador.</span></section>;
   if (result.rows.length > 1) return <section className="report-metric report-metric--error" role="alert"><strong>Não foi possível apresentar o indicador</strong><span>O relatório retornou mais de uma linha.</span></section>;
