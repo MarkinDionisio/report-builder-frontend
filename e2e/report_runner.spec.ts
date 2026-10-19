@@ -7,7 +7,7 @@ async function mockSession(page: Page) {
 }
 
 test.describe("E2E - Execução do relatório", () => {
-  test("executa automaticamente, apresenta a grade e reexecuta ao mudar o tamanho da página", async ({ page }) => {
+  test("mostra parâmetros antes de executar e reexecuta ao mudar o tamanho da página", async ({ page }) => {
     await mockSession(page);
     await page.route("**/api/v1/reports/report-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "report-1", title: "Vendas diárias", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "viewer", allowedFilters: [], content: { version: 1, parameters: [{ name: "start", type: "datetime", source: "system", variable: "startOfToday" }, { name: "end", type: "datetime", source: "system", variable: "startOfTomorrow" }], dataset: { schemaId: "schema-1", select: [{ fieldId: "total", alias: "Total" }], where: { operator: "and", conditions: [{ operator: "and", ui: { kind: "relativePeriod", preset: "today", label: "Período de vendas" }, conditions: [{ fieldId: "date", operator: "gte", value: { parameter: "start" } }, { fieldId: "date", operator: "lt", value: { parameter: "end" } }] }] } } } }) }));
     const requests: Array<{ page: number; pageSize: number }> = [];
@@ -19,12 +19,14 @@ test.describe("E2E - Execução do relatório", () => {
 
     await page.goto("/reports/report-1/run");
     await expect(page.getByRole("heading", { name: "Vendas diárias" })).toBeVisible();
+    await expect(page.getByText("Período de vendas")).toBeVisible();
+    expect(requests).toHaveLength(0);
+    await page.getByRole("button", { name: "Executar relatório" }).click();
     await expect(page.getByText("1.234,50")).toBeVisible();
     await expect(page.getByText("Sim")).toBeVisible();
     await expect(page.getByText("—")).toBeVisible();
     await expect(page.getByText(/Executado às/)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Parâmetros/ })).toHaveAttribute("aria-expanded", "false");
-    await page.getByRole("button", { name: /Parâmetros/ }).click();
+    await expect(page.getByRole("button", { name: /Parâmetros/ })).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByText("Período de vendas")).toBeVisible();
     await page.getByLabel("Linhas por página").selectOption("25");
     await expect.poll(() => requests.at(-1)).toEqual({ page: 1, pageSize: 25 });

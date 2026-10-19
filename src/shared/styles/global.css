@@ -1003,3 +1003,7 @@ option {
     word-break: break-all;
   }
 }
+
+.report-preview > div > .card { padding: 1.25rem; }
+.report-preview .report-results--state,
+.report-preview .report-results__empty { padding: 1.25rem; }

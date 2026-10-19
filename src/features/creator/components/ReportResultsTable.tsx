@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function ReportResultsTable({ result, loading, page, pageSize, onPageChange, onPageSizeChange, aggregationsByAlias = {}, dateGranularitiesByAlias = {} }: Props) {
-  if (loading && !result) return <section className="report-results report-results--state" aria-live="polite"><NeutralLoader /><strong>Executando relatório...</strong><span>A consulta pode levar alguns instantes.</span></section>;
+  if (loading && !result) return <section className="report-results report-results--state" aria-live="polite"><NeutralLoader message="Executando relatório..." minHeight="auto"/><span>A consulta pode levar alguns instantes.</span></section>;
   if (!result) return <section className="report-results report-results--state"><strong>Pronto para executar</strong><span>Preencha os parâmetros necessários e execute o relatório.</span></section>;
 
   return <section className="report-results" aria-busy={loading}>

@@ -101,6 +101,7 @@ export interface ReportParameterDefinition {
   source: "input" | "system";
   variable?: ReportSystemVariable;
   allowOverride?: boolean;
+  required?: boolean;
   label?: string;
   description?: string;
   placeholder?: string;

@@ -3,6 +3,15 @@ import { requiredParametersMissing, validateParameters } from "./parameterUtils"
 import type { ReportParameterDefinition } from "../types/creatorTypes";
 
 describe("report parameter validation", () => {
+  it("allows empty optional inputs while still requiring mandatory inputs", () => {
+    const optional: ReportParameterDefinition = { name: "store", type: "uuid", source: "input", required: false };
+    expect(requiredParametersMissing([optional], {})).toBe(false);
+    expect(requiredParametersMissing([optional], { store: "" })).toBe(false);
+    const required: ReportParameterDefinition = { name: "active", type: "boolean", source: "input", required: true };
+    expect(requiredParametersMissing([optional, required], {})).toBe(true);
+    expect(requiredParametersMissing([optional, required], { active: false })).toBe(false);
+  });
+
   it("accepts compatible automatic and input parameters", () => {
     expect(validateParameters([
       { name: "start", type: "datetime", source: "system", variable: "startOfToday" },

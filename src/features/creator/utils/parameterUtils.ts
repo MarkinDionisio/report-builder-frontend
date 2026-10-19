@@ -15,5 +15,5 @@ export function validateParameters(parameters: ReportParameterDefinition[]): str
 }
 
 export function requiredParametersMissing(parameters: ReportParameterDefinition[], values: Record<string, unknown>): boolean {
-  return parameters.some((parameter) => parameter.source === "input" && (values[parameter.name] === undefined || values[parameter.name] === ""));
+  return parameters.some((parameter) => parameter.source === "input" && parameter.required !== false && (values[parameter.name] === undefined || values[parameter.name] === ""));
 }

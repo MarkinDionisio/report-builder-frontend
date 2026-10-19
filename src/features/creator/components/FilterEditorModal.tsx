@@ -28,6 +28,7 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
   const [label, setLabel] = useState(initial.label);
   const [description, setDescription] = useState(initial.description);
   const [placeholder, setPlaceholder] = useState(initial.placeholder);
+  const [required, setRequired] = useState(initial.required);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -81,7 +82,7 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
     if (effectiveMode === "input") {
       const existingName = getParameterName(condition?.ui?.kind === "relativePeriod" ? undefined : condition?.value);
       const existing = parameters.find((parameter) => parameter.name === existingName && parameter.source === "input");
-      const parameter = existing ? { ...existing, type: parameterTypeForField(field.type), label: label || field.name, description, placeholder } : { ...createInputParameter(parameters, field.type, field.name), label: label || field.name, description, placeholder };
+      const parameter = existing ? { ...existing, type: parameterTypeForField(field.type), label: label || field.name, description, placeholder, required } : { ...createInputParameter(parameters, field.type, field.name), label: label || field.name, description, placeholder, required };
       const nextParameters = existing ? parameters.map((item) => item.name === existing.name ? parameter : item) : [...parameters, parameter];
       onSave({ condition: { ...reference, operator: activeOperator, value: { parameter: parameter.name } }, parameters: nextParameters });
       return;
@@ -119,6 +120,8 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
             {!isNoValue && <div className="filter-editor__control filter-editor__value">
               <label className="form-label">{effectiveMode === "automatic" ? "Período *" : effectiveMode === "input" ? "Apresentação para o usuário" : "Valor *"}</label>
               {effectiveMode === "automatic" ? <div className="filter-editor__metadata"><input className="form-input" aria-label="Rótulo personalizado" placeholder="Rótulo exibido" value={label} onChange={(event) => setLabel(event.target.value)} /><select aria-label="Período" className="form-input" value={preset} onChange={(event) => setPreset(event.target.value as RelativePeriodPreset)}>{(parsedType === "date" ? PERIOD_PRESETS.filter((item) => item.value === "today") : PERIOD_PRESETS).map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div> : effectiveMode === "input" ? <div className="filter-editor__metadata">
+                <label><input type="checkbox" checked={required} onChange={(event) => setRequired(event.target.checked)} /> Obrigatório na execução</label>
+                <small>Se opcional e vazio, este filtro não será aplicado.</small>
                 <input className="form-input" aria-label="Rótulo para o usuário" placeholder="Rótulo exibido" value={label} onChange={(event) => setLabel(event.target.value)} />
                 <input className="form-input" aria-label="Exemplo do valor" placeholder="Exemplo ou placeholder" value={placeholder} onChange={(event) => setPlaceholder(event.target.value)} />
                 <input className="form-input filter-editor__description" aria-label="Texto de ajuda" placeholder="Explique o que deve ser informado (opcional)" value={description} onChange={(event) => setDescription(event.target.value)} />
@@ -151,7 +154,7 @@ function readInitialState(condition: WhereNode | undefined, parameters: ReportPa
   const parameterName = getParameterName(base?.value);
   const parameter = parameters.find((item) => item.name === parameterName);
   const mode: ValueMode = condition?.ui?.kind === "relativePeriod" || parameter?.source === "system" ? "automatic" : parameter ? "input" : "fixed";
-  return { fieldKey, operator: condition?.ui?.kind === "relativePeriod" ? "eq" : base?.operator || "", mode, value: mode === "fixed" ? base?.value ?? "" : "", preset: condition?.ui?.preset || "today" as RelativePeriodPreset, label: condition?.ui?.label || parameter?.label || "", description: parameter?.description || "", placeholder: parameter?.placeholder || "" };
+  return { fieldKey, operator: condition?.ui?.kind === "relativePeriod" ? "eq" : base?.operator || "", mode, value: mode === "fixed" ? base?.value ?? "" : "", preset: condition?.ui?.preset || "today" as RelativePeriodPreset, label: condition?.ui?.label || parameter?.label || "", description: parameter?.description || "", placeholder: parameter?.placeholder || "", required: parameter?.required !== false };
 }
 
 function getParameterName(value: unknown): string | undefined { return value && typeof value === "object" && !Array.isArray(value) && "parameter" in value ? String((value as { parameter: string }).parameter) : undefined; }

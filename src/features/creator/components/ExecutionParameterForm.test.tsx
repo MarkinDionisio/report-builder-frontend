@@ -3,6 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import { ExecutionParameterForm } from "./ExecutionParameterForm";
 
 describe("ExecutionParameterForm", () => {
+  it("does not mark optional text or date inputs as required", () => {
+    render(<ExecutionParameterForm parameters={[
+      { name: "store", label: "Filial", type: "uuid", source: "input", required: false },
+      { name: "date", label: "Data", type: "date", source: "input", required: false },
+    ]} values={{}} onChange={vi.fn()} />);
+    expect(screen.getByText("Filial")).toBeInTheDocument();
+    expect(screen.getByText("Data")).toBeInTheDocument();
+    expect(screen.getByLabelText("Filial")).not.toBeRequired();
+    expect(screen.getByLabelText("Data")).not.toBeRequired();
+  });
+
   it("shows business metadata instead of the technical name", () => {
     render(<ExecutionParameterForm parameters={[{ name: "input_1", type: "uuid", source: "input", label: "Filial", description: "Escolha a filial da venda.", placeholder: "Código da filial" }]} values={{}} onChange={vi.fn()} />);
     expect(screen.getByText("Filial *")).toBeInTheDocument();

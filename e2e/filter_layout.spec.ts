@@ -11,6 +11,30 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     await page.addInitScript(() => localStorage.setItem("report-builder.session.v1", JSON.stringify({ refreshToken: "refresh" })));
   });
 
+  test("pagina o preview e volta à primeira página ao alterar o tamanho", async ({ page }) => {
+    const requests: Array<{ page: number; pageSize: number }> = [];
+    await page.route("**/api/v1/reports/preview", async (route) => {
+      const request = route.request().postDataJSON();
+      requests.push({ page: request.page, pageSize: request.pageSize });
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ columns: [{ alias: "Total", type: "number", fieldId: "amount" }], rows: [{ Total: request.page * 100 }], page: request.page, pageSize: request.pageSize, rowCount: request.pageSize, durationMs: 1, resolvedParameters: {} }) });
+    });
+    await page.goto("/organizations/org-1/creator/reports/report-1");
+    await page.getByRole("button", { name: "Próximo: Escolher Colunas" }).click();
+    await page.getByRole("button", { name: "Próximo: Filtros & Ordenação" }).click();
+    await page.getByRole("button", { name: /Próximo:.*Preview/ }).click();
+    await page.getByRole("button", { name: "Executar Query" }).click();
+    await expect(page.getByText("Página 1", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Próxima", exact: true }).click();
+    await expect(page.getByText("Página 2", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Anterior", exact: true }).click();
+    await expect(page.getByText("Página 1", { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "Próxima", exact: true }).click();
+    await expect(page.getByText("Página 2", { exact: true })).toBeVisible();
+    await page.getByLabel("Linhas por página").selectOption("25");
+    await expect(page.getByText("Página 1", { exact: true })).toBeVisible();
+    expect(requests).toEqual([{ page: 1, pageSize: 50 }, { page: 2, pageSize: 50 }, { page: 1, pageSize: 50 }, { page: 2, pageSize: 50 }, { page: 1, pageSize: 25 }]);
+  });
+
   test("edita, adiciona e remove filtros sem edição inline", async ({ page }) => {
     await page.goto("/organizations/org-1/creator/reports/report-1");
     await page.getByRole("button", { name: "Próximo: Escolher Colunas" }).click();

@@ -224,6 +224,7 @@ export const ReportDesignerPage: React.FC = () => {
   const [expandedSchemas, setExpandedSchemas] = useState<Record<string, boolean>>({});
 
   // Preview state
+  const [previewPageSize, setPreviewPageSize] = useState(50);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewData, setPreviewData] = useState<any | null>(null);
@@ -1401,7 +1402,7 @@ export const ReportDesignerPage: React.FC = () => {
   };
 
   const renderStep4 = () => {
-    const handleExecutePreview = async () => {
+    const handleExecutePreview = async (targetPage = 1, targetPageSize = previewPageSize) => {
       if (!organizationId || !reportContent) return;
       setPreviewLoading(true);
       setPreviewError(null);
@@ -1424,8 +1425,8 @@ export const ReportDesignerPage: React.FC = () => {
         content: contentForPreview,
         parameters: previewParameters,
         filters: [],
-        page: 1,
-        pageSize: 50
+        page: targetPage,
+        pageSize: targetPageSize
       };
       
       const res = await creatorApi.previewReport(req);
@@ -1433,12 +1434,13 @@ export const ReportDesignerPage: React.FC = () => {
         setPreviewError(res.error.detail || "Erro ao gerar preview.");
       } else {
         setPreviewData(res.value);
+        setPreviewPageSize(targetPageSize);
       }
       setPreviewLoading(false);
     };
 
     return (
-      <div style={{ width: "100%", height: "100%", overflowY: "auto", padding: "1.5rem" }}>
+      <div className="report-preview" style={{ width: "100%", height: "100%", overflowY: "auto", padding: "1.5rem" }}>
         <div style={{ maxWidth: "1000px", margin: "0 auto", width: "100%", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
             <div>
@@ -1455,7 +1457,7 @@ export const ReportDesignerPage: React.FC = () => {
               >
                 {showDevJson ? "Ocultar JSON" : "Ver JSON Gerado"}
               </button>
-              <button className="btn btn-primary" onClick={handleExecutePreview} disabled={previewLoading || requiredParametersMissing(reportContent?.parameters || [], previewParameters)}>
+              <button className="btn btn-primary" onClick={() => void handleExecutePreview()} disabled={previewLoading || requiredParametersMissing(reportContent?.parameters || [], previewParameters)}>
                 {previewLoading ? "Executando..." : "Executar Query"}
               </button>
             </div>
@@ -1505,7 +1507,7 @@ export const ReportDesignerPage: React.FC = () => {
             </div>
           )}
           
-          <ReportPresentationRenderer presentation={reportContent?.presentation} select={reportContent?.dataset.select || []} result={previewData} loading={previewLoading} page={1} pageSize={50} onPageChange={() => undefined} onPageSizeChange={() => undefined}/>
+          <ReportPresentationRenderer presentation={reportContent?.presentation} select={reportContent?.dataset.select || []} result={previewData} loading={previewLoading} page={previewData?.page ?? 1} pageSize={previewPageSize} onPageChange={(page) => void handleExecutePreview(page)} onPageSizeChange={(pageSize) => void handleExecutePreview(1, pageSize)}/>
           <div style={{ 
             position: "sticky", 
             bottom: "-1.5rem", 

@@ -43,7 +43,7 @@ function groupRows(rows: Array<Record<string, unknown>>, alias: string): RowGrou
 
 export function GroupedReportResultsTable({ result, loading, page, pageSize, groupColumnAlias, aggregationsByAlias = {}, dateGranularitiesByAlias = {}, onPageChange, onPageSizeChange }: Props) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(() => new Set());
-  if (loading && !result) return <section className="report-results report-results--state" aria-live="polite"><NeutralLoader/><strong>Executando relatório...</strong><span>A consulta pode levar alguns instantes.</span></section>;
+  if (loading && !result) return <section className="report-results report-results--state" aria-live="polite"><NeutralLoader message="Executando relatório..." minHeight="auto"/><span>A consulta pode levar alguns instantes.</span></section>;
   if (!result) return <section className="report-results report-results--state"><strong>Pronto para executar</strong><span>Preencha os parâmetros necessários e execute o relatório.</span></section>;
 
   const groupColumn = result.columns.find((column) => column.alias === groupColumnAlias);

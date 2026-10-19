@@ -31,7 +31,7 @@ export function ReportRunnerPage() {
     const response = await creatorApi.executeReport(reportId, { parameters: targetParameters, filters: [], page: targetPage, pageSize: targetPageSize });
     setExecuting(false);
     if (isErr(response)) setError(response.error.detail || "Não foi possível executar o relatório.");
-    else { setResult(response.value); setPage(targetPage); setLastExecutedAt(new Date()); setParametersExpanded(false); }
+    else { setResult(response.value); setPage(targetPage); setLastExecutedAt(new Date()); setParametersExpanded((detail.content.parameters?.length ?? 0) > 0); }
   }, [reportId]);
 
   const execute = useCallback((targetPage: number, targetPageSize = pageSize) => {
@@ -45,7 +45,7 @@ export function ReportRunnerPage() {
       if (isErr(response)) { setLoading(false); setError(response.error.detail || "Relatório não encontrado ou sem acesso."); return; }
       const detail = response.value;
       setReport(detail); setLoading(false);
-      if (detail.canExecute !== false && !requiredParametersMissing(detail.content.parameters || [], {})) await runExecution(1, 50, detail, {});
+      if (detail.canExecute !== false && (detail.content.parameters?.length ?? 0) === 0) await runExecution(1, 50, detail, {});
     });
   }, [reportId, runExecution]);
 
@@ -53,7 +53,7 @@ export function ReportRunnerPage() {
   const changePageSize = (nextPageSize: number) => { setPageSize(nextPageSize); setResult(null); setPage(1); void execute(1, nextPageSize); };
 
   return <div className="report-runner"><Navbar/><main className="report-runner__main">
-    {loading ? <div className="report-runner__page-state"><NeutralLoader/><span>Carregando relatório...</span></div> : !report ? <div className="report-runner__page-state">{error && <Alert type="error" message={error}/>}<Link className="btn btn-secondary" to="/dashboard">Voltar ao início</Link></div> : <>
+    {loading ? <div className="report-runner__page-state"><NeutralLoader message="Carregando relatório..." minHeight="auto"/></div> : !report ? <div className="report-runner__page-state">{error && <Alert type="error" message={error}/>}<Link className="btn btn-secondary" to="/dashboard">Voltar ao início</Link></div> : <>
       <header className="report-runner__header"><div><span className="report-runner__eyebrow">Relatório · {report.organizationName}</span><h1>{report.title}</h1><div className="report-runner__status"><Clock3 size={14}/>{executing ? "Executando agora..." : lastExecutedAt ? `Executado às ${lastExecutedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "Ainda não executado"}</div></div><Link className="btn btn-secondary" to="/dashboard">Voltar</Link></header>
       {error && <Alert type="error" message={error}/>}
       {report.canExecute === false && <ReportAccessBlockPanel blockedSchemas={report.blockedSchemas} title="Execução bloqueada" description="Você pode consultar este relatório, mas ainda não possui acesso para executá-lo. Solicite ao administrador da organização as permissões indicadas abaixo."/>}

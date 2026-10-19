@@ -12,6 +12,18 @@ const fieldOptions = Object.values(fields).map((field) => ({ label: field.name, 
 const resolveField = (id: string) => fields[id as keyof typeof fields] || null;
 
 describe("FilterEditorModal", () => {
+  it("loads an optional parameter and lets the author make it required", () => {
+    const onSave = vi.fn();
+    render(<FilterEditorModal condition={{ fieldId: "status", operator: "eq", value: { parameter: "status" } }} fieldOptions={fieldOptions} parameters={[{ name: "status", type: "string", source: "input", required: false }]} resolveField={resolveField} onClose={vi.fn()} onSave={onSave} />);
+    const required = screen.getByRole("checkbox", { name: "Obrigatório na execução" });
+    expect(required).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar filtro" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ parameters: [expect.objectContaining({ required: false })] }));
+    fireEvent.click(required);
+    fireEvent.click(screen.getByRole("button", { name: "Salvar filtro" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ parameters: [expect.objectContaining({ required: true })] }));
+  });
+
   it("starts a new filter without a selected field and validates required data", () => {
     render(<FilterEditorModal fieldOptions={fieldOptions} parameters={[]} resolveField={resolveField} onClose={vi.fn()} onSave={vi.fn()} />);
     expect(screen.getByRole("button", { name: "Salvar filtro" })).toBeDisabled();
