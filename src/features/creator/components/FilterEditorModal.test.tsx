@@ -12,6 +12,18 @@ const fieldOptions = Object.values(fields).map((field) => ({ label: field.name, 
 const resolveField = (id: string) => fields[id as keyof typeof fields] || null;
 
 describe("FilterEditorModal", () => {
+  it("defaults text parameters to ignoring case and saves the configured option", () => {
+    const onSave = vi.fn();
+    render(<FilterEditorModal condition={{ fieldId: "status", operator: "eq", value: { parameter: "status" } }} fieldOptions={fieldOptions} parameters={[{ name: "status", type: "string", source: "input" }]} resolveField={resolveField} onClose={vi.fn()} onSave={onSave} />);
+    const option = screen.getByRole("checkbox", { name: "Diferenciar maiúsculas/minúsculas" });
+    expect(option).not.toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar filtro" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ condition: expect.objectContaining({ caseSensitive: false }) }));
+    fireEvent.click(option);
+    fireEvent.click(screen.getByRole("button", { name: "Salvar filtro" }));
+    expect(onSave).toHaveBeenLastCalledWith(expect.objectContaining({ condition: expect.objectContaining({ caseSensitive: true }) }));
+  });
+
   it("loads an optional parameter and lets the author make it required", () => {
     const onSave = vi.fn();
     render(<FilterEditorModal condition={{ fieldId: "status", operator: "eq", value: { parameter: "status" } }} fieldOptions={fieldOptions} parameters={[{ name: "status", type: "string", source: "input", required: false }]} resolveField={resolveField} onClose={vi.fn()} onSave={onSave} />);

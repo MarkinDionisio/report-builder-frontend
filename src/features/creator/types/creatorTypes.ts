@@ -84,6 +84,7 @@ export interface JoinItem {
 }
 
 export interface WhereNode extends Partial<FieldReference> {
+  caseSensitive?: boolean;
   operator: string;
   value?: unknown;
   conditions?: WhereNode[];

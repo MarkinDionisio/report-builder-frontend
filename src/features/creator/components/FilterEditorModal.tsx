@@ -29,6 +29,7 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
   const [description, setDescription] = useState(initial.description);
   const [placeholder, setPlaceholder] = useState(initial.placeholder);
   const [required, setRequired] = useState(initial.required);
+  const [caseSensitive, setCaseSensitive] = useState(condition?.caseSensitive ?? false);
 
   useEffect(() => {
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -74,7 +75,7 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!field || !valid) return;
-    const reference = { fieldId, ...(joinAlias ? { joinAlias } : {}) };
+    const reference = { fieldId, ...(joinAlias ? { joinAlias } : {}), ...(parsedType === "string" && !isNoValue ? { caseSensitive } : {}) };
     if (effectiveMode === "fixed") {
       onSave({ condition: { ...reference, operator: activeOperator, ...(isNoValue ? {} : { value }) }, parameters });
       return;
@@ -117,6 +118,7 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
               <label className="form-label" htmlFor="filter-editor-operator">Condição *</label>
               <select id="filter-editor-operator" className="form-input" value={activeOperator} onChange={(event) => changeOperator(event.target.value)}>{allowedOperators.map((item) => <option key={item} value={item}>{operatorLabel(item, parsedType)}</option>)}</select>
             </div>}
+            {parsedType === "string" && !isNoValue && <label><input type="checkbox" checked={caseSensitive} onChange={(event) => setCaseSensitive(event.target.checked)} /> Diferenciar maiúsculas/minúsculas</label>}
             {!isNoValue && <div className="filter-editor__control filter-editor__value">
               <label className="form-label">{effectiveMode === "automatic" ? "Período *" : effectiveMode === "input" ? "Apresentação para o usuário" : "Valor *"}</label>
               {effectiveMode === "automatic" ? <div className="filter-editor__metadata"><input className="form-input" aria-label="Rótulo personalizado" placeholder="Rótulo exibido" value={label} onChange={(event) => setLabel(event.target.value)} /><select aria-label="Período" className="form-input" value={preset} onChange={(event) => setPreset(event.target.value as RelativePeriodPreset)}>{(parsedType === "date" ? PERIOD_PRESETS.filter((item) => item.value === "today") : PERIOD_PRESETS).map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div> : effectiveMode === "input" ? <div className="filter-editor__metadata">
