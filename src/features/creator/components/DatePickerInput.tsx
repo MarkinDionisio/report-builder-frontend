@@ -67,7 +67,7 @@ export function DatePickerInput({ type, value = "", onChange, ariaLabel, placeho
     {required && <input className="date-picker__required" tabIndex={-1} required value={value} onChange={() => undefined} aria-hidden="true" />}
     {selected && <button type="button" className="date-picker__clear" aria-label={`Limpar ${ariaLabel || "data"}`} onClick={() => onChange("")}><X size={15} /></button>}
     {open && <div id={dialogId} role="dialog" aria-label={ariaLabel || "Selecionar data"} className="date-picker__popover">
-      <DayPicker mode="single" selected={selected} onSelect={selectDate} locale={ptBR} captionLayout="dropdown" startMonth={new Date(2000, 0)} endMonth={new Date(2100, 11)} />
+      <DayPicker mode="single" defaultMonth={selected} selected={selected} onSelect={selectDate} locale={ptBR} captionLayout="dropdown" startMonth={new Date(2000, 0)} endMonth={new Date(2100, 11)} />
       {type === "datetime" && <div className="date-picker__time">
         <label htmlFor={`${dialogId}-time`}>Horário</label>
         <input id={`${dialogId}-time`} className="form-input" type="time" value={time} onChange={(event) => setTime(event.target.value)} />

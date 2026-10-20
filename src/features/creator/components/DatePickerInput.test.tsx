@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DatePickerInput } from "./DatePickerInput";
 
 describe("DatePickerInput", () => {
+  afterEach(() => vi.useRealTimers());
   it("shows an existing date in Brazilian format and clears it", () => {
     const onChange = vi.fn();
     render(<DatePickerInput type="date" value="2026-08-14" ariaLabel="Data da venda" onChange={onChange} />);
@@ -11,13 +12,15 @@ describe("DatePickerInput", () => {
     expect(onChange).toHaveBeenCalledWith("");
   });
 
-  it("opens a localized calendar", () => {
+  it("opens the selected month in a localized calendar even when today is in another month", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 20, 12));
     const onChange = vi.fn();
     render(<DatePickerInput type="date" value="2026-08-14" ariaLabel="Data da venda" onChange={onChange} />);
     fireEvent.click(screen.getByRole("button", { name: "Data da venda" }));
     expect(screen.getByRole("dialog", { name: "Data da venda" })).toBeInTheDocument();
     expect(screen.getAllByText("agosto").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: /15 de agosto de 2026/ }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Data da venda" })).getByRole("button", { name: /\b15\b/ }));
     expect(onChange).toHaveBeenCalledWith("2026-08-15");
     expect(screen.queryByRole("dialog", { name: "Data da venda" })).not.toBeInTheDocument();
   });
