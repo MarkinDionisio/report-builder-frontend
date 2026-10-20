@@ -11,6 +11,51 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     await page.addInitScript(() => localStorage.setItem("report-builder.session.v1", JSON.stringify({ refreshToken: "refresh" })));
   });
 
+  test("renomeia parâmetros compartilhados em todos os filtros", async ({ page }) => {
+    await page.goto("/organizations/org-1/creator/reports/report-1");
+    await page.getByRole("button", { name: "Próximo: Escolher Colunas" }).click();
+    await page.getByRole("button", { name: "Próximo: Filtros & Ordenação" }).click();
+    await page.getByRole("button", { name: /Duplicar filtro/ }).first().click();
+    await page.getByRole("button", { name: /Editar filtro/ }).first().click();
+    const dialog = page.getByRole("dialog", { name: "Editar filtro" });
+    await dialog.getByText("Opções Avançadas").click();
+    await expect(dialog.getByRole("note")).toContainText("compartilhado");
+    await dialog.getByLabel("Nome interno inicial").fill("inicioCompartilhado");
+    await dialog.getByRole("button", { name: "Salvar filtro" }).click();
+    await page.getByRole("button", { name: /Editar filtro/ }).nth(1).click();
+    await dialog.getByText("Opções Avançadas").click();
+    await expect(dialog.getByLabel("Nome interno inicial")).toHaveValue("inicioCompartilhado");
+  });
+
+  test("opções avançadas preservam parâmetros no modal em tela pequena", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/organizations/org-1/creator/reports/report-1");
+    await page.getByRole("button", { name: "Próximo: Escolher Colunas" }).click();
+    await page.getByRole("button", { name: "Próximo: Filtros & Ordenação" }).click();
+    await expect(page.getByText("Configuração avançada de parâmetros")).toHaveCount(0);
+    const edit = page.getByRole("button", { name: /Editar filtro/ }).first();
+    await edit.click();
+    const dialog = page.getByRole("dialog", { name: "Editar filtro" });
+    const advanced = dialog.locator("details");
+    await expect(advanced).not.toHaveAttribute("open");
+    await dialog.getByText("Opções Avançadas").click();
+    await expect(dialog.getByLabel("Nome interno inicial")).toHaveValue("period_start_1");
+    await dialog.getByLabel("Nome interno inicial").fill("inicio");
+    await dialog.getByLabel("Permitir alteração na execução — fim").check();
+    expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await dialog.getByRole("button", { name: "Salvar filtro" }).click();
+    await edit.click();
+    await dialog.getByText("Opções Avançadas").click();
+    await expect(dialog.getByLabel("Nome interno inicial")).toHaveValue("inicio");
+    await expect(dialog.getByLabel("Nome interno final")).toHaveValue("period_end_1");
+    await expect(dialog.getByLabel("Permitir alteração na execução — fim")).toBeChecked();
+    await dialog.getByLabel("Nome interno inicial").fill("discarded");
+    await dialog.getByRole("button", { name: "Cancelar" }).click();
+    await edit.click();
+    await dialog.getByText("Opções Avançadas").click();
+    await expect(dialog.getByLabel("Nome interno inicial")).toHaveValue("inicio");
+  });
+
   test("pagina o preview e volta à primeira página ao alterar o tamanho", async ({ page }) => {
     const requests: Array<{ page: number; pageSize: number }> = [];
     await page.route("**/api/v1/reports/preview", async (route) => {

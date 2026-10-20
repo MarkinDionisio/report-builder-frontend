@@ -12,13 +12,12 @@ import { FilterRow } from "../components/FilterRow";
 import { FilterEditorModal } from "../components/FilterEditorModal";
 import { OrderBySummaryRow } from "../components/OrderBySummaryRow";
 import { OrderByEditorModal, type OrderByDraft } from "../components/OrderByEditorModal";
-import { ParameterEditor } from "../components/ParameterEditor";
 import { ExecutionParameterForm } from "../components/ExecutionParameterForm";
 import { ReportPresentationRenderer } from "../components/ReportPresentationRenderer";
 import { ReportPresentationEditor } from "../components/ReportPresentationEditor";
 import { ReportAccessBlockPanel } from "../components/ReportAccessBlockPanel";
 import { requiredParametersMissing, validateParameters } from "../utils/parameterUtils";
-import { collectParameterReferences, removeEmptyLogicalGroups, removeOrphanParameters } from "../utils/filterParameterUtils";
+import { collectParameterReferences, removeEmptyLogicalGroups, removeOrphanParameters, renameParameterReferences } from "../utils/filterParameterUtils";
 import { defaultAggregationAlias, fillMissingColumnAliases, nextAvailableAlias, validateColumnAliases } from "../utils/columnAliasUtils";
 import { synchronizeGroupedTableOrderBy, validateReportPresentation } from "../utils/reportPresentationUtils";
 import type { ReportParameterDefinition, WhereNode } from "../types/creatorTypes";
@@ -989,18 +988,17 @@ export const ReportDesignerPage: React.FC = () => {
     const conditions = reportContent?.dataset.where?.conditions || [];
     const orderBys = reportContent?.dataset.orderBy || [];
     const whereOperator = reportContent?.dataset.where?.operator || "and";
-    const referencedNames = collectParameterNames(reportContent?.dataset.where);
 
     const handleAddFilter = () => {
       if (!reportContent || filterFieldOptions.length === 0) return;
       setFilterEditorIndex("new");
     };
 
-    const handleSaveFilter = (result: { condition: WhereNode; parameters: ReportParameterDefinition[] }) => {
+    const handleSaveFilter = (result: { condition: WhereNode; parameters: ReportParameterDefinition[]; renames?: Record<string, string> }) => {
       if (!reportContent || filterEditorIndex === null) return;
       const previousConditions = reportContent.dataset.where?.conditions || [];
-      const nextConditions = [...previousConditions];
-      const oldCondition = filterEditorIndex === "new" ? undefined : nextConditions[filterEditorIndex];
+      const nextConditions = previousConditions.map((item) => renameParameterReferences(item, result.renames || {}));
+      const oldCondition = filterEditorIndex === "new" ? undefined : previousConditions[filterEditorIndex];
       if (filterEditorIndex === "new") nextConditions.push(result.condition);
       else nextConditions[filterEditorIndex] = result.condition;
       const nextWhere: WhereNode = { ...(reportContent.dataset.where || { operator: "and" }), conditions: nextConditions };
@@ -1125,7 +1123,6 @@ export const ReportDesignerPage: React.FC = () => {
     return (
       <div style={{ width: "100%", height: "100%", overflowY: "auto", padding: "1.5rem" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto", width: "100%", paddingBottom: "2rem" }}>
-          <ParameterEditor parameters={reportContent?.parameters || []} referencedNames={referencedNames} onChange={(parameters) => { if (reportContent) { setReportContent({ ...reportContent, parameters }); setPreviewData(null); } }} />
           
           {/* ===== FILTERS SECTION ===== */}
           <div style={{ marginBottom: "2.5rem" }}>
@@ -1270,6 +1267,7 @@ export const ReportDesignerPage: React.FC = () => {
             fieldOptions={filterFieldOptions}
             parameters={reportContent?.parameters || []}
             resolveField={resolveField}
+            where={reportContent?.dataset.where}
             onClose={() => setFilterEditorIndex(null)}
             onSave={handleSaveFilter}
           />}

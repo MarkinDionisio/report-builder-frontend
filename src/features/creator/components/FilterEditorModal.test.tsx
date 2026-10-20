@@ -97,3 +97,60 @@ describe("FilterEditorModal", () => {
     expect(screen.getByRole("button", { name: "Salvar filtro" })).toBeEnabled();
   });
 });
+
+
+describe("advanced parameter options", () => {
+  const common = { fieldOptions, resolveField, onClose: vi.fn() };
+  it("hides advanced options for literals and starts collapsed for parameters", () => {
+    const { rerender } = render(<FilterEditorModal {...common} parameters={[]} condition={{ fieldId: "status", operator: "eq", value: "A" }} onSave={vi.fn()} />);
+    expect(screen.queryByText("Opções Avançadas")).not.toBeInTheDocument();
+    rerender(<FilterEditorModal key="input" {...common} parameters={[{ name: "status", type: "string", source: "input" }]} condition={{ fieldId: "status", operator: "eq", value: { parameter: "status" } }} onSave={vi.fn()} />);
+    expect(screen.getByText("Opções Avançadas").closest("details")).not.toHaveAttribute("open");
+  });
+  it("validates names and emits renames without changing the original parameters", () => {
+    const onSave = vi.fn();
+    const parameters = [{ name: "status", type: "string" as const, source: "input" as const }, { name: "occupied", type: "string" as const, source: "input" as const }];
+    const condition = { fieldId: "status", operator: "eq", value: { parameter: "status" } };
+    render(<FilterEditorModal {...common} parameters={parameters} condition={condition} where={{ operator: "and", conditions: [condition, condition] }} onSave={onSave} />);
+    fireEvent.click(screen.getByText("Opções Avançadas"));
+    expect(screen.getByRole("note")).toHaveTextContent("compartilhado");
+    const name = screen.getByLabelText("Nome interno do parâmetro");
+    for (const value of ["occupied", "bad name", ""]) {
+      fireEvent.change(name, { target: { value } });
+      expect(screen.getByRole("button", { name: "Salvar filtro" })).toBeDisabled();
+    }
+    fireEvent.change(name, { target: { value: "newStatus" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar filtro" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ renames: { status: "newStatus" }, condition: expect.objectContaining({ value: { parameter: "newStatus" } }), parameters: [expect.objectContaining({ name: "newStatus" }), parameters[1]] }));
+    expect(parameters[0].name).toBe("status");
+  });
+  it("preserves a specific automatic variable and its metadata", () => {
+    const onSave = vi.fn();
+    render(<FilterEditorModal {...common} condition={{ fieldId: "sale-date", operator: "eq", value: { parameter: "clock" } }} parameters={[{ name: "clock", type: "datetime", source: "system", variable: "startOfNextYear", allowOverride: true, description: "Keep" }]} onSave={onSave} />);
+    expect(screen.getByLabelText("Modo automático")).toHaveValue("specific");
+    fireEvent.click(screen.getByText("Opções Avançadas"));
+    expect(screen.getByLabelText("Variável automática")).toHaveValue("startOfNextYear");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar filtro" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ parameters: [expect.objectContaining({ name: "clock", variable: "startOfNextYear", allowOverride: true, description: "Keep" })] }));
+  });
+  it("preserves period names and independently controls each boundary override", () => {
+    const onSave = vi.fn();
+    render(<FilterEditorModal {...common} condition={{ operator: "and", ui: { kind: "relativePeriod", preset: "currentMonth" }, conditions: [{ fieldId: "sale-date", operator: "gte", value: { parameter: "start" } }, { fieldId: "sale-date", operator: "lt", value: { parameter: "end" } }] }} parameters={[{ name: "start", type: "datetime", source: "system", variable: "startOfMonth", description: "Keep" }, { name: "end", type: "datetime", source: "system", variable: "startOfNextMonth" }]} onSave={onSave} />);
+    fireEvent.click(screen.getByText("Opções Avançadas"));
+    fireEvent.click(screen.getByLabelText("Permitir alteração na execução — fim"));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar filtro" }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ parameters: [expect.objectContaining({ name: "start", variable: "startOfMonth", allowOverride: false, description: "Keep" }), expect.objectContaining({ name: "end", variable: "startOfNextMonth", allowOverride: true })] }));
+  });
+});
+
+
+it("creates a specific variable with an inferred type and no override by default", () => {
+  const onSave = vi.fn();
+  render(<FilterEditorModal fieldOptions={fieldOptions} resolveField={resolveField} parameters={[]} condition={{ fieldId: "sale-date", operator: "eq", value: "2026-10-20" }} onClose={vi.fn()} onSave={onSave} />);
+  fireEvent.change(screen.getByLabelText("Como definir o valor? *"), { target: { value: "automatic" } });
+  fireEvent.change(screen.getByLabelText("Modo automático"), { target: { value: "specific" } });
+  fireEvent.click(screen.getByText("Opções Avançadas"));
+  fireEvent.change(screen.getByLabelText("Variável automática"), { target: { value: "startOfNextYear" } });
+  fireEvent.click(screen.getByRole("button", { name: "Salvar filtro" }));
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ parameters: [expect.objectContaining({ type: "datetime", source: "system", variable: "startOfNextYear", allowOverride: false })] }));
+});

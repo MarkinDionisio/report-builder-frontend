@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Calendar, Copy, GripVertical, Hash, Pencil, Type, X } from "lucide-react";
 import type { ReportParameterDefinition, WhereNode } from "../types/creatorTypes";
+import { PARAMETER_VARIABLES } from "../utils/systemVariables";
 import { PERIOD_PRESETS } from "../utils/filterParameterUtils";
 import { fieldKindFromType, operatorLabel } from "../utils/filterOperatorUtils";
 
@@ -64,7 +65,7 @@ function summarizeFilter(condition: WhereNode, parameters: ReportParameterDefini
   }
   const parameterName = getParameterName(condition.value);
   const parameter = parameters.find((item) => item.name === parameterName);
-  if (parameter?.source === "system") return { operator: "Data", value: "Hoje", mode: "automatic", modeLabel: "Automático" } as const;
+  if (parameter?.source === "system") return { operator: operatorLabel(condition.operator, fieldKindFromType(fieldType)), value: PARAMETER_VARIABLES.find((item) => item.value === parameter.variable)?.label || parameter.variable || "Automático", mode: "automatic", modeLabel: "Automático" } as const;
   if (parameter) return { operator: operatorLabel(condition.operator, fieldKindFromType(fieldType)), value: parameter.label || "Informado na execução", mode: "input", modeLabel: "Perguntar ao executar" } as const;
   return { operator: operatorLabel(condition.operator, fieldKindFromType(fieldType)), value: formatValue(condition.value, fieldType), mode: "fixed", modeLabel: "Valor fixo" } as const;
 }

@@ -54,3 +54,11 @@ describe("ExecutionParameterForm", () => {
     expect(screen.getByText("O período será calculado automaticamente no fuso da organização.")).toBeInTheDocument();
   });
 });
+
+
+it("does not offer overrides for automatic parameters unless permitted", () => {
+  render(<ExecutionParameterForm parameters={[{ name: "hidden", label: "Bloqueado", type: "datetime", source: "system", variable: "now", allowOverride: false }, { name: "editable", label: "Editável", type: "datetime", source: "system", variable: "now", allowOverride: true }]} values={{}} onChange={vi.fn()} />);
+  expect(screen.queryByText("Bloqueado")).not.toBeInTheDocument();
+  expect(screen.getByText("Editável")).toBeInTheDocument();
+  expect(screen.getAllByRole("checkbox")).toHaveLength(1);
+});

@@ -69,3 +69,12 @@ export function removeEmptyLogicalGroups(where: WhereNode | undefined): WhereNod
 
   return conditions.length > 0 ? { ...where, conditions } : undefined;
 }
+
+export function renameParameterReferences(where: WhereNode, renames: Record<string, string>): WhereNode {
+  const rewrite = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(rewrite);
+    if (!value || typeof value !== "object") return value;
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, key === "parameter" && typeof item === "string" ? renames[item] || item : rewrite(item)]));
+  };
+  return rewrite(where) as WhereNode;
+}

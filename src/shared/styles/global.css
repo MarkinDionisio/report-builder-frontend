@@ -1007,3 +1007,8 @@ option {
 .report-preview > div > .card { padding: 1.25rem; }
 .report-preview .report-results--state,
 .report-preview .report-results__empty { padding: 1.25rem; }
+
+.filter-editor__advanced { grid-column: 1 / -1; min-width: 0; }
+.filter-editor__advanced summary { cursor: pointer; font-weight: 600; margin-bottom: .75rem; }
+.filter-editor__advanced label { min-width: 0; overflow-wrap: anywhere; }
+.filter-editor__advanced .form-input { width: 100%; min-width: 0; }

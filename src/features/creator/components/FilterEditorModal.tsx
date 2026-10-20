@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
-import type { DesignerField, RelativePeriodPreset, ReportParameterDefinition, WhereNode } from "../types/creatorTypes";
+import type { DesignerField, RelativePeriodPreset, ReportParameterDefinition, ReportSystemVariable, WhereNode } from "../types/creatorTypes";
 import type { FieldOption } from "./SearchableFieldSelect";
 import { SearchableFieldSelect } from "./SearchableFieldSelect";
 import { DateFilterInput } from "./DateFilterInput";
 import { createInputParameter, createRelativePeriod, nextParameterName, parameterTypeForField, PERIOD_PRESETS } from "../utils/filterParameterUtils";
 import { fieldKindFromType, operatorLabel, visibleOperators, type FilterFieldKind } from "../utils/filterOperatorUtils";
+
+import { PARAMETER_VARIABLES } from "../utils/systemVariables";
+import { validateParameters } from "../utils/parameterUtils";
 
 type ValueMode = "fixed" | "input" | "automatic";
 
@@ -14,11 +17,12 @@ interface Props {
   fieldOptions: FieldOption[];
   parameters: ReportParameterDefinition[];
   resolveField: (fieldId: string) => DesignerField | null;
+  where?: WhereNode;
   onClose: () => void;
-  onSave: (result: { condition: WhereNode; parameters: ReportParameterDefinition[] }) => void;
+  onSave: (result: { condition: WhereNode; parameters: ReportParameterDefinition[]; renames?: Record<string, string> }) => void;
 }
 
-export function FilterEditorModal({ condition, fieldOptions, parameters, resolveField, onClose, onSave }: Props) {
+export function FilterEditorModal({ condition, fieldOptions, parameters, resolveField, where, onClose, onSave }: Props) {
   const initial = useMemo(() => readInitialState(condition, parameters), [condition, parameters]);
   const [fieldKey, setFieldKey] = useState(initial.fieldKey);
   const [operator, setOperator] = useState(initial.operator);
@@ -29,6 +33,14 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
   const [description, setDescription] = useState(initial.description);
   const [placeholder, setPlaceholder] = useState(initial.placeholder);
   const [required, setRequired] = useState(initial.required);
+  const originalStart = parameters.find((item) => item.name === getParameterName((condition?.ui?.kind === "relativePeriod" ? condition.conditions?.[0] : condition)?.value));
+  const originalEnd = condition?.ui?.kind === "relativePeriod" ? parameters.find((item) => item.name === getParameterName(condition.conditions?.[1]?.value)) : undefined;
+  const [automaticKind, setAutomaticKind] = useState(condition?.ui?.kind === "relativePeriod" || !originalStart ? "period" : "specific");
+  const [name, setName] = useState(originalStart?.name || nextParameterName(parameters));
+  const [endName, setEndName] = useState(originalEnd?.name || nextParameterName(parameters, "period_end"));
+  const [variable, setVariable] = useState<ReportSystemVariable>(originalStart?.variable || "now");
+  const [allowOverride, setAllowOverride] = useState(originalStart?.allowOverride ?? false);
+  const [endOverride, setEndOverride] = useState(originalEnd?.allowOverride ?? false);
   const [caseSensitive, setCaseSensitive] = useState(condition?.caseSensitive ?? false);
 
   useEffect(() => {
@@ -50,7 +62,7 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
   const isList = normalizedOperator === "in" || normalizedOperator === "not in";
   const supportsMode = !isNoValue && !isBetween && !isList;
   const effectiveMode = supportsMode ? mode : "fixed";
-  const valid = Boolean(field && activeOperator) && (isNoValue || effectiveMode !== "fixed" || hasLiteralValue(value, isBetween, isList));
+  const basicValid = Boolean(field && activeOperator) && (isNoValue || effectiveMode !== "fixed" || hasLiteralValue(value, isBetween, isList));
 
   const changeField = (next: string) => {
     const [nextFieldId] = next.split("|");
@@ -72,30 +84,40 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
     setValue(next.toLowerCase() === "between" ? ["", ""] : next.toLowerCase() === "in" || next.toLowerCase() === "not in" ? [] : "");
   };
 
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!field || !valid) return;
+  const isPeriod = effectiveMode === "automatic" && automaticKind === "period" && parsedType === "datetime";
+  const compatibleVariables = PARAMETER_VARIABLES.filter((item) => item.type === parameterTypeForField(field?.type || ""));
+  const selectedVariable = compatibleVariables.some((item) => item.value === variable) ? variable : compatibleVariables[0]?.value;
+  const buildResult = () => {
     const reference = { fieldId, ...(joinAlias ? { joinAlias } : {}), ...(parsedType === "string" && !isNoValue ? { caseSensitive } : {}) };
-    if (effectiveMode === "fixed") {
-      onSave({ condition: { ...reference, operator: activeOperator, ...(isNoValue ? {} : { value }) }, parameters });
-      return;
+    if (effectiveMode === "fixed") return { condition: { ...reference, operator: activeOperator, ...(isNoValue ? {} : { value }) }, parameters, renames: {} };
+    const renames: Record<string, string> = {};
+    const replacements = new Map<string, ReportParameterDefinition>();
+    const additions: ReportParameterDefinition[] = [];
+    const put = (original: ReportParameterDefinition | undefined, patch: ReportParameterDefinition) => {
+      const updated = { ...original, ...patch };
+      if (original) { replacements.set(original.name, updated); if (original.name !== updated.name) renames[original.name] = updated.name; }
+      else additions.push(updated);
+    };
+    let nextCondition: WhereNode;
+    if (isPeriod) {
+      const generated = createRelativePeriod(fieldId, joinAlias || undefined, preset, [], label || field!.name);
+      const [start, end] = generated.parameters;
+      put(originalStart, { ...start!, name, allowOverride });
+      put(originalEnd, { ...end!, name: endName, allowOverride: endOverride });
+      nextCondition = { ...generated.condition, conditions: generated.condition.conditions!.map((item, index) => ({ ...item, value: { parameter: index === 0 ? name : endName } })) };
+    } else {
+      put(originalStart, effectiveMode === "input"
+        ? { ...createInputParameter([], field!.type, field!.name), name, label: label || field!.name, description, placeholder, required, variable: undefined, allowOverride: undefined }
+        : { name, type: parameterTypeForField(field!.type), source: "system", variable: automaticKind === "period" ? "currentDate" : selectedVariable, allowOverride, label: label || field!.name });
+      nextCondition = { ...reference, operator: effectiveMode === "automatic" && automaticKind === "period" ? "eq" : activeOperator, value: { parameter: name } };
     }
-    if (effectiveMode === "input") {
-      const existingName = getParameterName(condition?.ui?.kind === "relativePeriod" ? undefined : condition?.value);
-      const existing = parameters.find((parameter) => parameter.name === existingName && parameter.source === "input");
-      const parameter = existing ? { ...existing, type: parameterTypeForField(field.type), label: label || field.name, description, placeholder, required } : { ...createInputParameter(parameters, field.type, field.name), label: label || field.name, description, placeholder, required };
-      const nextParameters = existing ? parameters.map((item) => item.name === existing.name ? parameter : item) : [...parameters, parameter];
-      onSave({ condition: { ...reference, operator: activeOperator, value: { parameter: parameter.name } }, parameters: nextParameters });
-      return;
-    }
-    if (parameterTypeForField(field.type) === "date") {
-      const parameter: ReportParameterDefinition = { name: nextParameterName(parameters, "current_date"), type: "date", source: "system", variable: "currentDate" };
-      onSave({ condition: { ...reference, operator: "eq", value: { parameter: parameter.name } }, parameters: [...parameters, parameter] });
-      return;
-    }
-    const generated = createRelativePeriod(fieldId, joinAlias || undefined, preset, parameters, label || field.name);
-    onSave(generated);
+    return { condition: nextCondition, parameters: [...parameters.map((item) => replacements.get(item.name) || item), ...additions], renames };
   };
+  const draft = field ? buildResult() : undefined;
+  const errors = effectiveMode === "fixed" ? [] : validateParameters(draft?.parameters || []);
+  const valid = basicValid && errors.length === 0;
+  const shared = [originalStart, originalEnd].some((parameter) => parameter && countReferences(where, parameter.name) > countReferences(condition, parameter.name));
+  const submit = (event: React.FormEvent) => { event.preventDefault(); if (valid && draft) onSave(draft); };
 
   return <div className="modal-backdrop filter-editor-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <div className="modal-container filter-editor" role="dialog" aria-modal="true" aria-labelledby="filter-editor-title">
@@ -114,14 +136,14 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
               <label className="form-label" htmlFor="filter-editor-mode">Como definir o valor? *</label>
               <select id="filter-editor-mode" className="form-input" value={mode} onChange={(event) => { const nextMode = event.target.value as ValueMode; setMode(nextMode); setValue(""); if (nextMode !== "automatic" && !allowedOperators.some((item) => item.toLowerCase() === activeOperator.toLowerCase())) setOperator(allowedOperators.find((item) => item.toLowerCase() === "eq") || allowedOperators[0]); }}><option value="fixed">Valor fixo</option><option value="input">Perguntar ao executar</option>{isDate && <option value="automatic">Data/período automático</option>}</select>
             </div>}
-            {mode !== "automatic" && <div className="filter-editor__control">
+            {(effectiveMode !== "automatic" || automaticKind === "specific") && <div className="filter-editor__control">
               <label className="form-label" htmlFor="filter-editor-operator">Condição *</label>
               <select id="filter-editor-operator" className="form-input" value={activeOperator} onChange={(event) => changeOperator(event.target.value)}>{allowedOperators.map((item) => <option key={item} value={item}>{operatorLabel(item, parsedType)}</option>)}</select>
             </div>}
             {parsedType === "string" && !isNoValue && <label><input type="checkbox" checked={caseSensitive} onChange={(event) => setCaseSensitive(event.target.checked)} /> Diferenciar maiúsculas/minúsculas</label>}
             {!isNoValue && <div className="filter-editor__control filter-editor__value">
               <label className="form-label">{effectiveMode === "automatic" ? "Período *" : effectiveMode === "input" ? "Apresentação para o usuário" : "Valor *"}</label>
-              {effectiveMode === "automatic" ? <div className="filter-editor__metadata"><input className="form-input" aria-label="Rótulo personalizado" placeholder="Rótulo exibido" value={label} onChange={(event) => setLabel(event.target.value)} /><select aria-label="Período" className="form-input" value={preset} onChange={(event) => setPreset(event.target.value as RelativePeriodPreset)}>{(parsedType === "date" ? PERIOD_PRESETS.filter((item) => item.value === "today") : PERIOD_PRESETS).map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div> : effectiveMode === "input" ? <div className="filter-editor__metadata">
+              {effectiveMode === "automatic" ? <div className="filter-editor__metadata"><input className="form-input" aria-label="Rótulo personalizado" placeholder="Rótulo exibido" value={label} onChange={(event) => setLabel(event.target.value)} /><select aria-label="Modo automático" className="form-input" value={automaticKind} onChange={(event) => setAutomaticKind(event.target.value)}><option value="period">Período predefinido</option><option value="specific">Variável específica</option></select>{automaticKind === "period" && <select aria-label="Período" className="form-input" value={preset} onChange={(event) => setPreset(event.target.value as RelativePeriodPreset)}>{(parsedType === "date" ? PERIOD_PRESETS.filter((item) => item.value === "today") : PERIOD_PRESETS).map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select>}</div> : effectiveMode === "input" ? <div className="filter-editor__metadata">
                 <label><input type="checkbox" checked={required} onChange={(event) => setRequired(event.target.checked)} /> Obrigatório na execução</label>
                 <small>Se opcional e vazio, este filtro não será aplicado.</small>
                 <input className="form-input" aria-label="Rótulo para o usuário" placeholder="Rótulo exibido" value={label} onChange={(event) => setLabel(event.target.value)} />
@@ -129,6 +151,20 @@ export function FilterEditorModal({ condition, fieldOptions, parameters, resolve
                 <input className="form-input filter-editor__description" aria-label="Texto de ajuda" placeholder="Explique o que deve ser informado (opcional)" value={description} onChange={(event) => setDescription(event.target.value)} />
               </div> : <LiteralValueInput fieldType={parsedType} operator={activeOperator} value={value} onChange={setValue} />}
             </div>}
+            {!isNoValue && effectiveMode !== "fixed" && <details className="filter-editor__advanced">
+              <summary>Opções Avançadas</summary>
+              {shared && <p role="note">Este parâmetro é compartilhado. As alterações serão aplicadas a todos os filtros que o utilizam.</p>}
+              <div className="filter-editor__metadata">
+                <label>Nome interno{isPeriod ? " inicial" : ""}<input className="form-input" aria-label={isPeriod ? "Nome interno inicial" : "Nome interno do parâmetro"} value={name} onChange={(event) => setName(event.target.value)} /></label>
+                {isPeriod && <label>Nome interno final<input className="form-input" value={endName} onChange={(event) => setEndName(event.target.value)} /></label>}
+                {effectiveMode === "automatic" && <>
+                  {automaticKind === "specific" && <label>Variável automática<select className="form-input" value={selectedVariable || ""} onChange={(event) => setVariable(event.target.value as ReportSystemVariable)}>{compatibleVariables.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>}
+                  <label><input type="checkbox" checked={allowOverride} onChange={(event) => setAllowOverride(event.target.checked)} /> Permitir alteração na execução{isPeriod ? " — início" : ""}</label>
+                  {isPeriod && <label><input type="checkbox" checked={endOverride} onChange={(event) => setEndOverride(event.target.checked)} /> Permitir alteração na execução — fim</label>}
+                </>}
+              </div>
+            </details>}
+            {errors.length > 0 && <div role="alert" className="alert alert-danger">{errors.join(" • ")}</div>}
           </>}
         </div>
         <div className="filter-editor__footer"><button type="button" className="btn btn-secondary" onClick={onClose}>Cancelar</button><button type="submit" className="btn btn-primary" disabled={!valid}>Salvar filtro</button></div>
@@ -161,3 +197,8 @@ function readInitialState(condition: WhereNode | undefined, parameters: ReportPa
 
 function getParameterName(value: unknown): string | undefined { return value && typeof value === "object" && !Array.isArray(value) && "parameter" in value ? String((value as { parameter: string }).parameter) : undefined; }
 function hasLiteralValue(value: unknown, between: boolean, list: boolean): boolean { if (between) return Array.isArray(value) && value.length === 2 && value.every((item) => item !== ""); if (list) return Array.isArray(value) && value.length > 0; return value !== "" && value !== undefined && value !== null; }
+
+function countReferences(node: WhereNode | undefined, name: string): number {
+  if (!node) return 0;
+  return (getParameterName(node.value) === name ? 1 : 0) + (node.conditions || []).reduce((sum, child) => sum + countReferences(child, name), 0);
+}

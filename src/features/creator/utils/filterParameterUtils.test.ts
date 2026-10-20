@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { collectParameterReferences, createInputParameter, createRelativePeriod, removeEmptyLogicalGroups, removeOrphanParameters } from "./filterParameterUtils";
+import { renameParameterReferences, collectParameterReferences, createInputParameter, createRelativePeriod, removeEmptyLogicalGroups, removeOrphanParameters } from "./filterParameterUtils";
 
 describe("filter parameter helpers", () => {
   it("creates a business-friendly input parameter", () => {
@@ -35,4 +35,13 @@ describe("filter parameter helpers", () => {
       conditions: [{ operator: "or", conditions: [] }, condition],
     })).toEqual({ operator: "and", conditions: [condition] });
   });
+});
+
+
+it("renames shared references recursively and simultaneously without mutating literals", () => {
+  const condition = { operator: "and", conditions: [{ fieldId: "a", operator: "eq", value: { parameter: "a" } }, { operator: "or", conditions: [{ fieldId: "b", operator: "eq", value: { parameter: "a" } }, { fieldId: "c", operator: "eq", value: { parameter: "b" } }, { fieldId: "d", operator: "eq", value: "a" }] }] };
+  const result = renameParameterReferences(condition, { a: "b", b: "a" });
+  expect(result.conditions?.[0]?.value).toEqual({ parameter: "b" });
+  expect(result.conditions?.[1]?.conditions?.map((item) => item.value)).toEqual([{ parameter: "b" }, { parameter: "a" }, "a"]);
+  expect(condition.conditions[0]?.value).toEqual({ parameter: "a" });
 });
