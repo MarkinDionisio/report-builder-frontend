@@ -31,3 +31,14 @@ describe("ReportRunnerPage parameters", () => {
     expect(screen.getByLabelText("Filial")).toBeVisible();
   });
 });
+
+it("orienta a importar modelos globais e oculta a execução", async () => {
+  vi.mocked(creatorApi.getReport).mockResolvedValue({ ok: true, value: {
+    id: "global", title: "Modelo", organizationId: "org", organizationName: "Origem", visibilityScope: "global", myRole: "viewer", canExecute: false, canEdit: false, executionBlockCode: "report_execution.global_template_requires_import", blockedSchemas: [], allowedFilters: [],
+    content: { version: 1, dataset: { schemaId: "schema", select: [] } },
+  } });
+  renderRunner();
+  await screen.findByText(/Este relatório é um modelo global/);
+  expect(screen.queryByRole("button", { name: "Executar relatório" })).not.toBeInTheDocument();
+  expect(creatorApi.executeReport).not.toHaveBeenCalled();
+});

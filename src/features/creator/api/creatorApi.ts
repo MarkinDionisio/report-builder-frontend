@@ -3,6 +3,7 @@ import { err, isErr, ok } from "../../../shared/result/result";
 import type { Result } from "../../../shared/result/result";
 import type { ApiProblemDetails } from "../../../shared/api/types";
 import type {
+  GlobalReportTemplate, ReportImportRequest, ReportImportCheck, ReportImportDataSource,
   CreatorDataSourceOption,
   SharingTargets,
   DesignerCatalog,
@@ -47,6 +48,18 @@ function handleVoidResponse(
 }
 
 export const creatorApi = {
+  async listGlobalTemplates(page = 1): Promise<Result<PagedResult<GlobalReportTemplate>, ApiProblemDetails>> {
+    return parseJsonResponse(await apiFetch(`/api/v1/reports/global-templates?page=${page}&pageSize=10`));
+  },
+  async getImportDataSources(organizationId: string): Promise<Result<ReportImportDataSource[], ApiProblemDetails>> {
+    return parseJsonResponse(await apiFetch(`/api/v1/organizations/${organizationId}/report-import-data-sources`));
+  },
+  async checkReportImport(id: string, request: ReportImportRequest): Promise<Result<ReportImportCheck, ApiProblemDetails>> {
+    return parseJsonResponse(await apiFetch(`/api/v1/reports/${id}/import-check`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) }));
+  },
+  async importReport(id: string, request: ReportImportRequest): Promise<Result<ReportDetail, ApiProblemDetails>> {
+    return parseJsonResponse(await apiFetch(`/api/v1/reports/${id}/import`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) }));
+  },
   // --- Discovery ---
   async getCreatorDataSources(
     organizationId: string

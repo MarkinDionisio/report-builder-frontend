@@ -302,3 +302,9 @@ export interface PreviewRequest {
   page: number;
   pageSize: number;
 }
+
+export interface GlobalReportTemplate { id: string; title: string; updatedAt: string; }
+export interface ReportImportRequest { organizationId: string; dataSourceId: string; title?: string; }
+export interface ReportImportIssue { code: string; path: string; referenceId: string | null; message: string; }
+export interface ReportImportCheck { canImport: boolean; issues: ReportImportIssue[]; }
+export interface ReportImportDataSource { id: string; name: string; }

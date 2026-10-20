@@ -6,6 +6,13 @@ import type { ApiProblemDetails } from "../api/types";
  * Mapping of known/expected business and validation error codes to user-friendly messages.
  */
 export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string }> = {
+  "report_import.incompatible": { title: "Modelo incompatível", message: "O modelo ou catálogo mudou. Verifique a compatibilidade novamente." },
+  "report_import.forbidden": { title: "Importação não permitida", message: "É necessário acesso de creator à organização para importar relatórios." },
+  "report_import.template_not_found": { title: "Modelo indisponível", message: "Este modelo global não está mais disponível. Escolha outro modelo." },
+  "report_import.data_source_not_found": { title: "Data source indisponível", message: "O data source não está mais disponível nesta organização." },
+  "report_import.organization_not_found": { title: "Organização indisponível", message: "A organização de destino não está mais disponível." },
+  "report_import.connection_failed": { title: "Erro de conexão", message: "Não foi possível concluir. Tente novamente." },
+  "report_execution.global_template_requires_import": { title: "Importação necessária", message: "Importe este modelo global para sua organização antes de executar." },
   "reports.edit_access_blocked": {
     title: "Edição bloqueada",
     message: "O acesso aos schemas ou campos deste relatório mudou. Recarregue a página ou solicite as permissões necessárias a um administrador.",

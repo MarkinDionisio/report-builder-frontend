@@ -21,3 +21,13 @@ describe("creator execution API", () => {
     }));
   });
 });
+
+it("sends import requests as JSON with the target organization and data source", async () => {
+  const request = { organizationId: "target", dataSourceId: "source", title: "Cópia" };
+  const spy = vi.spyOn(client, "apiFetch").mockResolvedValue(ok(new Response(JSON.stringify({ canImport: true, issues: [] }), { status: 200 })));
+  await creatorApi.checkReportImport("global", request);
+  expect(spy).toHaveBeenLastCalledWith("/api/v1/reports/global/import-check", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
+  spy.mockResolvedValueOnce(ok(new Response(JSON.stringify({ id: "copy" }), { status: 201 })));
+  await creatorApi.importReport("global", request);
+  expect(spy).toHaveBeenLastCalledWith("/api/v1/reports/global/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
+});
