@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { ImportGlobalReportModal } from "../components/ImportGlobalReportModal";
+import { useParams, Link } from "react-router-dom";
 import { creatorApi } from "../../creator/api/creatorApi";
 import { isErr } from "../../../shared/result/result";
 import { Navbar } from "../../../shared/components/Navbar";
@@ -14,8 +13,6 @@ import { getResourceRoleLabel } from "../../../shared/utils/roles";
 export const OrganizationCreatorDashboardPage: React.FC = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
   const { state } = useAuth();
-  const navigate = useNavigate();
-  const [importOpen, setImportOpen] = useState(false);
   
   const [activeTab, setActiveTab] = useState<"reports" | "dashboards">("reports");
   
@@ -77,11 +74,6 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
       
-      {importOpen && organizationId && <ImportGlobalReportModal key={organizationId} organizationId={organizationId} onClose={() => setImportOpen(false)} onImported={report => {
-        setImportOpen(false);
-        setReports(current => [{ ...report, createdAt: new Date().toISOString() }, ...current]);
-        navigate(`/organizations/${organizationId}/creator/reports/${report.id}`);
-      }}/>}
 
       <header className="creator-workspace-header" style={{ background: "var(--surface-color)", borderBottom: "1px solid var(--border-color)", padding: "2rem 1.5rem 0 1.5rem" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
@@ -91,7 +83,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
               <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>Gerencie relatórios e dashboards desta organização</p>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              {activeTab === "reports" && isAllowed && <button className="btn btn-secondary" onClick={() => setImportOpen(true)}>Importar relatório global</button>}
+              {activeTab === "reports" && isAllowed && <Link className="btn btn-secondary" to={`/organizations/${organizationId}/creator/global-reports`}>Catálogo de relatórios globais</Link>}
               {activeTab === "reports" ? (
                 <Link
                   to={`/organizations/${organizationId}/creator/reports/new`}

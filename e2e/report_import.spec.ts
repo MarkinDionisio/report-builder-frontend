@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("importa um modelo global na organização atual e abre a cópia no editor", async ({ page }) => {
+test("importa um modelo global na organização atual e abre a cópia no editor", async ({ page }, testInfo) => {
   const json = (body: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   const session = { accessToken: "token", refreshToken: "refresh", tokenType: "Bearer", expiresAt: new Date(Date.now() + 3600000).toISOString(), userId: "user", email: "creator@example.com", globalRole: "creator" };
   const copy = { id: "copy", title: "Vendas locais", organizationId: "target", organizationName: "Destino", visibilityScope: "private", myRole: "owner", canExecute: true, canEdit: true, executionBlockCode: null, blockedSchemas: [], allowedFilters: [], content: { version: 1, dataset: { dataSourceId: "source", schemaId: "schema", select: [{ fieldId: "status", alias: "Status" }] } } };
@@ -25,9 +25,13 @@ test("importa um modelo global na organização atual e abre a cópia no editor"
   await page.route("**/api/v1/organizations/target/report-designer/catalog?*", route => route.fulfill(json({ schemas: [{ id: "schema", dataSourceId: "source", name: "Pedidos", fields: [{ id: "status", name: "Status", type: "string", selectable: true, filterable: true, sortable: true, groupable: true, allowedOperators: ["eq", "in"], allowedAggregations: [] }] }], joins: [] })));
   await page.addInitScript(() => localStorage.setItem("report-builder.session.v1", JSON.stringify({ refreshToken: "refresh" })));
   await page.goto("/organizations/target/creator");
-  await page.getByRole("button", { name: "Importar relatório global", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.getByLabel("Modelo global").selectOption("global");
+  await page.getByRole("link", { name: "Catálogo de relatórios globais", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp("/organizations/target/creator/global-reports$"));
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Catálogo de relatórios globais", exact: true })).toBeVisible();
+  await page.getByRole("textbox", { name: "Buscar relatórios globais" }).fill("Vendas");
+  await page.getByRole("button", { name: "Selecionar modelo Vendas" }).click();
+  await page.screenshot({ path: testInfo.outputPath("catalogo.png"), fullPage: true });
   await page.getByLabel("Data source de destino").selectOption("source");
   await page.getByLabel("Título da cópia").fill("Vendas locais");
   await expect(page.getByRole("button", { name: "Importar", exact: true })).toBeDisabled();
@@ -35,7 +39,7 @@ test("importa um modelo global na organização atual e abre a cópia no editor"
   await expect(page.getByText(/Modelo compatível/)).toBeVisible();
   await page.getByRole("button", { name: "Importar", exact: true }).click();
   await expect(page).toHaveURL(new RegExp("organizations/target/creator/reports/copy$"));
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Catálogo de relatórios globais", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Vendas locais" })).toBeVisible();
 });
 
@@ -44,7 +48,7 @@ test("viewer não recebe a opção de importar", async ({ page }) => {
   await page.route("**/api/v1/auth/refresh", route => route.fulfill(json({ accessToken: "token", refreshToken: "refresh", tokenType: "Bearer", expiresAt: new Date(Date.now() + 3600000).toISOString(), userId: "viewer", email: "viewer@example.com", globalRole: "viewer" })));
   await page.route("**/api/v1/me", route => route.fulfill(json({ id: "viewer", name: "Viewer", email: "viewer@example.com", globalRole: "viewer", profileIds: [], organizations: [{ id: "target", name: "Destino", organizationRole: "viewer" }] })));
   await page.addInitScript(() => localStorage.setItem("report-builder.session.v1", JSON.stringify({ refreshToken: "refresh" })));
-  await page.goto("/organizations/target/creator");
+  await page.goto("/organizations/target/creator/global-reports");
   await expect(page).toHaveURL(new RegExp("/dashboard$"));
-  await expect(page.getByRole("button", { name: "Importar relatório global" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Catálogo de relatórios globais" })).toHaveCount(0);
 });

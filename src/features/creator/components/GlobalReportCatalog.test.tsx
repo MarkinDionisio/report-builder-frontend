@@ -1,27 +1,24 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { creatorApi } from "../api/creatorApi";
-import { ImportGlobalReportModal } from "./ImportGlobalReportModal";
+import { GlobalReportCatalog } from "./GlobalReportCatalog";
 import type { ReportDetail } from "../types/creatorTypes";
 
 vi.mock("../api/creatorApi", () => ({ creatorApi: { listGlobalTemplates: vi.fn(), getImportDataSources: vi.fn(), checkReportImport: vi.fn(), importReport: vi.fn() } }));
 const onImported = vi.fn();
 const templates = { page: 1, pageSize: 10, totalPages: 2, totalRecords: 11, data: [{ id: "global", title: "Vendas", updatedAt: "2026-10-20" }, { id: "other", title: "Compras", updatedAt: "2026-10-20" }] };
-function show() { return render(<ImportGlobalReportModal organizationId="target" onClose={vi.fn()} onImported={onImported}/>); }
+function show() { return render(<GlobalReportCatalog organizationId="target" onClose={vi.fn()} onImported={onImported}/>); }
 async function select() {
-  await screen.findByRole("option", { name: "Vendas" });
-  fireEvent.change(screen.getByLabelText("Modelo global"), { target: { value: "global" } });
+  fireEvent.click(await screen.findByRole("button", { name: "Selecionar modelo Vendas" }));
   fireEvent.change(screen.getByLabelText("Data source de destino"), { target: { value: "source" } });
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
-  HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
   vi.mocked(creatorApi.listGlobalTemplates).mockResolvedValue({ ok: true, value: templates });
   vi.mocked(creatorApi.getImportDataSources).mockResolvedValue({ ok: true, value: [{ id: "source", name: "Base local" }, { id: "second", name: "Outra base" }] });
   vi.mocked(creatorApi.checkReportImport).mockResolvedValue({ ok: true, value: { canImport: true, issues: [] } });
 });
-describe("ImportGlobalReportModal", () => {
+describe("GlobalReportCatalog", () => {
   it("verifica antes de importar e fixa a organização atual", async () => {
     const report = { id: "copy" } as ReportDetail;
     vi.mocked(creatorApi.importReport).mockResolvedValue({ ok: true, value: report });
@@ -42,11 +39,11 @@ describe("ImportGlobalReportModal", () => {
     expect(screen.getByRole("button", { name: "Importar" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: "Verificar compatibilidade" }));
     await screen.findByText(/Modelo compatível/);
-    fireEvent.change(screen.getByLabelText("Modelo global"), { target: { value: "other" } });
+    fireEvent.click(screen.getByRole("button", { name: "Selecionar modelo Compras" }));
     expect(screen.getByRole("button", { name: "Importar" })).toBeDisabled();
     expect(screen.getByLabelText("Título da cópia")).toHaveValue("Compras");
     fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
-    await waitFor(() => expect(creatorApi.listGlobalTemplates).toHaveBeenCalledWith(2));
+    await waitFor(() => expect(creatorApi.listGlobalTemplates).toHaveBeenCalledWith(2, ""));
   });
   it("mostra incompatibilidades e não permite importar", async () => {
     vi.mocked(creatorApi.checkReportImport).mockResolvedValue({ ok: true, value: { canImport: false, issues: [{ code: "field_incompatible", path: "dataset.select[0]", referenceId: "field", message: "Campo incompatível no destino." }] } });
@@ -74,7 +71,21 @@ describe("ImportGlobalReportModal", () => {
     show(); await select(); const button = screen.getByRole("button", { name: "Verificar compatibilidade" });
     fireEvent.click(button); fireEvent.click(button);
     expect(creatorApi.checkReportImport).toHaveBeenCalledTimes(1);
-    expect(screen.getByLabelText("Modelo global")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Cancelar" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Selecionar modelo Vendas" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Voltar" })).toBeDisabled();
   });
+});
+
+it("busca em todo o catálogo, volta à primeira página e limpa a seleção", async () => {
+  show(); await select();
+  expect(screen.getByRole("button", { name: "Selecionar modelo Vendas" })).toHaveAttribute("aria-pressed", "true");
+  fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+  await waitFor(() => expect(creatorApi.listGlobalTemplates).toHaveBeenCalledWith(2, ""));
+  await screen.findByRole("button", { name: "Selecionar modelo Vendas" });
+  vi.mocked(creatorApi.listGlobalTemplates).mockResolvedValue({ ok: true, value: { ...templates, page: 1, totalPages: 0, totalRecords: 0, data: [] } });
+  fireEvent.change(screen.getByRole("textbox", { name: "Buscar relatórios globais" }), { target: { value: "  Estoque  " } });
+  await waitFor(() => expect(creatorApi.listGlobalTemplates).toHaveBeenCalledWith(1, "Estoque"));
+  await screen.findByText("Nenhum modelo encontrado para esta busca.");
+  expect(screen.getByLabelText("Título da cópia")).toHaveValue("");
+  expect(screen.getByRole("button", { name: "Importar" })).toBeDisabled();
 });

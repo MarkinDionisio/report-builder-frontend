@@ -18,6 +18,7 @@ import { ReportJoinTemplatesPage } from "../features/catalog/pages/ReportJoinTem
 import { CreatorWorkspacePage } from "../features/creator/pages/CreatorWorkspacePage";
 import { OrganizationCreatorDashboardPage } from "../features/creator/pages/OrganizationCreatorDashboardPage";
 import { ReportDesignerPage } from "../features/creator/pages/ReportDesignerPage";
+import { GlobalReportCatalogPage } from "../features/creator/pages/GlobalReportCatalogPage";
 import { ReportRunnerPage } from "../features/creator/pages/ReportRunnerPage";
 
 export const AppRoutes: React.FC = () => {
@@ -86,6 +87,10 @@ export const AppRoutes: React.FC = () => {
             <OrganizationCreatorDashboardPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/organizations/:organizationId/creator/global-reports"
+        element={<ProtectedRoute><GlobalReportCatalogPage /></ProtectedRoute>}
       />
       <Route
         path="/reports/:reportId/run"

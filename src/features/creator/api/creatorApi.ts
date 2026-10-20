@@ -48,8 +48,8 @@ function handleVoidResponse(
 }
 
 export const creatorApi = {
-  async listGlobalTemplates(page = 1): Promise<Result<PagedResult<GlobalReportTemplate>, ApiProblemDetails>> {
-    return parseJsonResponse(await apiFetch(`/api/v1/reports/global-templates?page=${page}&pageSize=10`));
+  async listGlobalTemplates(page = 1, search = ""): Promise<Result<PagedResult<GlobalReportTemplate>, ApiProblemDetails>> {
+    return parseJsonResponse(await apiFetch(`/api/v1/reports/global-templates?page=${page}&pageSize=10&search=${encodeURIComponent(search)}`));
   },
   async getImportDataSources(organizationId: string): Promise<Result<ReportImportDataSource[], ApiProblemDetails>> {
     return parseJsonResponse(await apiFetch(`/api/v1/organizations/${organizationId}/report-import-data-sources`));

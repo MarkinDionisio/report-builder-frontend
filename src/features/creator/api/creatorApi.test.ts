@@ -31,3 +31,9 @@ it("sends import requests as JSON with the target organization and data source",
   await creatorApi.importReport("global", request);
   expect(spy).toHaveBeenLastCalledWith("/api/v1/reports/global/import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(request) });
 });
+
+it("encodes the catalog search alongside pagination", async () => {
+  const spy = vi.spyOn(client, "apiFetch").mockResolvedValueOnce(ok(new Response(JSON.stringify({ data: [] }), { status: 200 })));
+  await creatorApi.listGlobalTemplates(2, "Vendas & estoque");
+  expect(spy).toHaveBeenCalledWith("/api/v1/reports/global-templates?page=2&pageSize=10&search=Vendas%20%26%20estoque");
+});
