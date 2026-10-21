@@ -30,8 +30,9 @@ para provisionamento, configuração do GitHub e rollback.
 ## Importação de relatórios globais
 
 Na área de criação de uma organização, acesse **Catálogo de relatórios globais**, escolha
-um modelo e uma fonte de dados ativa e verificada, ajuste o título e verifique
-a compatibilidade. A importação cria uma cópia privada independente e abre o
+um modelo na etapa **Escolher relatório**. A etapa **Configurar importação**
+permite selecionar uma fonte de dados ativa e verificada, ajustar o título e
+verificar a compatibilidade. A importação cria uma cópia privada independente e abre o
 editor. Creators e administradores podem importar; viewers precisam receber
 acesso a uma cópia local. Somente root executa o modelo global original.
 
@@ -42,3 +43,8 @@ frontend. Não há atualização automática das cópias quando o modelo muda.
 O catálogo possui rota própria: `/organizations/:organizationId/creator/global-reports`.
 Ela pode ser aberta diretamente, mantendo a organização de destino e as permissões
 da área de criação. A busca por título consulta todo o catálogo com paginação.
+
+O catálogo usa o mesmo fluxo de duas etapas em desktop e celular. A ação
+**Trocar relatório** preserva a busca, a página e a configuração; escolher outro
+modelo redefine o título e exige nova verificação de compatibilidade. O rodapé
+mantém as ações acessíveis enquanto o conteúdo da etapa pode ser rolado.

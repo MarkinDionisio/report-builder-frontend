@@ -6,9 +6,9 @@ export function GlobalReportCatalogPage() {
   const { organizationId } = useParams<{ organizationId: string }>();
   const navigate = useNavigate();
   if (!organizationId) return <Navigate to="/creator" replace/>;
-  return <div style={{ minHeight: "100vh" }}>
+  return <div className="global-report-catalog-page">
     <Navbar/>
-    <main style={{ maxWidth: 1200, margin: "2rem auto", padding: "0 1.5rem" }}>
+    <main className="global-report-catalog-main">
       <GlobalReportCatalog key={organizationId} organizationId={organizationId}
         onClose={() => navigate(`/organizations/${organizationId}/creator`)}
         onImported={report => navigate(`/organizations/${organizationId}/creator/reports/${report.id}`)}/>

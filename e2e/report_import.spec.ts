@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("importa um modelo global na organização atual e abre a cópia no editor", async ({ page }, testInfo) => {
+for (const viewport of [{ name: "desktop", width: 1280, height: 800 }, { name: "mobile", width: 390, height: 844 }, { name: "compacto", width: 320, height: 640 }]) {
+test(`importa em etapas no ${viewport.name} e abre a cópia no editor`, async ({ page }, testInfo) => {
+  await page.setViewportSize(viewport);
   const json = (body: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   const session = { accessToken: "token", refreshToken: "refresh", tokenType: "Bearer", expiresAt: new Date(Date.now() + 3600000).toISOString(), userId: "user", email: "creator@example.com", globalRole: "creator" };
   const copy = { id: "copy", title: "Vendas locais", organizationId: "target", organizationName: "Destino", visibilityScope: "private", myRole: "owner", canExecute: true, canEdit: true, executionBlockCode: null, blockedSchemas: [], allowedFilters: [], content: { version: 1, dataset: { dataSourceId: "source", schemaId: "schema", select: [{ fieldId: "status", alias: "Status" }] } } };
@@ -9,7 +11,11 @@ test("importa um modelo global na organização atual e abre a cópia no editor"
   await page.route("**/api/v1/organizations*", route => route.fulfill(json({ page: 1, pageSize: 20, totalPages: 1, totalRecords: 1, data: [{ id: "target", name: "Destino", myRole: "creator" }] })));
   await page.route("**/api/v1/reports?*", route => route.fulfill(json({ page: 1, pageSize: 100, totalPages: 0, totalRecords: 0, data: [] })));
   await page.route("**/api/v1/dashboards?*", route => route.fulfill(json({ page: 1, pageSize: 100, totalPages: 0, totalRecords: 0, data: [] })));
-  await page.route("**/api/v1/reports/global-templates?*", route => route.fulfill(json({ page: 1, pageSize: 10, totalPages: 1, totalRecords: 1, data: [{ id: "global", title: "Vendas", updatedAt: "2026-10-20T00:00:00Z" }] })));
+  await page.route("**/api/v1/reports/global-templates?*", route => {
+    const search = new URL(route.request().url()).searchParams.get("search") || "";
+    const data = [{ id: "global", title: "Vendas", updatedAt: "2026-10-20T00:00:00Z" }, ...Array.from({ length: 9 }, (_, index) => ({ id: String(index), title: "Modelo " + (index + 2), updatedAt: "2026-10-20T00:00:00Z" }))].filter(template => template.title.toLowerCase().includes(search.toLowerCase()));
+    return route.fulfill(json({ page: 1, pageSize: 10, totalPages: 1, totalRecords: data.length, data }));
+  });
   await page.route("**/api/v1/organizations/target/report-import-data-sources", route => route.fulfill(json([{ id: "source", name: "Base local" }])));
   await page.route("**/api/v1/reports/global/import-check", async route => {
     expect(route.request().headers()["content-type"]).toBe("application/json");
@@ -29,19 +35,57 @@ test("importa um modelo global na organização atual e abre a cópia no editor"
   await expect(page).toHaveURL(new RegExp("/organizations/target/creator/global-reports$"));
   await page.reload();
   await expect(page.getByRole("heading", { name: "Catálogo de relatórios globais", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Escolher relatório", exact: true })).toBeFocused();
+  await expect(page.getByRole("button", { name: "Configurar importação", exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Data source de destino")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Selecionar modelo Vendas" })).toBeVisible();
+  const content = page.locator(".global-report-import__body");
+  const gutter = viewport.width <= 720 ? "16px" : "24px";
+  for (const selector of [".global-report-import__header", ".global-report-import__steps", ".global-report-import__body", ".global-report-import__footer"]) {
+    await expect(page.locator(selector)).toHaveCSS("padding-left", gutter);
+    await expect(page.locator(selector)).toHaveCSS("padding-right", gutter);
+  }
+  const cards = await page.locator(".global-report-catalog__card").all();
+  const firstCard = await cards[0].boundingBox();
+  const secondCard = await cards[1].boundingBox();
+  expect(secondCard!.y).toBeGreaterThan(firstCard!.y + firstCard!.height);
+  expect(secondCard!.x).toBe(firstCard!.x);
+  await content.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await expect(page.getByRole("button", { name: "Voltar à organização" })).toBeInViewport();
+  const lastCard = await page.getByRole("button", { name: "Selecionar modelo Modelo 10" }).boundingBox();
+  const footer = await page.locator(".global-report-import__footer").boundingBox();
+  expect(lastCard!.y + lastCard!.height).toBeLessThanOrEqual(footer!.y);
+  await content.evaluate(element => { element.scrollTop = 0; });
+  await page.screenshot({ path: testInfo.outputPath("catalogo.png"), fullPage: true });
   await page.getByRole("textbox", { name: "Buscar relatórios globais" }).fill("Vendas");
   await page.getByRole("button", { name: "Selecionar modelo Vendas" }).click();
-  await page.screenshot({ path: testInfo.outputPath("catalogo.png"), fullPage: true });
+  await expect(page.getByRole("heading", { name: "Configurar importação", exact: true })).toBeFocused();
+  await expect(page.getByRole("textbox", { name: "Buscar relatórios globais" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Trocar relatório" }).click();
+  await expect(page.getByRole("textbox", { name: "Buscar relatórios globais" })).toHaveValue("Vendas");
+  await page.getByRole("button", { name: "Selecionar modelo Vendas" }).click();
   await page.getByLabel("Data source de destino").selectOption("source");
   await page.getByLabel("Título da cópia").fill("Vendas locais");
-  await expect(page.getByRole("button", { name: "Importar", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Importar relatório", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Verificar compatibilidade" }).click();
   await expect(page.getByText(/Modelo compatível/)).toBeVisible();
-  await page.getByRole("button", { name: "Importar", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Verificar compatibilidade" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Importar relatório", exact: true })).toBeInViewport();
+  const sourceBox = await page.getByLabel("Data source de destino").boundingBox();
+  const titleLabel = await page.locator('label[for="import-title"]').boundingBox();
+  expect(titleLabel!.y - sourceBox!.y - sourceBox!.height).toBeGreaterThanOrEqual(19);
+  await content.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  const diagnostics = await page.locator(".global-report-import__diagnostics").boundingBox();
+  const configurationFooter = await page.locator(".global-report-import__footer").boundingBox();
+  expect(diagnostics!.y + diagnostics!.height).toBeLessThanOrEqual(configurationFooter!.y);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("configuracao.png"), fullPage: true });
+  await page.getByRole("button", { name: "Importar relatório", exact: true }).click();
   await expect(page).toHaveURL(new RegExp("organizations/target/creator/reports/copy$"));
   await expect(page.getByRole("heading", { name: "Catálogo de relatórios globais", exact: true })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Vendas locais" })).toBeVisible();
 });
+}
 
 test("viewer não recebe a opção de importar", async ({ page }) => {
   const json = (body: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
