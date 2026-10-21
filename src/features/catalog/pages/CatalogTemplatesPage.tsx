@@ -1,0 +1,43 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Navbar } from '../../../shared/components/Navbar';
+import { catalogApi } from '../api/catalogApi';
+import type { CatalogTemplate } from '../types/catalogTemplateTypes';
+import { isErr } from '../../../shared/result/result';
+import { useAuth } from '../../auth/context/AuthContext';
+
+export function CatalogTemplatesPage() {
+  const { refreshUser } = useAuth();
+  const [templates, setTemplates] = useState<CatalogTemplate[]>([]);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(true);
+  const [deleting, setDeleting] = useState<CatalogTemplate | null>(null);
+  const lock = useRef(false);
+  const load = useCallback(async () => {
+    setBusy(true); setError('');
+    const result = await catalogApi.listCatalogTemplates();
+    if (isErr(result)) { setError(result.error.detail || 'Erro ao carregar templates.'); if (result.error.status === 403) void refreshUser(); }
+    else setTemplates(result.value);
+    setBusy(false);
+  }, [refreshUser]);
+  useEffect(() => { void load(); }, [load]);
+  async function remove() {
+    if (!deleting || lock.current) return;
+    lock.current = true; setBusy(true);
+    try {
+      const result = await catalogApi.deleteCatalogTemplate(deleting.id);
+      if (isErr(result)) { setError(result.error.detail || 'Erro ao excluir template.'); if (result.error.status === 403) void refreshUser(); }
+      else { setDeleting(null); await load(); }
+    } finally { lock.current = false; setBusy(false); }
+  }
+  return <><Navbar /><main className="container" style={{ padding: '2rem 1rem' }}>
+    <h1>Templates de catálogo</h1><p>Salve templates nas ações de uma fonte de dados. As cópias são independentes da origem.</p>
+    {error && <p role="alert">{error}</p>}{busy && <p role="status">Carregando…</p>}
+    <button className="btn btn-secondary" disabled={busy} onClick={() => void load()}>Atualizar</button>
+    {!busy && templates.length === 0 && <p>Nenhum template cadastrado.</p>}
+    {templates.map(t => <article className="card" key={t.id} style={{ padding: '1rem', marginTop: '1rem' }}><h2>{t.name}</h2><p>{t.description}</p>
+      <details><summary>{t.schemas.length} schemas — consultar conteúdo</summary>{t.schemas.map(s => <section key={s.id}><h3>{s.publicName} ({s.internalSchemaName}.{s.internalObjectName})</h3><p>{s.description}</p><ul>{s.fields.map(f => <li key={f.id}>{f.publicName} ({f.internalFieldName}) · {f.publicType} · {f.isSensitive ? 'sensível' : 'não sensível'} · {f.isEnabled ? 'habilitado' : 'desabilitado'}<br />Operadores: {f.allowedOperators.join(', ')}; Agregações: {f.allowedAggregations.join(', ') || 'nenhuma'}</li>)}</ul></section>)}</details>
+      <button className="btn btn-secondary" disabled={busy} onClick={() => setDeleting(t)}>Excluir</button>
+    </article>)}
+    {deleting && <div className="modal-backdrop"><section role="dialog" aria-modal="true" aria-label="Excluir template" className="modal-container"><div className="modal-body"><p>Excluir o template “{deleting.name}”? Catálogos já copiados continuam disponíveis.</p><button className="btn btn-secondary" disabled={busy} onClick={() => setDeleting(null)}>Cancelar</button><button className="btn btn-danger" disabled={busy} onClick={() => void remove()}>Confirmar exclusão</button></div></section></div>}
+  </main></>;
+}

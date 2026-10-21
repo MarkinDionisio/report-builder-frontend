@@ -1,0 +1,27 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { DataSourcesPage } from './DataSourcesPage';
+import { catalogApi } from '../api/catalogApi';
+import { organizationsApi } from '../../organizations/api/organizationsApi';
+import { ok } from '../../../shared/result/result';
+import type { CreateDataSourceRequest } from '../types/catalogTypes';
+vi.mock('../../../shared/components/Navbar', () => ({ Navbar: () => null }));
+const refreshUser = vi.fn();
+vi.mock('../../auth/context/AuthContext', () => ({ useAuth: () => ({ state: { status: 'authenticated', user: { globalRole: 'root', organizations: [] } }, refreshUser }) }));
+vi.mock('../api/catalogApi', () => ({ catalogApi: { listDataSources: vi.fn(), createDataSource: vi.fn(), deleteDataSource: vi.fn() } }));
+vi.mock('../../organizations/api/organizationsApi', () => ({ organizationsApi: { list: vi.fn() } }));
+vi.mock('../components/DataSourceModal', () => ({ DataSourceModal: ({ onSubmitCreate, onClose }: { onSubmitCreate: (r: CreateDataSourceRequest) => Promise<boolean>; onClose: () => void }) => <button onClick={async () => { if (await onSubmitCreate({ organizationId: 'org', name: 'Nova conexão', provider: 'postgresql', adminConnectionString: 'admin', executionConnectionString: 'executor', executionCredentialMode: 'existingReadOnlyUser', isEnabled: true })) onClose(); }}>Concluir cadastro</button> }));
+vi.mock('../components/CatalogTemplateModal', () => ({ CatalogTemplateModal: ({ dataSourceId, onClose }: { dataSourceId: string; onClose: () => void }) => <section role="dialog"><p>Aplicar template em {dataSourceId}</p><button onClick={onClose}>Cancelar cópia</button></section> }));
+beforeEach(() => { vi.resetAllMocks(); vi.mocked(catalogApi.listDataSources).mockResolvedValue(ok([])); vi.mocked(organizationsApi.list).mockResolvedValue(ok([])); });
+afterEach(cleanup);
+it('offers template copy after creating a connection and preserves the connection on cancel', async () => {
+  vi.mocked(catalogApi.createDataSource).mockResolvedValue(ok({ id: 'new', name: 'Nova conexão', organizationId: 'org', provider: 'postgresql', executionCredentialMode: 'existingReadOnlyUser', readOnlyVerificationStatus: 'pending', isEnabled: true, adminConnectionStringMasked: '***', executionConnectionStringMasked: '***', hasClientCertificate: false }));
+  render(<DataSourcesPage />);
+  fireEvent.click(screen.getByRole('button', { name: 'Novo DataSource' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Concluir cadastro' }));
+  expect(await screen.findByText('Aplicar template em new')).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar cópia' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(catalogApi.createDataSource).toHaveBeenCalledTimes(1);
+  expect(catalogApi.deleteDataSource).not.toHaveBeenCalled();
+});

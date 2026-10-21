@@ -1,3 +1,4 @@
+import { CatalogTemplatesPage } from "../features/catalog/pages/CatalogTemplatesPage";
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "../features/auth/pages/LoginPage";
@@ -113,6 +114,7 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
+      <Route path="/catalog-templates" element={<ProtectedRoute><CatalogTemplatesPage /></ProtectedRoute>} />
       {/* Administrative Catalog Routes - Centralized under Organizations */}
       <Route
         path="/data-sources"

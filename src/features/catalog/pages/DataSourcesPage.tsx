@@ -1,3 +1,4 @@
+import { CatalogTemplateModal } from "../components/CatalogTemplateModal";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { DataSource, CreateDataSourceRequest, UpdateDataSourceRequest } from "../types/catalogTypes";
@@ -25,6 +26,7 @@ export const DataSourcesPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
 
+  const [templateAction, setTemplateAction] = useState<{ source: DataSource; mode: 'save' | 'apply' } | null>(null);
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingDataSource, setEditingDataSource] = useState<DataSource | null>(null);
@@ -84,6 +86,7 @@ export const DataSourcesPage: React.FC = () => {
       return false;
     }
     await loadData();
+    setTemplateAction({ source: res.value, mode: "apply" });
     return true;
   };
 
@@ -283,7 +286,20 @@ export const DataSourcesPage: React.FC = () => {
                       )}
                     </td>
                     <td style={{ textAlign: "right" }}>
-                      <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                      <div style={{ display: "inline-flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => setTemplateAction({ source: ds, mode: "save" })}
+                        >
+                          Salvar catálogo como template
+                        </button>
+                        <button
+                          className="btn btn-secondary"
+                          disabled={!ds.isEnabled}
+                          onClick={() => setTemplateAction({ source: ds, mode: "apply" })}
+                        >
+                          Aplicar template
+                        </button>
                         <button
                           onClick={() => setIntrospectingDataSource(ds)}
                           className="btn btn-secondary"
@@ -323,6 +339,15 @@ export const DataSourcesPage: React.FC = () => {
           </div>
         )}
 
+        {templateAction && (
+          <CatalogTemplateModal
+            dataSourceId={templateAction.source.id}
+            dataSourceName={templateAction.source.name}
+            mode={templateAction.mode}
+            onClose={() => setTemplateAction(null)}
+            onSuccess={() => { void loadData(); }}
+          />
+        )}
         {/* Create Modal */}
         {isCreateOpen && (
           <DataSourceModal

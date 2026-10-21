@@ -1,3 +1,4 @@
+import type { CatalogTemplate, CatalogTemplateSelection } from "../types/catalogTemplateTypes";
 import { apiFetch } from "../../../shared/api/client";
 import { err, isErr, ok } from "../../../shared/result/result";
 import type { Result } from "../../../shared/result/result";
@@ -52,6 +53,30 @@ function handleVoidResponse(
 }
 
 export const catalogApi = {
+  async listCatalogTemplates() {
+    return parseJsonResponse<CatalogTemplate[]>(await apiFetch('/api/v1/catalog-templates'));
+  },
+  async getCatalogTemplate(id: string) {
+    return parseJsonResponse<CatalogTemplate>(await apiFetch('/api/v1/catalog-templates/' + id));
+  },
+  async createCatalogTemplate(sourceDataSourceId: string, name: string, description: string) {
+    return parseJsonResponse<CatalogTemplate>(await apiFetch('/api/v1/catalog-templates', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sourceDataSourceId, name, description }),
+    }));
+  },
+  async deleteCatalogTemplate(id: string) {
+    return handleVoidResponse(await apiFetch('/api/v1/catalog-templates/' + id, { method: 'DELETE' }));
+  },
+  async previewCatalogTemplate(id: string, templateId: string) {
+    return parseJsonResponse<CatalogTemplate>(await apiFetch('/api/v1/data-sources/' + id + '/catalog-template/preview', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templateId }),
+    }));
+  },
+  async applyCatalogTemplate(id: string, templateId: string, schemas: CatalogTemplateSelection[]) {
+    return parseJsonResponse<CatalogTemplate>(await apiFetch('/api/v1/data-sources/' + id + '/catalog-template/apply', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templateId, schemas }),
+    }));
+  },
   // --- Profiles ---
   async listProfiles(organizationId: string): Promise<Result<Profile[], ApiProblemDetails>> {
     const res = await apiFetch(`/api/v1/organizations/${organizationId}/profiles`);

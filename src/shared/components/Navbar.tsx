@@ -41,6 +41,7 @@ export const Navbar: React.FC = () => {
     { section: "Visão geral", to: "/dashboard", label: "Painel", icon: LayoutDashboard, visible: true, active: currentPath === "/dashboard" },
     { section: "Organização", to: "/organizations", label: "Organizações", icon: Building2, visible: capabilities.canViewOrganizations, active: currentPath.startsWith("/organizations") && !currentPath.includes("/creator") },
     { section: "Relatórios", to: "/creator", label: "Área de criação", icon: PenTool, visible: capabilities.canOpenCreatorWorkspace, active: currentPath.includes("/creator") },
+    { section: "Administração", to: "/catalog-templates", label: "Templates de catálogo", icon: Server, visible: capabilities.canManageDataSources, active: currentPath.startsWith("/catalog-templates") },
     { section: "Administração", to: "/data-sources", label: "Fontes de dados", icon: Server, visible: capabilities.canManageDataSources, active: currentPath.startsWith("/data-sources") },
     { section: "Administração", to: "/report-schemas", label: "Catálogo", icon: FileText, visible: capabilities.canManageCatalog, active: currentPath.startsWith("/report-schemas") },
     { section: "Administração", to: "/report-join-templates", label: "Modelos de junção", icon: LinkIcon, visible: capabilities.canManageJoinTemplates, active: currentPath.startsWith("/report-join-templates") },
