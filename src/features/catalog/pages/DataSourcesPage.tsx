@@ -1,3 +1,4 @@
+import "./DataSourcesPage.css";
 import { CatalogTemplateModal } from "../components/CatalogTemplateModal";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -12,7 +13,7 @@ import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { DataSourceModal } from "../components/DataSourceModal";
 import { IntrospectionModal } from "../components/IntrospectionModal";
 import { BootstrapModal } from "../components/BootstrapModal";
-import { Server, Plus, RefreshCw, Layers, Database, Trash2, Edit2, ShieldAlert, X, Building2 } from "lucide-react";
+import { Server, Plus, RefreshCw, Layers, Database, Trash2, Edit2, ShieldAlert, X, Building2, CopyPlus, FileInput } from "lucide-react";
 
 export const DataSourcesPage: React.FC = () => {
   const { state, refreshUser } = useAuth();
@@ -231,7 +232,7 @@ export const DataSourcesPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="card data-sources-table">
             <table className="table" style={{ width: "100%", margin: 0 }}>
               <thead>
                 <tr>
@@ -286,50 +287,54 @@ export const DataSourcesPage: React.FC = () => {
                       )}
                     </td>
                     <td style={{ textAlign: "right" }}>
-                      <div style={{ display: "inline-flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => setTemplateAction({ source: ds, mode: "save" })}
-                        >
-                          Salvar catálogo como template
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          disabled={!ds.isEnabled}
-                          onClick={() => setTemplateAction({ source: ds, mode: "apply" })}
-                        >
-                          Aplicar template
-                        </button>
-                        <button
-                          onClick={() => setIntrospectingDataSource(ds)}
-                          className="btn btn-secondary"
-                          style={{ padding: "0.35rem 0.6rem", fontSize: "0.775rem" }}
-                          title="Introspecção / Importação Unitária"
-                        >
-                          <Database size={14} /> Introspecção
-                        </button>
-                        <button
-                          onClick={() => setBootstrappingDataSource(ds)}
-                          className="btn btn-secondary"
-                          style={{ padding: "0.35rem 0.6rem", fontSize: "0.775rem" }}
-                          title="Bootstrap em Massa"
-                        >
-                          <Layers size={14} /> Bootstrap
-                        </button>
-                        <button
-                          onClick={() => setEditingDataSource(ds)}
-                          className="btn-icon"
-                          title="Editar DataSource"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => setDeletingDataSource(ds)}
-                          className="btn-icon text-danger"
-                          title="Excluir DataSource"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                      <div className="data-source-actions">
+                        <div className="data-source-actions__catalog" role="group" aria-label={`Ações do catálogo de ${ds.name}`}>
+                          <button
+                            onClick={() => setIntrospectingDataSource(ds)}
+                            className="btn btn-secondary"
+                            title="Introspecção / Importação Unitária"
+                          >
+                            <Database size={14} /> Introspecção
+                          </button>
+                          <button
+                            onClick={() => setBootstrappingDataSource(ds)}
+                            className="btn btn-secondary"
+                            title="Bootstrap em Massa"
+                          >
+                            <Layers size={14} /> Bootstrap
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            title="Salvar catálogo como template"
+                            aria-label="Salvar catálogo como template"
+                            onClick={() => setTemplateAction({ source: ds, mode: "save" })}
+                          >
+                            <CopyPlus size={14} /> Salvar template
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            disabled={!ds.isEnabled}
+                            onClick={() => setTemplateAction({ source: ds, mode: "apply" })}
+                          >
+                            <FileInput size={14} /> Aplicar template
+                          </button>
+                        </div>
+                        <div className="data-source-actions__management" role="group" aria-label={`Gerenciar ${ds.name}`}>
+                          <button
+                            onClick={() => setEditingDataSource(ds)}
+                            className="btn-icon"
+                            title="Editar DataSource"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => setDeletingDataSource(ds)}
+                            className="btn-icon text-danger"
+                            title="Excluir DataSource"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
