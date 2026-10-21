@@ -19,6 +19,7 @@ async function preview() {
   fireEvent.change(screen.getByLabelText('Template'), { target: { value: 't1' } });
   fireEvent.click(screen.getByRole('button', { name: 'Gerar prévia' }));
   await screen.findByRole('button', { name: 'Aplicar 1 campos' });
+  fireEvent.click(screen.getByRole('button', { name: 'Ver campos de Pedidos' }));
 }
 beforeEach(() => {
   vi.resetAllMocks();
@@ -57,6 +58,7 @@ describe('Catalog template copy', () => {
     show(); await preview();
     fireEvent.click(screen.getByRole('checkbox', { name: /Código/ }));
     expect(screen.getByRole('button', { name: 'Aplicar 0 campos' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Trocar template' }));
     fireEvent.change(screen.getByLabelText('Template'), { target: { value: 't2' } });
     expect(screen.queryByRole('button', { name: /Aplicar .* campos/ })).not.toBeInTheDocument();
   });

@@ -304,3 +304,16 @@ export interface CreateReportJoinTemplateRequest {
 }
 
 export type UpdateReportJoinTemplateRequest = CreateReportJoinTemplateRequest;
+
+export interface TestDataSourceConfigurationRequest {
+  provider: DataSourceProvider;
+  adminConnectionString: string;
+  executionConnectionString: string;
+  clientCertificate?: ClientCertificateRequest | null;
+}
+
+export interface TestDataSourceConfigurationResponse {
+  succeeded: boolean;
+  adminConnection: { succeeded: boolean; errorCode: string | null };
+  executionConnection: { succeeded: boolean; errorCode: string | null; readOnlyVerified: boolean };
+}

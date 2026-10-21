@@ -1,3 +1,4 @@
+import type { TestDataSourceConfigurationRequest, TestDataSourceConfigurationResponse } from "../types/catalogTypes";
 import type { CatalogTemplate, CatalogTemplateSelection } from "../types/catalogTemplateTypes";
 import { apiFetch } from "../../../shared/api/client";
 import { err, isErr, ok } from "../../../shared/result/result";
@@ -53,6 +54,13 @@ function handleVoidResponse(
 }
 
 export const catalogApi = {
+  async testDataSourceConfiguration(data: TestDataSourceConfigurationRequest) {
+    return parseJsonResponse<TestDataSourceConfigurationResponse>(await apiFetch('/api/v1/data-sources/test-configuration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }));
+  },
   async listCatalogTemplates() {
     return parseJsonResponse<CatalogTemplate[]>(await apiFetch('/api/v1/catalog-templates'));
   },

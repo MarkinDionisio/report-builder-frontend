@@ -3,37 +3,7 @@
   overflow-x: auto;
 }
 
-.data-source-actions {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: .5rem;
-}
-
-.data-source-actions__catalog {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: .4rem;
-  min-width: 280px;
-}
-
-.data-source-actions__catalog .btn {
-  justify-content: flex-start;
-  gap: .4rem;
-  min-height: 34px;
-  padding: .4rem .6rem;
-  font-size: .775rem;
-  white-space: nowrap;
-}
-
-.data-source-actions__catalog .btn svg {
-  flex-shrink: 0;
-}
-
-.data-source-actions__management {
-  display: flex;
-  justify-content: flex-end;
-  gap: .4rem;
-  padding-top: .5rem;
-  border-top: 1px solid var(--border-color);
-}
+.data-sources-header { flex-wrap: wrap; gap: 1rem; }
+.data-sources-header > div { flex: 1 1 28rem; min-width: 0; }
+.data-sources-header h1 { overflow-wrap: anywhere; }
+.data-sources-header h1 svg { flex-shrink: 0; }

@@ -1,0 +1,20 @@
+.data-source-modal .modal-header { gap: 1rem; }
+.data-source-modal .modal-header > div { min-width: 0; }
+.data-source-modal .modal-header h3 { overflow-wrap: anywhere; }
+.data-source-connection-test {
+  display: grid;
+  gap: .75rem;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-input);
+}
+.data-source-connection-test__header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; }
+.data-source-connection-test__header h4 { margin: 0; font-size: .95rem; }
+.data-source-connection-test > p { margin: 0; color: var(--text-secondary); font-size: .85rem; }
+.data-source-connection-test__results { display: grid; gap: .75rem; }
+.data-source-connection-test__success, .data-source-connection-test__failure { display: flex; align-items: flex-start; gap: .5rem; font-size: .85rem; }
+.data-source-connection-test__success { color: var(--success-500, #4ade80); }
+.data-source-connection-test__failure { color: var(--danger-500); }
+.data-source-connection-test svg { flex-shrink: 0; }

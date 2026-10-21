@@ -1,5 +1,10 @@
-import React, { useState } from "react";
-import { X, Lock, FileKey, Server } from "lucide-react";
+import { catalogApi } from "../api/catalogApi";
+import { isErr } from "../../../shared/result/result";
+import { useAuth } from "../../auth/context/AuthContext";
+import type { TestDataSourceConfigurationResponse } from "../types/catalogTypes";
+import "./DataSourceModal.css";
+import React, { useRef, useState } from "react";
+import { X, Lock, FileKey, Server, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import type {
   ClientCertificateUpdate,
   CreateDataSourceRequest,
@@ -28,6 +33,12 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
   onSubmitUpdate,
 }) => {
   const isEditing = Boolean(dataSource);
+  const { refreshUser } = useAuth();
+  const operationLock = useRef(false);
+  const [testing, setTesting] = useState(false);
+  const [readingCertificate, setReadingCertificate] = useState(false);
+  const [testResult, setTestResult] = useState<TestDataSourceConfigurationResponse | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   const [selectedOrgId, setSelectedOrgId] = useState(dataSource?.organizationId || organizationId);
   const [name, setName] = useState(dataSource?.name || "");
@@ -53,38 +64,75 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setTestResult(null);
+    setTestError(null);
+
     if (file.size > 1024 * 1024) {
       setErrorMsg("O arquivo PFX excede o limite máximo permitido de 1 MB.");
       return;
     }
 
+    setReadingCertificate(true);
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
       const base64Data = result.split(",")[1] || result;
       setPfxBase64(base64Data);
+      setReadingCertificate(false);
       setErrorMsg(null);
     };
     reader.onerror = () => {
+      setReadingCertificate(false);
       setErrorMsg("Erro ao ler o arquivo PFX.");
     };
     reader.readAsDataURL(file);
   };
 
   const clearSecrets = () => {
+    setTestResult(null);
+    setTestError(null);
     setAdminConnectionString("");
     setExecutionConnectionString("");
     setPfxBase64("");
     setCertPassword("");
   };
 
+  const invalidateTest = () => { setTestResult(null); setTestError(null); };
+
+  const handleTestConnection = async () => {
+    if (operationLock.current || readingCertificate || !adminConnectionString.trim() || !executionConnectionString.trim()) return;
+    operationLock.current = true;
+    setTesting(true);
+    setTestResult(null);
+    setTestError(null);
+    try {
+      const result = await catalogApi.testDataSourceConfiguration({
+        provider,
+        adminConnectionString: adminConnectionString.trim(),
+        executionConnectionString: executionConnectionString.trim(),
+        clientCertificate: pfxBase64 ? { pfxBase64: pfxBase64.trim(), password: certPassword.trim() || null } : null,
+      });
+      if (isErr(result)) {
+        setTestError(result.error.detail || "Não foi possível concluir o teste. Verifique as conexões e tente novamente.");
+        if (result.error.status === 403) void refreshUser();
+      } else setTestResult(result.value);
+    } catch {
+      setTestError("Não foi possível concluir o teste. Tente novamente.");
+    } finally {
+      operationLock.current = false;
+      setTesting(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (operationLock.current || readingCertificate) return;
     if (!name.trim()) {
       setErrorMsg("O nome do DataSource é obrigatório.");
       return;
     }
 
+    operationLock.current = true;
     setLoading(true);
     setErrorMsg(null);
 
@@ -151,15 +199,15 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
 
   return (
     <div className="modal-backdrop">
-      <div className="modal-container" style={{ maxWidth: "600px" }}>
+      <div className="modal-container data-source-modal" role="dialog" aria-modal="true" aria-labelledby="data-source-title" style={{ maxWidth: "600px" }}>
         <div className="modal-header">
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Server size={20} className="text-accent" />
-            <h3 style={{ margin: 0, fontSize: "1.2rem" }}>
+            <h3 id="data-source-title" style={{ margin: 0, fontSize: "1.2rem" }}>
               {isEditing ? `Editar DataSource: ${dataSource?.name}` : "Novo DataSource"}
             </h3>
           </div>
-          <button onClick={onClose} className="btn-icon" aria-label="Fechar modal">
+          <button onClick={onClose} className="btn-icon" aria-label="Fechar modal" disabled={loading || testing || readingCertificate}>
             <X size={20} />
           </button>
         </div>
@@ -167,7 +215,7 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
         <form onSubmit={handleSubmit} style={{ padding: "1.25rem" }}>
           {errorMsg && <Alert type="error" message={errorMsg} style={{ marginBottom: "1rem" }} />}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <fieldset disabled={loading || testing || readingCertificate} style={{ display: "flex", flexDirection: "column", gap: "1rem", border: 0, margin: 0, padding: 0, minWidth: 0 }}>
             {!isEditing && organizations.length > 0 && (
               <div>
                 <label className="form-label" htmlFor="ds-org">
@@ -222,7 +270,7 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
                   id="ds-credential-mode"
                   className="form-select"
                   value={executionCredentialMode}
-                  onChange={(e) => setExecutionCredentialMode(e.target.value as ExecutionCredentialMode)}
+                  onChange={(e) => { setExecutionCredentialMode(e.target.value as ExecutionCredentialMode); invalidateTest(); }}
                 >
                   <option value="existingReadOnlyUser">Usuário Read-Only Existente</option>
                   <option value="managedReadOnlyUser">Usuário Read-Only Gerenciado</option>
@@ -255,7 +303,7 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
                     type="password"
                     className="form-input"
                     value={adminConnectionString}
-                    onChange={(e) => setAdminConnectionString(e.target.value)}
+                    onChange={(e) => { setAdminConnectionString(e.target.value); invalidateTest(); }}
                     placeholder="Host=localhost;Database=mydb;User Id=admin;Password=secret;"
                     required
                   />
@@ -274,7 +322,7 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
                     type="password"
                     className="form-input"
                     value={executionConnectionString}
-                    onChange={(e) => setExecutionConnectionString(e.target.value)}
+                    onChange={(e) => { setExecutionConnectionString(e.target.value); invalidateTest(); }}
                     placeholder="Host=localhost;Database=mydb;User Id=readonly;Password=secret;"
                     required
                   />
@@ -326,8 +374,9 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
               {(!isEditing || certOperation === "replace") && (
                 <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                   <div>
-                    <label className="form-label">Selecione Arquivo PFX</label>
+                    <label className="form-label" htmlFor="ds-pfx">Selecione Arquivo PFX</label>
                     <input
+                      id="ds-pfx"
                       type="file"
                       accept=".pfx,.p12"
                       onChange={handleFileUpload}
@@ -344,29 +393,57 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
                       type="password"
                       className="form-input"
                       value={certPassword}
-                      onChange={(e) => setCertPassword(e.target.value)}
+                      onChange={(e) => { setCertPassword(e.target.value); invalidateTest(); }}
                       placeholder="Senha do arquivo PFX (opcional)"
                     />
                   </div>
                 </div>
               )}
             </div>
-          </div>
+          </fieldset>
+
+          {!isEditing && <section className="data-source-connection-test" aria-labelledby="connection-test-title">
+            <div className="data-source-connection-test__header">
+              <h4 id="connection-test-title">Teste de conexão</h4>
+              <button type="button" className="btn btn-secondary" onClick={() => void handleTestConnection()}
+                disabled={loading || testing || readingCertificate || !adminConnectionString.trim() || !executionConnectionString.trim()}>
+                {testing ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Server size={16} aria-hidden="true" />}
+                {testing ? "Testando conexões…" : "Testar conexão"}
+              </button>
+            </div>
+            <p>Valida a conexão administrativa e o acesso somente leitura da conexão de execução, sem cadastrar a fonte.</p>
+            {!adminConnectionString.trim() || !executionConnectionString.trim() ? <p>Preencha as duas connection strings para testar.</p> : null}
+            {readingCertificate && <p role="status">Lendo certificado PFX…</p>}
+            {testing && <p role="status">Conectando ao banco e verificando as permissões de leitura. Aguarde…</p>}
+            {testError && <div role="alert" className="data-source-connection-test__failure"><AlertCircle size={18} aria-hidden="true" /><span>{testError}</span></div>}
+            {testResult && <div role="status" aria-live="polite" aria-atomic="true" className="data-source-connection-test__results">
+              <div className={testResult.adminConnection.succeeded ? "data-source-connection-test__success" : "data-source-connection-test__failure"}>
+                {testResult.adminConnection.succeeded ? <CheckCircle2 size={18} aria-hidden="true" /> : <AlertCircle size={18} aria-hidden="true" />}
+                <span>{testResult.adminConnection.succeeded ? "Conexão administrativa: conectada com sucesso." : "Conexão administrativa: falhou. Confira servidor, credenciais e certificado."}</span>
+              </div>
+              <div className={testResult.executionConnection.succeeded && testResult.executionConnection.readOnlyVerified ? "data-source-connection-test__success" : "data-source-connection-test__failure"}>
+                {testResult.executionConnection.succeeded && testResult.executionConnection.readOnlyVerified ? <CheckCircle2 size={18} aria-hidden="true" /> : <AlertCircle size={18} aria-hidden="true" />}
+                <span>{testResult.executionConnection.succeeded && testResult.executionConnection.readOnlyVerified ? "Conexão de execução: conectada e validada como somente leitura." : "Conexão de execução: falhou ou não possui acesso somente leitura. Revise as credenciais e permissões."}</span>
+              </div>
+            </div>}
+          </section>}
+
 
           <div
             style={{
               display: "flex",
               justifyContent: "flex-end",
+              flexWrap: "wrap",
               gap: "0.75rem",
               marginTop: "1.5rem",
               paddingTop: "1rem",
               borderTop: "1px solid var(--border-color)",
             }}
           >
-            <button type="button" onClick={onClose} className="btn btn-secondary" disabled={loading}>
+            <button type="button" onClick={onClose} className="btn btn-secondary" disabled={loading || testing || readingCertificate}>
               Cancelar
             </button>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
+            <button type="submit" className="btn btn-primary" disabled={loading || testing || readingCertificate}>
               {loading ? "Salvando..." : isEditing ? "Atualizar DataSource" : "Criar DataSource"}
             </button>
           </div>

@@ -1,3 +1,4 @@
+import "../styles/catalogTemplates.css";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navbar } from '../../../shared/components/Navbar';
 import { catalogApi } from '../api/catalogApi';
@@ -29,15 +30,49 @@ export function CatalogTemplatesPage() {
       else { setDeleting(null); await load(); }
     } finally { lock.current = false; setBusy(false); }
   }
-  return <><Navbar /><main className="container" style={{ padding: '2rem 1rem' }}>
-    <h1>Templates de catálogo</h1><p>Salve templates nas ações de uma fonte de dados. As cópias são independentes da origem.</p>
-    {error && <p role="alert">{error}</p>}{busy && <p role="status">Carregando…</p>}
-    <button className="btn btn-secondary" disabled={busy} onClick={() => void load()}>Atualizar</button>
-    {!busy && templates.length === 0 && <p>Nenhum template cadastrado.</p>}
-    {templates.map(t => <article className="card" key={t.id} style={{ padding: '1rem', marginTop: '1rem' }}><h2>{t.name}</h2><p>{t.description}</p>
-      <details><summary>{t.schemas.length} schemas — consultar conteúdo</summary>{t.schemas.map(s => <section key={s.id}><h3>{s.publicName} ({s.internalSchemaName}.{s.internalObjectName})</h3><p>{s.description}</p><ul>{s.fields.map(f => <li key={f.id}>{f.publicName} ({f.internalFieldName}) · {f.publicType} · {f.isSensitive ? 'sensível' : 'não sensível'} · {f.isEnabled ? 'habilitado' : 'desabilitado'}<br />Operadores: {f.allowedOperators.join(', ')}; Agregações: {f.allowedAggregations.join(', ') || 'nenhuma'}</li>)}</ul></section>)}</details>
-      <button className="btn btn-secondary" disabled={busy} onClick={() => setDeleting(t)}>Excluir</button>
-    </article>)}
-    {deleting && <div className="modal-backdrop"><section role="dialog" aria-modal="true" aria-label="Excluir template" className="modal-container"><div className="modal-body"><p>Excluir o template “{deleting.name}”? Catálogos já copiados continuam disponíveis.</p><button className="btn btn-secondary" disabled={busy} onClick={() => setDeleting(null)}>Cancelar</button><button className="btn btn-danger" disabled={busy} onClick={() => void remove()}>Confirmar exclusão</button></div></section></div>}
-  </main></>;
+  return <>
+    <Navbar />
+    <main className="page-container catalog-templates-page">
+      <header className="catalog-templates-page__header">
+        <div>
+          <h1>Templates de catálogo</h1>
+          <p>Salve templates nas ações de uma fonte de dados. As cópias são independentes da origem.</p>
+        </div>
+        <button className="btn btn-secondary" disabled={busy} onClick={() => void load()}>Atualizar</button>
+      </header>
+      {error && <p role="alert">{error}</p>}
+      {busy && <p role="status">Carregando…</p>}
+      {!busy && templates.length === 0 && <p>Nenhum template cadastrado.</p>}
+      <div className="catalog-template-list">
+        {templates.map(t => <article className="card catalog-template-card" key={t.id}>
+          <header className="catalog-template-card__header">
+            <div><h2>{t.name}</h2>{t.description && <p className="catalog-template-card__description">{t.description}</p>}</div>
+            <button className="btn btn-secondary" disabled={busy} onClick={() => setDeleting(t)}>Excluir</button>
+          </header>
+          <details>
+            <summary>{t.schemas.length} schemas — consultar conteúdo</summary>
+            {t.schemas.map(s => <section className="catalog-template-card__schema" key={s.id}>
+              <h3>{s.publicName} ({s.internalSchemaName}.{s.internalObjectName})</h3>
+              {s.description && <p>{s.description}</p>}
+              <ul>{s.fields.map(f => <li key={f.id}>
+                {f.publicName} ({f.internalFieldName}) · {f.publicType} · {f.isSensitive ? 'sensível' : 'não sensível'} · {f.isEnabled ? 'habilitado' : 'desabilitado'}
+                <br />Operadores: {f.allowedOperators.join(', ')}; Agregações: {f.allowedAggregations.join(', ') || 'nenhuma'}
+              </li>)}</ul>
+            </section>)}
+          </details>
+        </article>)}
+      </div>
+      {deleting && <div className="modal-backdrop">
+        <section role="dialog" aria-modal="true" aria-label="Excluir template" className="modal-container catalog-template-modal">
+          <div className="modal-body">
+            <p>Excluir o template “{deleting.name}”? Catálogos já copiados continuam disponíveis.</p>
+            <div className="catalog-template-dialog-actions">
+              <button className="btn btn-secondary" disabled={busy} onClick={() => setDeleting(null)}>Cancelar</button>
+              <button className="btn btn-danger" disabled={busy} onClick={() => void remove()}>Confirmar exclusão</button>
+            </div>
+          </div>
+        </section>
+      </div>}
+    </main>
+  </>;
 }

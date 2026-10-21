@@ -1,3 +1,6 @@
+import { CatalogTemplateSchemaPicker } from "./CatalogTemplateSchemaPicker";
+import { Loader2 } from "lucide-react";
+import "../styles/catalogTemplates.css";
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { catalogApi } from '../api/catalogApi';
@@ -16,6 +19,7 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
   const [preview, setPreview] = useState<CatalogTemplate | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(true);
+  const [operation, setOperation] = useState<"load" | "save" | "preview" | "apply">("load");
   const lock = useRef(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState(false);
@@ -48,7 +52,7 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
   }, [mode, dataSourceId, refreshUser]);
   async function run(action: 'save' | 'preview' | 'apply') {
     if (lock.current) return;
-    lock.current = true; setBusy(true); setError('');
+    lock.current = true; setOperation(action); setBusy(true); setError('');
     try {
       const schemas = preview?.schemas.map(s => ({ schemaId: s.id, fieldIds: s.fields.filter(f => selected.has(f.id)).map(f => f.id) })).filter(s => s.fieldIds.length > 0) || [];
       const result = action === 'save' ? await catalogApi.createCatalogTemplate(dataSourceId, name, description)
@@ -64,11 +68,24 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
       } else { setDone(true); onSuccess(); }
     } finally { lock.current = false; setBusy(false); }
   }
-  return <div className="modal-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="template-title" className="modal-container" style={{ maxWidth: 850, maxHeight: '90vh', overflowY: 'auto' }}>
+  const progress = operation === "load"
+    ? mode === "save"
+      ? { title: "Verificando tabelas e campos cadastrados…", detail: "Conferindo se esta fonte possui um catálogo para salvar como template." }
+      : { title: "Buscando templates disponíveis…", detail: "Carregando os modelos de catálogo que você pode aplicar nesta fonte." }
+    : operation === "save"
+      ? { title: "Salvando template de catálogo…", detail: "Criando uma cópia das configurações de tabelas e campos." }
+      : operation === "preview"
+        ? { title: "Comparando template com o banco de destino…", detail: "Verificando tabelas, campos e tipos para identificar os itens compatíveis." }
+        : { title: "Aplicando campos selecionados…", detail: "Validando a seleção e cadastrando o catálogo na fonte de destino." };
+
+  return <div className="modal-backdrop"><section role="dialog" aria-modal="true" aria-labelledby="template-title" className="modal-container catalog-template-modal catalog-template-workflow" style={{ maxWidth: 850 }}>
     <div className="modal-header"><h3 id="template-title">{mode === 'save' ? 'Salvar catálogo como template' : 'Aplicar template'}: {dataSourceName}</h3><button className="btn btn-secondary" disabled={busy} onClick={onClose}>Fechar</button></div>
     <div className="modal-body">
       {error && <p role="alert">{error}</p>}
-      {busy && <p role="status">Carregando…</p>}
+      {busy && <div className="catalog-template-progress" role="status" aria-live="polite" aria-atomic="true">
+        <Loader2 size={22} className="animate-spin" aria-hidden="true" />
+        <div><strong>{progress.title}</strong><p>{progress.detail}</p></div>
+      </div>}
       {done ? <div role="status"><p>{mode === 'save' ? 'Template salvo.' : 'Catálogo copiado com sucesso.'}</p><Link to={mode === 'save' ? '/catalog-templates' : '/report-schemas'}>Ver {mode === 'save' ? 'templates' : 'catálogo'}</Link></div>
       : mode === 'save' ? <form onSubmit={e => { e.preventDefault(); void run('save'); }}>
         {emptySource && <p>O catálogo de origem está vazio ou indisponível.</p>}
@@ -76,19 +93,28 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
         <label>Descrição<textarea className="form-input" value={description} onChange={e => setDescription(e.target.value)} /></label>
         <button className="btn btn-primary" disabled={busy || emptySource || !name.trim()}>Salvar template</button>
       </form> : <>
+        {!preview ? <>
         <label>Template<select className="form-input" value={templateId} disabled={busy} onChange={e => { setTemplateId(e.target.value); setPreview(null); setSelected(new Set()); setError(''); }}>
           <option value="">Selecione</option>{templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select></label>
         {!busy && templates.length === 0 && <p>Nenhum template disponível. Salve o catálogo de uma fonte como template.</p>}
         <button className="btn btn-secondary" disabled={busy || !templateId} onClick={() => void run('preview')}>Gerar prévia</button>
+        </> : <div className="catalog-template-source-summary">
+          <div><small>Template escolhido</small><strong>{preview.name}</strong></div>
+          <button type="button" className="btn btn-secondary" disabled={busy} onClick={() => { setPreview(null); setSelected(new Set()); setError(''); }}>Trocar template</button>
+        </div>}
         {preview && <><p>Selecione os campos compatíveis. Permissões serão configuradas separadamente.</p>
-          {preview.schemas.map(s => <fieldset key={s.id} disabled={busy || !s.compatible}>
-            <legend><label><input type="checkbox" checked={s.fields.some(f => selected.has(f.id))} disabled={!s.compatible || !s.fields.some(f => f.compatible)} onChange={e => { const next = new Set(selected); s.fields.filter(f => f.compatible).forEach(f => e.target.checked ? next.add(f.id) : next.delete(f.id)); setSelected(next); }} />{s.publicName} ({s.internalSchemaName}.{s.internalObjectName})</label></legend>
-            {s.reason && <p>{s.reason}</p>}{s.fields.map(f => <div key={f.id}><label><input type="checkbox" disabled={!f.compatible} checked={selected.has(f.id)} onChange={e => { const next = new Set(selected); if (e.target.checked) next.add(f.id); else next.delete(f.id); setSelected(next); }} />{f.publicName} ({f.internalFieldName}) — {f.publicType}{f.isNullable ? ' · aceita nulo' : ''}{f.isSensitive ? ' · sensível' : ''}{!f.isEnabled ? ' · desabilitado' : ''}</label><details><summary>Configurações</summary><p>Selecionável: {f.isSelectable ? 'sim' : 'não'}; Filtrável: {f.isFilterable ? 'sim' : 'não'}; Ordenável: {f.isSortable ? 'sim' : 'não'}; Agrupável: {f.isGroupable ? 'sim' : 'não'}; Agregável: {f.isAggregatable ? 'sim' : 'não'}</p><p>Operadores: {f.allowedOperators.join(', ')}; Agregações: {f.allowedAggregations.join(', ') || 'nenhuma'}</p></details>{f.reason && <span> — {f.reason}</span>}</div>)}
-          </fieldset>)}
-          <button className="btn btn-primary" disabled={busy || selected.size === 0} onClick={() => void run('apply')}>Aplicar {selected.size} campos</button>
+          <CatalogTemplateSchemaPicker key={preview.id} schemas={preview.schemas} selected={selected} onChange={setSelected} disabled={busy} />
+
         </>}
       </>}
     </div>
+    {mode === 'apply' && preview && !done && <footer className="catalog-template-footer">
+      <span>{selected.size === 1 ? '1 campo selecionado' : `${selected.size} campos selecionados`}</span>
+      <button className="btn btn-primary" disabled={busy || selected.size === 0} aria-busy={busy && operation === 'apply'} onClick={() => void run('apply')}>
+        {busy && operation === 'apply' && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
+        Aplicar {selected.size} campos
+      </button>
+    </footer>}
   </section></div>;
 }
