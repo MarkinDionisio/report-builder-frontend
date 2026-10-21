@@ -1,4 +1,5 @@
-import { CatalogTemplatesPage } from "../features/catalog/pages/CatalogTemplatesPage";
+import { SourceContextRedirect } from "../features/catalog/pages/SourceContextRedirect";
+import { DataSourceWorkspacePage } from "../features/catalog/pages/DataSourceWorkspacePage";
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "../features/auth/pages/LoginPage";
@@ -10,12 +11,8 @@ import { OrganizationsListPage } from "../features/organizations/pages/Organizat
 import { OrganizationDetailPage } from "../features/organizations/pages/OrganizationDetailPage";
 import { OrganizationMembersPage } from "../features/organizations/pages/OrganizationMembersPage";
 import { OrganizationInvitationsPage } from "../features/organizations/pages/OrganizationInvitationsPage";
-import { ReportFieldsPage } from "../features/catalog/pages/ReportFieldsPage";
 import { OrganizationProfilesPage } from "../features/catalog/pages/OrganizationProfilesPage";
 import { ProfileGrantsEditorPage } from "../features/catalog/pages/ProfileGrantsEditorPage";
-import { DataSourcesPage } from "../features/catalog/pages/DataSourcesPage";
-import { ReportSchemasPage } from "../features/catalog/pages/ReportSchemasPage";
-import { ReportJoinTemplatesPage } from "../features/catalog/pages/ReportJoinTemplatesPage";
 import { CreatorWorkspacePage } from "../features/creator/pages/CreatorWorkspacePage";
 import { OrganizationCreatorDashboardPage } from "../features/creator/pages/OrganizationCreatorDashboardPage";
 import { ReportDesignerPage } from "../features/creator/pages/ReportDesignerPage";
@@ -25,6 +22,7 @@ import { ReportRunnerPage } from "../features/creator/pages/ReportRunnerPage";
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
+<Route path="/organizations/:organizationId/data-sources/:dataSourceId" element={<ProtectedRoute><DataSourceWorkspacePage /></ProtectedRoute>} />
       {/* Public Unauthenticated Routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
@@ -114,13 +112,13 @@ export const AppRoutes: React.FC = () => {
         }
       />
 
-      <Route path="/catalog-templates" element={<ProtectedRoute><CatalogTemplatesPage /></ProtectedRoute>} />
+      <Route path="/catalog-templates" element={<ProtectedRoute><SourceContextRedirect /></ProtectedRoute>} />
       {/* Administrative Catalog Routes - Centralized under Organizations */}
       <Route
         path="/data-sources"
         element={
           <ProtectedRoute>
-            <DataSourcesPage />
+            <SourceContextRedirect />
           </ProtectedRoute>
         }
       />
@@ -128,7 +126,7 @@ export const AppRoutes: React.FC = () => {
         path="/report-schemas"
         element={
           <ProtectedRoute>
-            <ReportSchemasPage />
+            <SourceContextRedirect />
           </ProtectedRoute>
         }
       />
@@ -136,7 +134,7 @@ export const AppRoutes: React.FC = () => {
         path="/report-schemas/:schemaId/fields"
         element={
           <ProtectedRoute>
-            <ReportFieldsPage />
+            <SourceContextRedirect />
           </ProtectedRoute>
         }
       />
@@ -144,7 +142,7 @@ export const AppRoutes: React.FC = () => {
         path="/report-join-templates"
         element={
           <ProtectedRoute>
-            <ReportJoinTemplatesPage />
+            <SourceContextRedirect />
           </ProtectedRoute>
         }
       />

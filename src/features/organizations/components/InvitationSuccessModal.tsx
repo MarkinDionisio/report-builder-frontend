@@ -1,3 +1,4 @@
+import "../styles/organizationOverview.css";
 import React, { useState } from "react";
 import type { OrganizationInvitation } from "../types";
 import { CheckCircle2, Copy, Check, ShieldAlert, X } from "lucide-react";
@@ -43,7 +44,7 @@ export const InvitationSuccessModal: React.FC<InvitationSuccessModalProps> = ({
         padding: "1rem",
       }}
     >
-      <div className="glass-card animate-fade-in" style={{ maxWidth: "520px", padding: "1.75rem" }}>
+      <div className="card organization-dialog animate-fade-in" role="dialog" aria-modal="true" aria-label="Convite gerado" style={{ maxWidth: "520px", padding: "1.75rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", color: "#10b981" }}>
             <CheckCircle2 size={26} />

@@ -6,7 +6,10 @@ import type { CatalogTemplate } from '../types/catalogTemplateTypes';
 import { isErr } from '../../../shared/result/result';
 import { useAuth } from '../../auth/context/AuthContext';
 
-export function CatalogTemplatesPage() {
+export function CatalogTemplatesPage({ embedded = false }: { embedded?: boolean }) {
+  const Container = embedded ? "section" : "main";
+  const Heading=embedded?"h3":"h1";
+  const TemplateHeading=embedded?"h4":"h2";
   const { refreshUser } = useAuth();
   const [templates, setTemplates] = useState<CatalogTemplate[]>([]);
   const [error, setError] = useState('');
@@ -31,22 +34,22 @@ export function CatalogTemplatesPage() {
     } finally { lock.current = false; setBusy(false); }
   }
   return <>
-    <Navbar />
-    <main className="page-container catalog-templates-page">
+    {!embedded && <Navbar />}
+    <Container className={embedded ? "source-embedded catalog-templates-page" : "page-container catalog-templates-page"}>
       <header className="catalog-templates-page__header">
         <div>
-          <h1>Templates de catálogo</h1>
-          <p>Salve templates nas ações de uma fonte de dados. As cópias são independentes da origem.</p>
+          <Heading>Modelos de catálogo</Heading>
+          <p>Modelos globais para reutilizar configurações de tabelas e campos. Cada aplicação cria uma cópia independente; excluir um modelo não remove catálogos já criados.</p>
         </div>
         <button className="btn btn-secondary" disabled={busy} onClick={() => void load()}>Atualizar</button>
       </header>
       {error && <p role="alert">{error}</p>}
-      {busy && <p role="status">Carregando…</p>}
+      {busy && <p role="status">Consultando modelos de catálogo…</p>}
       {!busy && templates.length === 0 && <p>Nenhum template cadastrado.</p>}
       <div className="catalog-template-list">
         {templates.map(t => <article className="card catalog-template-card" key={t.id}>
           <header className="catalog-template-card__header">
-            <div><h2>{t.name}</h2>{t.description && <p className="catalog-template-card__description">{t.description}</p>}</div>
+            <div><TemplateHeading>{t.name}</TemplateHeading>{t.description && <p className="catalog-template-card__description">{t.description}</p>}</div>
             <button className="btn btn-secondary" disabled={busy} onClick={() => setDeleting(t)}>Excluir</button>
           </header>
           <details>
@@ -73,6 +76,6 @@ export function CatalogTemplatesPage() {
           </div>
         </section>
       </div>}
-    </main>
+    </Container>
   </>;
 }

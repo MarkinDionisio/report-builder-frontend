@@ -1,0 +1,97 @@
+
+.organization-overview__header {display:flex;align-items:flex-start;justify-content:space-between;gap:1.5rem;margin:1.5rem 0 2rem;}
+.organization-overview__identity {display:flex;align-items:flex-start;gap:1rem;min-width:0;}
+.organization-overview__icon,.organization-source-card__icon {display:grid;place-items:center;flex-shrink:0;border:1px solid var(--border-color);background:var(--bg-card);border-radius:10px;color:var(--text-secondary);}
+.organization-overview__icon {width:48px;height:48px;}
+.organization-overview__eyebrow {font-size:.75rem;color:var(--text-secondary);margin-bottom:.35rem;}
+.organization-overview__identity h1 {font-size:1.75rem;margin:0;overflow-wrap:anywhere;}
+.organization-overview__description {color:var(--text-secondary);max-width:65ch;margin-top:.5rem;font-size:.9rem;}
+.organization-overview__nav {display:flex;gap:1.5rem;border-bottom:1px solid var(--border-color);margin-bottom:1.75rem;}
+.organization-overview__nav a {display:flex;align-items:center;gap:.5rem;padding:.85rem 0;border-bottom:2px solid transparent;color:var(--text-secondary);font-size:.9rem;}
+.organization-overview__nav a[aria-current="page"] {border-color:var(--primary-500);color:var(--text-primary);}
+.organization-section-header {display:flex;align-items:flex-start;justify-content:space-between;gap:1.5rem;margin-bottom:1.5rem;}
+.organization-section-header > div {min-width:0;}
+.organization-section-header h2 {margin:0 0 .5rem;font-size:1.2rem;}
+.organization-section-header p {color:var(--text-secondary);font-size:.9rem;margin:0;max-width:65ch;}
+.organization-section-header > .btn {flex-shrink:0;}
+.organization-loading {padding:1.5rem;color:var(--text-secondary);}
+.organization-empty {padding:2.5rem;text-align:center;color:var(--text-secondary);}
+.organization-empty h3 {margin:.75rem 0;font-size:1rem;color:var(--text-primary);}
+.organization-empty p {max-width:55ch;margin:0 auto;}
+.organization-source-list {display:grid;gap:1rem;}
+.organization-source-card {padding:1.5rem;min-width:0;}
+.organization-source-card__header {display:flex;gap:.75rem;align-items:center;}
+.organization-source-card__icon {width:40px;height:40px;}
+.organization-source-card__header > div {min-width:0;flex:1;}
+.organization-source-card__header h3 {font-size:1.05rem;margin:0 0 .25rem;overflow-wrap:anywhere;}
+.organization-source-card__header p {font-size:.8rem;color:var(--text-secondary);margin:0;}
+.organization-source-status {font-size:.75rem;white-space:nowrap;display:flex;align-items:center;gap:.4rem;}
+.organization-source-status::before {content:"";width:6px;height:6px;border-radius:50%;background:var(--text-secondary);}
+.organization-source-status.is-enabled::before {background:var(--success-500,#10b981);}
+.organization-source-status.is-disabled {color:var(--text-secondary);}
+.organization-source-card__facts {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;margin:1.25rem 0;}
+.organization-source-card__facts dt {font-size:.75rem;color:var(--text-secondary);}
+.organization-source-card__facts dd {font-size:.875rem;margin:.35rem 0 0;}
+.organization-source-card__footer {display:flex;align-items:center;justify-content:space-between;gap:1rem;border-top:1px solid var(--border-color);padding-top:1rem;}
+.organization-source-card__footer p {margin:0;color:var(--text-secondary);font-size:.8rem;}
+.organization-source-card__footer .btn {display:inline-flex;align-items:center;gap:.5rem;flex-shrink:0;}
+.organization-profiles-list {overflow-x:auto;}
+.organization-overview .organization-profiles-table {min-width:0;}
+.organization-profile-actions > div {align-items:center;}
+.organization-profile-actions .source-action-menu__trigger {font-size:.775rem;padding:.35rem .6rem;}
+@media(max-width:720px){
+ .organization-overview__header {flex-direction:column;gap:1rem;margin:1.25rem 0;}
+ .organization-overview__identity h1 {font-size:1.5rem;}
+ .organization-overview__nav {gap:1.25rem;margin-bottom:1.5rem;}
+ .organization-overview__nav a {font-size:.825rem;}
+ .organization-section-header {flex-direction:column;gap:1rem;}
+ .organization-source-card {padding:1rem;}
+ .organization-source-status {font-size:.7rem;}
+ .organization-source-card__facts {grid-template-columns:minmax(0,1fr);gap:1rem;}
+ .organization-source-card__footer {align-items:stretch;flex-direction:column;}
+ .organization-source-card__footer .btn {justify-content:center;}
+ .organization-empty {padding:1.5rem;}
+ .organization-overview .organization-profiles-table,.organization-overview .organization-profiles-table tbody {display:block;width:100%;}
+ .organization-overview .organization-profiles-table thead {display:none;}
+ .organization-overview .organization-profiles-table tr {display:flex;flex-direction:column;gap:.5rem;border-bottom:1px solid var(--border-color);padding:1rem;}
+ .organization-overview .organization-profiles-table tr:last-child {border-bottom:0;}
+ .organization-overview .organization-profiles-table td {border:0;padding:0!important;}
+ .organization-overview .organization-profile-actions {margin-top:.5rem;}
+ .organization-profile-actions > div {display:flex!important;justify-content:flex-start;flex-wrap:wrap;gap:.5rem!important;}
+}
+
+.organization-source-card__footer p strong {font-weight:500;color:var(--text-primary);}
+@media(min-width:381px) and (max-width:720px){.organization-source-card__facts{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}}
+
+.organization-data-card {padding:1.5rem;}
+.organization-overview .organization-loading {display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap;padding:2.5rem 1.5rem;}
+.organization-data-card table td {overflow-wrap:anywhere;}
+.organization-page-error {padding:1.5rem;margin-top:1.5rem;}
+.organization-page-error > .btn {margin-top:1rem;}
+.organization-list-header {margin:0 0 1.5rem;}
+.organization-dialog {padding:1.5rem!important;width:100%;max-height:calc(100dvh - 32px);overflow-y:auto;}
+.organization-dialog > div:first-child {gap:1rem;}
+.organization-dialog > div:first-child > div {min-width:0;}
+.organization-dialog > div:first-child > button {flex-shrink:0;}
+.organization-dialog form > div:last-child {position:sticky;bottom:-1.5rem;background:var(--bg-card);padding:1rem 0 1.5rem;z-index:1;}
+@media(max-width:720px){
+ .organization-data-card {padding:1rem;}
+ .organization-data-card .organization-invitations-table,.organization-invitations-table tbody {display:block;width:100%;}
+ .organization-invitations-table thead {display:none;}
+ .organization-invitations-table tr {display:flex;flex-direction:column;gap:.75rem;padding:1rem 0;}
+ .organization-invitations-table tr:first-child {padding-top:0;}
+ .organization-invitations-table tr:last-child {border-bottom:0!important;}
+ .organization-invitations-table td {padding:0!important;min-width:0;text-align:left!important;}
+ .organization-invitations-table td[data-label]:not(:first-child)::before {content:attr(data-label);display:block;font-size:.7rem;color:var(--text-secondary);margin-bottom:.35rem;}
+ .organization-dialog {padding:1rem!important;}
+ .organization-dialog form > div:last-child {bottom:-1rem;padding-bottom:1rem;flex-wrap:wrap;}
+}
+
+.organization-list .dashboard-grid {grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));}
+.organization-list-card {display:flex;flex-direction:column;padding:1.5rem;min-width:0;}
+.organization-list-card h3 {margin:0 0 .75rem;font-size:1.1rem;overflow-wrap:anywhere;}
+.organization-list-card > p {margin:0 0 1rem;color:var(--text-secondary);font-size:.9rem;overflow-wrap:anywhere;}
+.organization-list-card > small {color:var(--text-secondary);margin-bottom:1rem;}
+.organization-list-card footer {display:flex;align-items:center;gap:.75rem;justify-content:space-between;flex-wrap:wrap;margin-top:auto;padding-top:1rem;border-top:1px solid var(--border-color);}
+.organization-list-card footer > a {display:flex;align-items:center;justify-content:center;gap:.5rem;font-size:.85rem;min-width:0;white-space:normal;}
+@media(max-width:720px){.organization-list-card{padding:1rem;}.organization-list-card footer > a{flex-basis:100%;}.organization-section-header h1{font-size:1.5rem!important;}.organization-page-error{padding:1rem;}}

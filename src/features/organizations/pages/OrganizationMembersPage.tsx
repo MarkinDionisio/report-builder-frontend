@@ -1,3 +1,4 @@
+import { OrganizationContextHeader } from "../components/OrganizationContextHeader";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
@@ -20,7 +21,6 @@ import {
   ArrowLeft,
   Loader2,
   Trash2,
-  Mail,
   Check,
   ChevronDown,
 } from "lucide-react";
@@ -296,8 +296,8 @@ export const OrganizationMembersPage: React.FC = () => {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Navbar />
-        <main style={{ maxWidth: "800px", width: "100%", margin: "4rem auto", padding: "0 1.5rem", flex: 1, textAlign: "center" }}>
-          <div className="glass-card animate-fade-in" style={{ padding: "3rem 2rem" }}>
+        <main className="source-workspace organization-overview">
+          <div className="card organization-page-error">
             <ProblemAlert
               problem={
                 problem || {
@@ -324,40 +324,9 @@ export const OrganizationMembersPage: React.FC = () => {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
-      <main style={{ maxWidth: "1200px", width: "100%", margin: "2rem auto", padding: "0 1.5rem", flex: 1 }}>
-        <div style={{ marginBottom: "1.5rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.875rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
-            <Link to="/organizations" style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem" }}>
-              <ArrowLeft size={16} /> Organizações
-            </Link>
-            <span>/</span>
-            <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>Membros</span>
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-            <div>
-              <h1 style={{ fontSize: "1.75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                <Users size={28} style={{ color: "var(--primary-500)" }} />
-                Membros da Organização
-              </h1>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: "0.25rem" }}>
-                Gerencie as permissões e papeis (OrganizationRole) dos usuários vinculados
-              </p>
-            </div>
-
-            {canManage && (
-              <div style={{ display: "flex", gap: "0.75rem" }}>
-                <Link to={`/organizations/${organizationId}/invitations`} className="btn btn-secondary">
-                  <Mail size={16} /> Ver Convites
-                </Link>
-                <button onClick={() => setIsAddOpen(true)} className="btn btn-primary">
-                  <UserPlus size={18} /> Adicionar / Convidar Membro
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
+      <main className="source-workspace organization-overview organization-members">
+        <OrganizationContextHeader organizationId={organizationId||""} section="members" page="Membros"/>
+        <header className="organization-section-header"><div><h2>Membros da Organização</h2><p>Gerencie os membros, seus papéis e os profiles que definem o acesso aos dados.</p></div>{canManage&&<button onClick={()=>setIsAddOpen(true)} className="btn btn-primary"><UserPlus size={18}/>Adicionar / Convidar Membro</button>}</header>
         {successMessage && (
           <div className="alert alert-danger animate-fade-in" style={{ backgroundColor: "rgba(16, 185, 129, 0.12)", borderColor: "rgba(16, 185, 129, 0.3)", color: "#34d399", marginBottom: "1.25rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -371,11 +340,11 @@ export const OrganizationMembersPage: React.FC = () => {
         <ProblemAlert problem={actionProblem} />
 
         {isLoading ? (
-          <div style={{ display: "flex", justifyContent: "center", padding: "4rem 0" }}>
+          <div role="status" className="organization-loading"><span>Consultando membros e profiles da organização…</span>
             <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary-500)" }} />
           </div>
         ) : members.length === 0 ? (
-          <div className="glass-card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+          <div className="card organization-empty">
             <Users size={48} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />
             <h3 style={{ fontSize: "1.2rem", fontWeight: 600 }}>Nenhum Membro Encontrado</h3>
             <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: "0.5rem" }}>
@@ -383,7 +352,7 @@ export const OrganizationMembersPage: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="glass-card" style={{ padding: "1.5rem" }}>
+          <div className="card organization-data-card">
             <div className="members-table-scroller">
               <table className="members-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
                 <thead>

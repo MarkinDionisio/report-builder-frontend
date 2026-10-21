@@ -1,0 +1,21 @@
+import {cleanup,fireEvent,render,screen,waitFor} from "@testing-library/react";
+import {MemoryRouter,Route,Routes} from "react-router-dom";
+import {afterEach,beforeEach,expect,it,vi} from "vitest";
+import {DataSourceWorkspacePage} from "./DataSourceWorkspacePage";
+import {catalogApi} from "../api/catalogApi";
+import {organizationsApi} from "../../organizations/api/organizationsApi";
+import {ok} from "../../../shared/result/result";
+let role="root";vi.mock("../../auth/context/AuthContext",()=>({useAuth:()=>({state:{status:"authenticated",user:{globalRole:role,organizations:[]}},refreshUser:vi.fn()})}));
+vi.mock("../../../shared/components/Navbar",()=>({Navbar:()=>null}));
+vi.mock("../api/catalogApi",()=>({catalogApi:{listDataSources:vi.fn(),listReportSchemas:vi.fn(),listReportFields:vi.fn(),listProfiles:vi.fn(),getProfileGrants:vi.fn(),getAvailableCatalog:vi.fn()}}));
+vi.mock("../../organizations/api/organizationsApi",()=>({organizationsApi:{list:vi.fn()}}));
+vi.mock("./ReportFieldsPage",()=>({ReportFieldsPage:({schemaId}:{schemaId:string})=><p>Editor de campos {schemaId}</p>}));
+const source={id:"s",organizationId:"org",name:"ERP",provider:"postgresql" as const,readOnlyVerificationStatus:"pending" as const,isEnabled:true,executionCredentialMode:"existingReadOnlyUser" as const,adminConnectionStringMasked:"***",executionConnectionStringMasked:"***",hasClientCertificate:false};
+const table={id:"t",dataSourceId:"s",publicName:"Pedidos",publicType:"object",internalSchemaName:"public",internalObjectName:"orders",description:null,isEnabled:true};
+function show(url="/organizations/org/data-sources/s?step=tables"){render(<MemoryRouter initialEntries={[url]}><Routes><Route path="/organizations/:organizationId/data-sources/:dataSourceId" element={<DataSourceWorkspacePage/>}/></Routes></MemoryRouter>);}
+beforeEach(()=>{vi.resetAllMocks();role="root";vi.mocked(organizationsApi.list).mockResolvedValue(ok([{id:"org",name:"Empresa"}] as never));vi.mocked(catalogApi.listDataSources).mockResolvedValue(ok([source]));vi.mocked(catalogApi.listReportSchemas).mockResolvedValue(ok([]));vi.mocked(catalogApi.listProfiles).mockResolvedValue(ok([]));vi.mocked(catalogApi.listReportFields).mockResolvedValue(ok([]));});afterEach(cleanup);
+it("resumes an empty saved source without implying read-only validation or grants",async()=>{show();expect(await screen.findByRole("heading",{name:"2. Escolher tabelas"})).toBeVisible();expect(screen.getByText(/Conexão salva; validação de somente leitura pendente/)).toBeVisible();expect(screen.getByRole("button",{name:"Usar modelo de catálogo"})).toBeEnabled();fireEvent.click(screen.getByRole("link",{name:/Continuar: Revisar/}));expect(await screen.findByText(/Nenhuma tabela cadastrada. Volte/)).toBeVisible();});
+it("rejects source links in another organization before consulting catalog",async()=>{show("/organizations/wrong/data-sources/s");expect(await screen.findByText(/Fonte não encontrada nesta organização/)).toBeVisible();expect(catalogApi.listReportSchemas).not.toHaveBeenCalled();});
+it("blocks initial model copy on existing catalog and scopes selected table",async()=>{vi.mocked(catalogApi.listReportSchemas).mockResolvedValue(ok([table]));show();expect(await screen.findByRole("button",{name:"Usar modelo de catálogo"})).toBeDisabled();fireEvent.click(screen.getByRole("link",{name:/3. Revisar os campos/}));expect(await screen.findByText("Editor de campos t")).toBeVisible();});
+it("administrators can view the source without root catalog calls or mutation actions",async()=>{role="administrator";vi.mocked(catalogApi.getAvailableCatalog).mockResolvedValue(ok([]));show();await screen.findByRole("heading",{name:"2. Escolher tabelas"});expect(catalogApi.listReportSchemas).not.toHaveBeenCalled();expect(screen.queryByRole("button",{name:"Importar do banco"})).toBeNull();expect(screen.queryByText("Modelos reutilizáveis")).toBeNull();});
+it("does not open fields from another source from a forged URL",async()=>{vi.mocked(catalogApi.listReportSchemas).mockResolvedValue(ok([table]));show("/organizations/org/data-sources/s?step=fields&schemaId=foreign");await waitFor(()=>expect(screen.getByText(/A tabela indicada na URL/)).toBeVisible());expect(screen.queryByText("Editor de campos foreign")).toBeNull();});

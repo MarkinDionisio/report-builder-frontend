@@ -9,7 +9,9 @@ import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { JoinTemplateModal } from "../components/JoinTemplateModal";
 import { Plus, Trash2, Edit2, Link, ShieldAlert, Loader2 } from "lucide-react";
 
-export const ReportJoinTemplatesPage: React.FC = () => {
+export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+  const Container = embedded ? "section" : "main";
+  const Heading = embedded ? "h3" : "h1";
   const { state, refreshUser } = useAuth();
   const user = state.status === "authenticated" ? state.user : null;
   const isRoot = user?.globalRole === "root";
@@ -41,7 +43,7 @@ export const ReportJoinTemplatesPage: React.FC = () => {
         setAccessDenied(true);
         refreshUser();
       } else {
-        setErrorMsg(res.error.detail || "Erro ao carregar Join Templates.");
+        setErrorMsg(res.error.detail || "Erro ao carregar Modelos de relacionamento.");
       }
     } else {
       setTemplates(res.value);
@@ -120,11 +122,11 @@ export const ReportJoinTemplatesPage: React.FC = () => {
 
   if (accessDenied) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <Navbar />
+      <div style={{ minHeight: embedded ? undefined : "100vh", display: "flex", flexDirection: "column" }}>
+        {!embedded && <Navbar />}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
           <ShieldAlert size={64} style={{ color: "#ef4444", marginBottom: "1rem" }} />
-          <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>Acesso Negado</h1>
+          <Heading style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.5rem 0" }}>Acesso Negado</Heading>
           <p style={{ color: "var(--text-secondary)", maxWidth: "400px", textAlign: "center" }}>
             O gerenciamento de templates de join é restrito a usuários Root.
           </p>
@@ -134,24 +136,24 @@ export const ReportJoinTemplatesPage: React.FC = () => {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <Navbar />
-      <main style={{ maxWidth: "1200px", width: "100%", margin: "2rem auto", padding: "0 1.5rem", flex: 1 }}>
+    <div style={{ minHeight: embedded ? undefined : "100vh", display: "flex", flexDirection: "column" }}>
+      {!embedded && <Navbar />}
+      <Container className={embedded ? "source-embedded" : undefined} style={{ maxWidth: "1200px", width: "100%", margin: "2rem auto", padding: "0 1.5rem", flex: 1 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "2rem" }}>
           <div>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem 0", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <Heading style={{ fontSize: embedded ? "1.2rem" : "1.75rem", fontWeight: 700, margin: "0 0 0.25rem 0", display: "flex", alignItems: "center", gap: "0.6rem" }}>
               <Link size={28} style={{ color: "var(--primary-500)" }} />
-              Join Templates
-            </h1>
+              Modelos de relacionamento
+            </Heading>
             <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>
-              Gerencie relações globais disponíveis para os catálogos efetivos.
+              Definem como combinar tabelas nos relatórios. São globais: alterações podem afetar outras fontes que usam os mesmos nomes de tabelas e campos.
             </p>
           </div>
           <button
             onClick={openCreateModal}
             className="btn btn-primary"
           >
-            <Plus size={18} /> Novo Template
+            <Plus size={18} /> Novo modelo
           </button>
         </div>
 
@@ -169,9 +171,9 @@ export const ReportJoinTemplatesPage: React.FC = () => {
           ) : templates.length === 0 ? (
             <div style={{ padding: "4rem 2rem", textAlign: "center", color: "var(--text-secondary)" }}>
               <Link size={48} style={{ opacity: 0.2, margin: "0 auto 1rem auto" }} />
-              <h3 style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--text-color)" }}>Nenhum template cadastrado</h3>
+              <h3 style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "0.5rem", color: "var(--text-color)" }}>Nenhum modelo cadastrado</h3>
               <p>
-                Cadastre o primeiro template para permitir joins no Report Designer.
+                Cadastre um modelo para sugerir combinações de tabelas nos relatórios.
               </p>
             </div>
           ) : (
@@ -244,7 +246,7 @@ export const ReportJoinTemplatesPage: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
+      </Container>
 
       {isModalOpen && (
         <JoinTemplateModal

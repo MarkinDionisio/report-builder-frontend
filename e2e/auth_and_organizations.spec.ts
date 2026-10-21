@@ -186,7 +186,7 @@ test.describe("E2E - Gestão de Organizações, Membros e Convites", () => {
     });
 
     await page.goto("/organizations/org-1/members");
-    await expect(page.locator("h1")).toContainText("Membros da Organização");
+    await expect(page.getByRole("heading", {name:"Membros da Organização",level:2})).toBeVisible();
 
     // Abrir modal de adição de membro
     await page.click("button:has-text('Adicionar / Convidar Membro')");

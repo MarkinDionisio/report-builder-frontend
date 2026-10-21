@@ -1,3 +1,6 @@
+import { SourceActionMenu } from "../components/SourceActionMenu";
+import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
+import { matchesTextSearch } from "../../../shared/utils/textSearch";
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -29,15 +32,22 @@ const AGGREGATION_OPTIONS = [
   { value: "max", label: "Máximo (max)" },
 ];
 
-export const ReportFieldsPage: React.FC = () => {
-  const { schemaId } = useParams<{ schemaId: string }>();
+export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string; tableName?: string; physicalName?: string; tableActions?: React.ReactNode; onChanged?: () => void }> = ({ embedded = false, schemaId: suppliedSchemaId, tableName, physicalName, tableActions, onChanged }) => {
+  const Container = embedded ? "section" : "main";
+  const { schemaId: routeSchemaId } = useParams<{ schemaId: string }>();
+  const schemaId = suppliedSchemaId ?? routeSchemaId;
   const navigate = useNavigate();
   const { state, refreshUser } = useAuth();
   const user = state.status === "authenticated" ? state.user : null;
   const isRoot = user?.globalRole === "root";
 
   const [fields, setFields] = useState<RootReportField[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [matchCase,setMatchCase]=useState(false), [exactMatch,setExactMatch]=useState(false), [page,setPage]=useState(0), [statusFilter,setStatusFilter]=useState("all"), [selected,setSelected]=useState(new Set<string>()), [batchBusy,setBatchBusy]=useState(false);
+  const filteredFields=fields.filter(f=>(statusFilter==="all" || (statusFilter==="enabled"?f.isEnabled:statusFilter==="disabled"?!f.isEnabled:f.isSensitive)) && [f.name,f.internalFieldName].some(v=>matchesTextSearch(v,searchTerm,{matchCase,exactMatch})));
+  const currentPage=Math.min(page,Math.max(0,Math.ceil(filteredFields.length/25)-1));
+  async function bulk(enabled:boolean){ if(batchBusy)return;setBatchBusy(true);setErrorMsg(null);let failures=0;for(const f of fields.filter(f=>selected.has(f.id))){try{const r=await catalogApi.updateReportField(f.id,{internalFieldName:f.internalFieldName,publicName:f.name,publicType:f.type,isNullable:f.nullable,isSelectable:f.selectable,isFilterable:f.filterable,isSortable:f.sortable,isGroupable:f.groupable,isAggregatable:f.aggregatable,isSensitive:f.isSensitive,isEnabled:enabled,allowedOperators:f.allowedOperators,allowedAggregations:f.allowedAggregations});if(isErr(r))failures++;}catch{failures++;}}await loadFields();setBatchBusy(false);setSelected(new Set());onChanged?.();if(failures)setErrorMsg(failures+" campos não puderam ser atualizados. Consulte o estado dos campos antes de tentar novamente.");}
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
@@ -183,6 +193,7 @@ export const ReportFieldsPage: React.FC = () => {
         setIsModalOpen(false);
         setEditingField(null);
         await loadFields();
+        onChanged?.();
       }
     } else {
       if (!internalFieldName.trim()) {
@@ -203,6 +214,7 @@ export const ReportFieldsPage: React.FC = () => {
       } else {
         setIsModalOpen(false);
         await loadFields();
+        onChanged?.();
       }
     }
   };
@@ -224,14 +236,15 @@ export const ReportFieldsPage: React.FC = () => {
     } else {
       setDeletingField(null);
       await loadFields();
+        onChanged?.();
     }
   };
 
   if (accessDenied || (!isRoot && !loading)) {
     return (
       <>
-        <Navbar />
-        <main className="container" style={{ padding: "2rem 1rem" }}>
+        {!embedded && <Navbar />}
+        <Container className={embedded ? "source-embedded" : "container"} style={{ padding: "2rem 1rem" }}>
           <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
             <ShieldAlert size={48} style={{ color: "var(--danger-500)", marginBottom: "1rem" }} />
             <h2>Acesso Negado</h2>
@@ -239,57 +252,20 @@ export const ReportFieldsPage: React.FC = () => {
               Apenas usuários Root podem gerenciar os campos do catálogo.
             </p>
           </div>
-        </main>
+        </Container>
       </>
     );
   }
 
   return (
     <>
-      <Navbar />
-      <main className="container" style={{ padding: "2rem 1rem" }}>
-        <div style={{ marginBottom: "1rem" }}>
-          <button onClick={() => navigate(-1)} className="btn btn-secondary" style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem" }}>
-            <ArrowLeft size={16} /> Voltar para Schemas
-          </button>
-        </div>
-
-        <div className="responsive-flex-header" style={{ marginBottom: "1.5rem" }}>
-          <div>
-            <h1 style={{ fontSize: "1.75rem", margin: "0 0 0.25rem 0", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <List size={28} className="text-accent" /> Campos do Schema
-            </h1>
-            <p style={{ color: "var(--text-secondary)", margin: 0 }}>
-              Defina capacidades (selecionável, filtrável, agrupável, agregável), tipo público e operadores.
-            </p>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-            <div style={{ position: "relative" }}>
-              <Search size={16} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Buscar campo..."
-                style={{ paddingLeft: "34px", paddingRight: "34px", width: "250px" }}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
-                  title="Limpar busca"
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-            <button onClick={openCreateModal} className="btn btn-primary" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <Plus size={18} /> Adicionar Campo
-            </button>
-          </div>
-        </div>
-
+      {!embedded && <Navbar />}
+      <Container className={embedded ? "source-embedded" : "container"} style={{ padding: "2rem 1rem" }}>
+        {!embedded && <button onClick={()=>navigate(-1)} className="btn btn-secondary"><ArrowLeft size={16}/> Voltar para tabelas</button>}
+        <header className="source-fields-heading"><div>{embedded?<h3>{tableName || "Campos da tabela"}</h3>:<h1>Campos da tabela</h1>}<p>{loading?"Consultando campos…":fields.length+" campos"}{physicalName&&<> · <code>{physicalName}</code></>}</p></div><SourceActionMenu label="Opções da tabela"><button className="btn btn-secondary" onClick={openCreateModal}>Adicionar campo manualmente</button>{tableActions}</SourceActionMenu></header>
+        <div className="source-fields-toolbar"><div className="source-fields-search"><Search size={16} aria-hidden="true"/><input type="search" className="form-input" aria-label="Buscar campo" placeholder="Buscar campo…" value={searchTerm} onChange={e=>{setSearchTerm(e.target.value);setPage(0);}}/><SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch}/></div><div className="source-fields-tools"><SourceActionMenu label={statusFilter==="all"?"Filtros":"Filtros (1)"}><label className="source-fields-filter-label">Mostrar campos<select className="form-input" aria-label="Filtrar campos" value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(0);}}><option value="all">Todos</option><option value="enabled">Habilitados</option><option value="disabled">Desabilitados</option><option value="sensitive">Sensíveis</option></select></label></SourceActionMenu><button className="btn btn-secondary" aria-pressed={selectionMode||selected.size>0} onClick={()=>{setSelectionMode(v=>!v);setSelected(new Set());}}>Selecionar</button></div></div>
+        {(selectionMode||selected.size>0)&&<div className="source-bulk-toolbar"><span>{selected.size>0?selected.size+" campos selecionados, incluindo outras páginas e filtros":"Marque os campos ou selecione todos os resultados."}</span><SourceActionMenu label="Ações de seleção"><button className="btn btn-secondary" disabled={batchBusy} onClick={()=>setSelected(new Set([...selected,...filteredFields.map(f=>f.id)]))}>Marcar resultados</button><button className="btn btn-secondary" disabled={batchBusy||selected.size===0} onClick={()=>setSelected(new Set([...selected].filter(id=>!filteredFields.some(f=>f.id===id))))}>Desmarcar resultados</button><button className="btn btn-secondary" disabled={batchBusy||selected.size===0} onClick={()=>void bulk(true)}>Habilitar selecionados</button><button className="btn btn-secondary" disabled={batchBusy||selected.size===0} onClick={()=>void bulk(false)}>Desabilitar selecionados</button></SourceActionMenu></div>}
+        {batchBusy&&<p role="status">Atualizando os campos selecionados…</p>}
         {errorMsg && <Alert type="error" message={errorMsg} style={{ marginBottom: "1.25rem" }} />}
 
         {loading ? (
@@ -304,14 +280,8 @@ export const ReportFieldsPage: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="card source-fields-list" style={{ padding: 0 }}>
             {(() => {
-              const st = searchTerm.toLowerCase();
-              const filteredFields = fields.filter((f) =>
-                f.name.toLowerCase().includes(st) ||
-                f.internalFieldName.toLowerCase().includes(st)
-              );
-
               if (filteredFields.length === 0) {
                 return (
                   <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-secondary)" }}>
@@ -321,42 +291,28 @@ export const ReportFieldsPage: React.FC = () => {
               }
 
               return (
-                <table className="table" style={{ width: "100%", margin: 0 }}>
+                <table className="table source-fields-table" style={{ width: "100%", margin: 0 }}>
                   <thead>
                     <tr>
-                      <th>Nome Público / Interno</th>
-                      <th>Tipo / Nulo</th>
-                      <th>Capacidade</th>
-                      <th>Sensível / Status</th>
+                      <th>Campo</th>
+                      <th>Tipo</th>
+                      <th>Operações permitidas</th>
+                      <th>Status</th>
                       <th style={{ textAlign: "right" }}>Ações</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredFields.map((field) => (
-                  <tr key={field.id}>
-                    <td>
-                      <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>{field.name}</div>
-                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                        Campo DB: <code>{field.internalFieldName}</code>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="badge badge-info">{field.type}</span>
+                    {filteredFields.slice(currentPage*25,currentPage*25+25).map((field) => (
+                  <tr key={field.id}><td className="source-field-name"><div className="source-field-identity">{(selectionMode||selected.size>0)&&<input type="checkbox" aria-label={"Selecionar "+field.name} disabled={batchBusy} checked={selected.has(field.id)} onChange={e=>{const next=new Set(selected);if(e.target.checked)next.add(field.id);else next.delete(field.id);setSelected(next);}}/>}<div><strong>{field.name}</strong><code>{field.internalFieldName}</code></div></div></td>
+                    <td className="source-field-type">
+                      <span>{field.type}</span>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "2px" }}>
                         {field.nullable ? "Nulo" : "Não nulo"}
                       </div>
                     </td>
-                    <td>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-                        {field.selectable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Select</span>}
-                        {field.filterable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Filter</span>}
-                        {field.sortable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Sort</span>}
-                        {field.groupable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Group</span>}
-                        {field.aggregatable && <span className="badge badge-secondary" style={{ fontSize: "0.7rem" }}>Aggregate</span>}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <td className="source-field-operations"><span>{[field.selectable&&"Selecionar",field.filterable&&"Filtrar",field.sortable&&"Ordenar",field.groupable&&"Agrupar",field.aggregatable&&"Agregar"].filter(Boolean).join(" · ") || "Nenhuma operação"}</span></td>
+                    <td className="source-field-status">
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                         {field.isSensitive && (
                           <span className="badge badge-warning" style={{ display: "inline-flex", alignItems: "center", gap: "3px" }}>
                             <EyeOff size={12} /> Sensível
@@ -369,12 +325,12 @@ export const ReportFieldsPage: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td style={{ textAlign: "right" }}>
+                    <td className="source-field-actions" style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "0.4rem" }}>
-                        <button onClick={() => openEditModal(field)} className="btn-icon" title="Editar Campo">
+                        <button onClick={() => openEditModal(field)} className="btn-icon" title="Editar Campo" aria-label={"Editar "+field.name}>
                           <Edit2 size={16} />
                         </button>
-                        <button onClick={() => setDeletingField(field)} className="btn-icon text-danger" title="Excluir Campo">
+                        <button onClick={() => setDeletingField(field)} className="btn-icon text-danger" title="Excluir Campo" aria-label={"Excluir "+field.name}>
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -388,6 +344,7 @@ export const ReportFieldsPage: React.FC = () => {
           </div>
         )}
 
+        {filteredFields.length>25&&<nav className="source-actions" aria-label="Paginação de campos"><button className="btn btn-secondary" disabled={currentPage===0} onClick={()=>setPage(currentPage-1)}>Anterior</button><span>Página {currentPage+1} de {Math.ceil(filteredFields.length/25)}</span><button className="btn btn-secondary" disabled={(currentPage+1)*25>=filteredFields.length} onClick={()=>setPage(currentPage+1)}>Próxima</button></nav>}
         {/* Upsert Modal */}
         {isModalOpen && (
           <div className="modal-backdrop">
@@ -524,7 +481,7 @@ export const ReportFieldsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid var(--border-color)" }}>
+                <div className="source-field-editor-footer" style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid var(--border-color)" }}>
                   <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary" disabled={saving}>
                     Cancelar
                   </button>
@@ -568,7 +525,7 @@ export const ReportFieldsPage: React.FC = () => {
             </div>
           </div>
         )}
-      </main>
+      </Container>
     </>
   );
 };

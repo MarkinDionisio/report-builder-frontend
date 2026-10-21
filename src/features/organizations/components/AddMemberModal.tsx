@@ -1,3 +1,4 @@
+import "../styles/organizationOverview.css";
 import React, { useState, useEffect } from "react";
 import type { ApiProblemDetails } from "../../../shared/api/types";
 import { ProblemAlert } from "../../../shared/components/Alert";
@@ -109,7 +110,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
         padding: "1rem",
       }}
     >
-      <div className="glass-card animate-fade-in" style={{ maxWidth: "480px", width: "100%", padding: "1.75rem" }}>
+      <div className="card organization-dialog animate-fade-in" role="dialog" aria-modal="true" aria-label="Adicionar ou convidar membro" style={{ maxWidth: "480px", width: "100%", padding: "1.75rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <UserPlus size={22} style={{ color: "var(--primary-500)" }} />

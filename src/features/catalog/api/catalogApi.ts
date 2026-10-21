@@ -229,7 +229,9 @@ export const catalogApi = {
   async listReportSchemas(dataSourceId?: string): Promise<Result<RootReportSchema[], ApiProblemDetails>> {
     const query = dataSourceId ? `?dataSourceId=${encodeURIComponent(dataSourceId)}` : "";
     const res = await apiFetch(`/api/v1/report-schemas${query}`);
-    return parseJsonResponse<RootReportSchema[]>(res);
+    const result = await parseJsonResponse<RootReportSchema[]>(res);
+    if (isErr(result) || !dataSourceId) return result;
+    return ok(result.value.filter(schema => schema.dataSourceId === dataSourceId));
   },
 
   async createReportSchema(data: CreateReportSchemaRequest): Promise<Result<RootReportSchema, ApiProblemDetails>> {

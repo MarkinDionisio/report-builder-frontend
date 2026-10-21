@@ -1,88 +1,66 @@
-import { expect, test } from "@playwright/test";
-
-for (const width of [1280, 390]) {
-  test(`menu de ações e padding dos templates com viewport ${width}`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: 850 });
-    await page.emulateMedia({ reducedMotion: "reduce" });
-    const json = (body: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
-    const schema = { id: "schema", dataSourceId: "source", publicName: "Pedidos", publicType: "object", internalSchemaName: "public", internalObjectName: "orders", description: "Pedidos cadastrados", isEnabled: true };
-    const field = { id: "field", publicName: "Código", internalFieldName: "id", publicType: "integer", isNullable: false, isSelectable: true, isFilterable: true, isSortable: true, isGroupable: true, isAggregatable: true, isSensitive: false, isEnabled: true, allowedOperators: ["eq"], allowedAggregations: ["count"], compatible: true, reason: null };
-    const template = { id: "template", name: "ERP padrão", description: "Configuração reutilizável do catálogo", schemas: [{ ...schema, compatible: true, reason: null, fields: [field] }] };
-    await page.route("**/api/v1/auth/refresh", route => route.fulfill(json({ accessToken: "token", refreshToken: "refresh", tokenType: "Bearer", expiresAt: new Date(Date.now() + 3600000).toISOString(), userId: "root", email: "root@example.com", globalRole: "root" })));
-    await page.route("**/api/v1/me", route => route.fulfill(json({ id: "root", name: "Root", email: "root@example.com", globalRole: "root", profileIds: [], organizations: [] })));
-    await page.route("**/api/v1/organizations", route => route.fulfill(json([{ id: "org", name: "Organização" }])));
-    await page.route("**/api/v1/data-sources", route => route.fulfill(json([{ id: "source", organizationId: "org", name: "Banco de produção", provider: "postgresql", executionCredentialMode: "existingReadOnlyUser", readOnlyVerificationStatus: "verified", isEnabled: true, hasClientCertificate: false }])));
-    await page.route("**/api/v1/report-schemas", route => route.fulfill(json([schema])));
-    await page.route("**/api/v1/report-schemas/schema/fields", route => route.fulfill(json([field])));
-    await page.route("**/api/v1/catalog-templates", route => route.fulfill(json([template])));
-    const previewTemplate = {
-      ...template,
-      schemas: template.schemas.map(schema => ({
-        ...schema,
-        fields: Array.from({ length: 40 }, (_, index) => ({
-          ...field,
-          id: `field-${index}`,
-          publicName: `Campo ${index + 1}`,
-          internalFieldName: `field_${index}`,
-        })),
-      })),
-    };
-    await page.route("**/api/v1/data-sources/source/catalog-template/preview", route => route.fulfill(json(previewTemplate)));
-    await page.addInitScript(() => localStorage.setItem("report-builder.session.v1", JSON.stringify({ refreshToken: "refresh" })));
-    await page.goto("/data-sources");
-    const group = page.getByRole("group", { name: "Ações de Banco de produção" });
-    await expect(group).toBeVisible();
-    await expect(group.getByRole("button")).toHaveCount(3);
-    await expect(page.getByRole("menuitem")).toHaveCount(0);
-    await page.locator(".data-sources-table").evaluate(element => { element.scrollLeft = element.scrollWidth; });
-    await group.getByRole("button", { name: "Mais ações de Banco de produção" }).click();
-    const menu = page.getByRole("menu");
-    await expect(menu).toBeVisible();
-    const bounds = await menu.boundingBox();
-    expect(bounds!.x).toBeGreaterThanOrEqual(16);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width - 16);
-    await page.screenshot({ path: testInfo.outputPath("datasource-menu.png"), fullPage: true });
-    await page.keyboard.press("Escape");
-    await expect(menu).toHaveCount(0);
-    await group.getByRole("button", { name: "Mais ações de Banco de produção" }).click();
-    await page.getByRole("menuitem", { name: "Salvar catálogo como template" }).click();
-    const dialog = page.getByRole("dialog");
-    const padding = width <= 640 ? "16px" : "24px";
-    await expect(dialog.locator(".modal-body")).toHaveCSS("padding-left", padding);
-    await expect(dialog.locator(".modal-body")).toHaveCSS("padding-right", padding);
-    await expect(dialog.getByRole("button", { name: "Salvar template" })).toBeDisabled();
-    await expect(dialog.getByRole("button", { name: "Fechar" })).toBeEnabled();
-    await page.screenshot({ path: testInfo.outputPath("save-template-padding.png"), fullPage: true });
-    await dialog.getByRole("button", { name: "Fechar" }).click();
-    await group.getByRole("button", { name: "Mais ações de Banco de produção" }).click();
-    await page.getByRole("menuitem", { name: "Aplicar template" }).click();
-    await dialog.getByRole("combobox", { name: "Template" }).selectOption("template");
-    await dialog.getByRole("button", { name: "Gerar prévia" }).click();
-    const applyButton = dialog.getByRole("button", { name: "Aplicar 40 campos" });
-    await expect(applyButton).toBeInViewport();
-    await dialog.getByRole("button", { name: "Ver campos de Pedidos" }).click();
-    const scrollBody = dialog.locator(".modal-body");
-    expect(await scrollBody.evaluate(element => element.scrollHeight > element.clientHeight)).toBe(true);
-    await scrollBody.evaluate(element => { element.scrollTop = element.scrollHeight; });
-    await expect(applyButton).toBeInViewport();
-    await expect(dialog.getByText("40 campos selecionados")).toBeInViewport();
-    await expect(dialog.getByRole("button", { name: "Fechar" })).toBeInViewport();
-    await scrollBody.evaluate(element => { element.scrollTop = 0; });
-    await expect(applyButton).toBeInViewport();
-    await expect(dialog.locator(".catalog-schema-group__fields")).toHaveCSS("padding-left", width <= 640 ? "12px" : "40px");
-    await page.screenshot({ path: testInfo.outputPath("apply-template-padding.png"), fullPage: true });
-    await dialog.getByRole("button", { name: "Fechar" }).click();
-    await page.goto("/catalog-templates");
-    await expect(page.getByRole("heading", { name: "ERP padrão" })).toBeVisible();
-    const card = page.locator(".catalog-template-card");
-    await expect(card).toHaveCSS("padding-left", padding);
-    const mainBounds = await page.locator("main").boundingBox();
-    expect(mainBounds!.x).toBeGreaterThanOrEqual(width <= 640 ? 16 : 24);
-    expect(mainBounds!.x + mainBounds!.width).toBeLessThanOrEqual(width - (width <= 640 ? 16 : 24));
-    await card.locator("summary").click();
-    await page.screenshot({ path: testInfo.outputPath("catalog-templates-padding.png"), fullPage: true });
-    await card.getByRole("button", { name: "Excluir", exact: true }).click();
-    await expect(page.getByRole("dialog").locator(".modal-body")).toHaveCSS("padding-left", padding);
-    await page.getByRole("button", { name: "Cancelar", exact: true }).click();
-  });
+import {expect,test,type Page} from "@playwright/test";
+async function setup(page:Page,role="root") {
+ await page.emulateMedia({reducedMotion:"reduce"});
+ const source={id:"source",organizationId:"org",name:"Banco ERP",provider:"postgresql",readOnlyVerificationStatus:"pending",executionCredentialMode:"existingReadOnlyUser",isEnabled:true,adminConnectionStringMasked:"Host=db;Password=***",executionConnectionStringMasked:"Host=db;Password=***",hasClientCertificate:false};
+ const table=(id:string)=>({id,dataSourceId:"source",publicName:id==="orders"?"Pedidos":"Clientes",publicType:"object",internalSchemaName:"public",internalObjectName:id,description:null,isEnabled:true});
+ const field=(i:number)=>({id:"field-"+i,name:"Campo "+i,type:"string",internalFieldName:"field_"+i,nullable:false,selectable:true,filterable:true,sortable:true,groupable:false,aggregatable:false,isSensitive:false,isEnabled:true,allowedOperators:["eq"],allowedAggregations:[]});
+ const profiles=[{id:"profile",organizationId:"org",organizationName:"Empresa",name:"Equipe",description:null}];
+ const state={schemas:[] as ReturnType<typeof table>[],attempts:[] as string[],grants:{schemas:[{schemaId:"other-source-table",fields:[{fieldId:"external",selectable:true,filterable:false,sortable:false,groupable:false,aggregatable:false}]}]},saved:null as unknown};
+ const templateField=(i:number)=>({id:"f-"+i,publicName:"Campo "+i,internalFieldName:"field_"+i,publicType:"string",isNullable:false,isSelectable:true,isFilterable:true,isSortable:true,isGroupable:false,isAggregatable:false,isSensitive:false,isEnabled:true,allowedOperators:["eq"],allowedAggregations:[],compatible:i!==39,reason:i===39?"Campo ausente no destino":null});
+ const template={id:"template",name:"ERP padrão",description:"Catálogo reutilizável",schemas:[{...table("orders"),compatible:true,reason:null,fields:Array.from({length:40},(_,i)=>templateField(i))}]};
+ await page.route("**/api/v1/**",async route=>{const req=route.request(),url=new URL(req.url()),path=url.pathname;let body:unknown;let status=200;
+ if(path.endsWith("/auth/refresh"))body={accessToken:"token",refreshToken:"refresh",tokenType:"Bearer",expiresAt:new Date(Date.now()+3600000).toISOString(),userId:"u",email:"u@x.com",globalRole:role};
+ else if(path.endsWith("/me"))body={id:"u",name:"Usuário",email:"u@x.com",globalRole:role,profileIds:[],organizations:[{id:"org",name:"Empresa",organizationRole:"administrator"}]};
+ else if(path==="/api/v1/organizations")body=[{id:"org",name:"Empresa"},{id:"other",name:"Outra empresa"}];
+ else if(path.endsWith("/data-sources"))body=path.includes("/other/")?[]:[source];
+ else if(path.endsWith("/verify-read-only")){source.readOnlyVerificationStatus="verified";body=source;}
+ else if(path.endsWith("/members"))body=[{id:"member",name:"Pessoa de exemplo",email:"pessoa@example.com",globalRole:"viewer",organizationRole:"viewer",profileIds:["profile"],canCurrentUserManageRole:true}];
+ else if(path.endsWith("/invitations"))body=[{id:"invite",email:"convidado@example.com",organizationRole:"viewer",status:"pending",expiresAt:"2026-10-28T12:00:00Z"}];
+ else if(path.endsWith("/profiles")){if(req.method()==="POST"){const p={id:"created",organizationId:"org",organizationName:"Empresa",name:req.postDataJSON().name,description:null};profiles.push(p);body=p;}else body=profiles;}
+ else if(path.endsWith("/profiles/profile")||path.endsWith("/profiles/created"))body=profiles.find(p=>path.endsWith("/"+p.id));
+ else if(path.endsWith("/schema-grants")){if(req.method()==="PUT"){state.saved=req.postDataJSON();state.grants=req.postDataJSON();}body=state.grants;}
+ else if(path.endsWith("/available-report-schemas"))body=state.schemas.map(t=>({id:t.id,dataSourceId:"source",dataSourceName:"Banco ERP",name:t.publicName,type:"object",fields:[field(0)]}));
+ else if(path.endsWith("/report-schemas"))body=state.schemas;
+ else if(path.endsWith("/fields"))body=Array.from({length:60},(_,i)=>field(i));
+ else if(path.endsWith("/introspection/objects"))body=["orders","customers"].map(objectName=>({schemaName:"public",objectName,objectType:"table"}));
+ else if(path.endsWith("/report-schemas/import-preview"))body={fields:[{alreadyExists:false}],internalObjectName:req.postDataJSON().internalObjectName};
+ else if(path.endsWith("/report-schemas/import")){const id=req.postDataJSON().internalObjectName;state.attempts.push(id);if(id==="customers"&&state.attempts.filter(i=>i===id).length===1){status=500;body={status:500,title:"Falha",detail:"Clientes temporariamente indisponível"};}else{const t=table(id);if(!state.schemas.some(t=>t.id===id))state.schemas.push(t);body={schema:t,fieldsCreated:60,fieldsExisting:0};}}
+ else if(path==="/api/v1/catalog-templates")body=[template];
+ else if(path.endsWith("/report-join-templates"))body=[];
+ else if(path.endsWith("/catalog-template/preview"))body=template;
+ else if(path.endsWith("/catalog-template/apply")){state.saved=req.postDataJSON();state.schemas=[table("orders")];body={schemasCreated:1,fieldsCreated:39};}
+ else {status=404;body={title:"Rota sem mock",detail:path,status};}
+ await route.fulfill({status,contentType:"application/json",body:JSON.stringify(body)});
+ });
+ await page.addInitScript(()=>localStorage.setItem("report-builder.session.v1",JSON.stringify({refreshToken:"refresh"})));
+ return state;
 }
+for(const width of [1280,390]){
+ test("configuração contextual, importação parcial, retomada e grants em "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:850});const state=await setup(page);
+ await page.goto("/organizations/org");await expect(page.getByRole("heading",{name:"Banco ERP"})).toBeVisible();await expect(page.getByText(/0 tabelas/)).toBeVisible();await page.getByRole("link",{name:"Configurar fonte"}).click();
+ await expect(page.getByText(/Conexão salva; validação de somente leitura pendente/)).toBeVisible();await expect(page.getByRole("navigation",{name:"Caminho de navegação"})).toContainText("Empresa");
+ await page.getByRole("button",{name:"Importar do banco"}).click();let dialog=page.getByRole("dialog");await dialog.getByRole("button",{name:"Marcar resultados",exact:true}).click();await dialog.getByRole("button",{name:"Revisar prévia"}).click();await dialog.getByRole("button",{name:"Importar tabelas compatíveis"}).click();await expect(dialog.getByText("Clientes temporariamente indisponível")).toBeVisible();await dialog.getByRole("button",{name:"Tentar novamente somente as falhas"}).click();await expect(dialog.getByText("2 tabelas importadas")).toBeVisible();expect(state.attempts).toEqual(["orders","customers","customers"]);await dialog.getByRole("button",{name:"Revisar campos"}).click();await expect(page).toHaveURL(/step=fields/);
+ if(width===390){await page.getByRole("button",{name:"Opções da tabela",exact:true}).click();await page.getByRole("button",{name:"Trocar tabela",exact:true}).click();}await expect(page.getByRole("textbox",{name:"Buscar tabela"})).toBeVisible();if(width===390)await page.getByRole("button",{name:"Fechar tabelas"}).click();await expect(page.locator(".source-fields-table input[type=checkbox]")).toHaveCount(0);await page.getByRole("button",{name:"Filtros",exact:true}).click();await page.getByRole("combobox",{name:"Filtrar campos"}).selectOption("disabled");await expect(page.getByText("Nenhum campo encontrado na busca.")).toBeVisible();await page.getByRole("combobox",{name:"Filtrar campos"}).selectOption("all");await page.keyboard.press("Escape");await expect(page.getByText("Página 1 de 3")).toBeVisible();await page.locator(".source-fields-table tbody tr").first().evaluate(e=>window.scrollTo(0,e.getBoundingClientRect().top+window.scrollY-110));await page.screenshot({path:info.outputPath("source-fields-clean.png")});await page.getByRole("button",{name:"Selecionar",exact:true}).click();await page.getByRole("button",{name:"Ações de seleção",exact:true}).click();const selectionMenu=page.getByRole("group",{name:"Ações de seleção",exact:true});await expect.poll(async()=> (await selectionMenu.boundingBox())?.x??-1).toBeGreaterThanOrEqual(16);const menuBounds=await selectionMenu.boundingBox();expect(menuBounds!.x).toBeGreaterThanOrEqual(16);expect(menuBounds!.x+menuBounds!.width).toBeLessThanOrEqual(width-16);await page.keyboard.press("Escape");await expect(selectionMenu).toHaveCount(0);await page.getByRole("button",{name:"Ações de seleção",exact:true}).click();await page.getByRole("button",{name:"Marcar resultados",exact:true}).click();await expect(page.getByText("60 campos selecionados, incluindo outras páginas e filtros")).toBeVisible();await page.getByRole("button",{name:"Próxima",exact:true}).click();await expect(page.getByText("Campo 25",{exact:true})).toBeVisible();
+ await page.locator(".source-fields-heading").scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath("source-fields-compact.png")});await page.screenshot({path:info.outputPath("source-fields-actions.png"),fullPage:true});if(width===390){await page.getByRole("button",{name:"Opções da tabela",exact:true}).click();await page.getByRole("button",{name:"Trocar tabela",exact:true}).click();}await page.getByRole("navigation",{name:"Tabelas desta fonte"}).getByRole("link",{name:/Clientes/}).click();await expect(page).toHaveURL(/schemaId=customers/);await page.goBack();await expect(page).not.toHaveURL(/schemaId=customers/);
+ await page.getByRole("link",{name:/4. Definir acesso/}).click();await page.getByRole("combobox",{name:"Profile da organização"}).selectOption("profile");if(width===390){expect(await page.locator(".source-grants-search").evaluate(e=>e.getBoundingClientRect().width)).toBeGreaterThan(200);for(const header of await page.locator(".source-grants-schema-header").all())expect((await header.boundingBox())!.height).toBeLessThan(220);}await page.getByRole("button",{name:"Ações de Pedidos",exact:true}).click();await page.getByRole("button",{name:"Liberar tabela",exact:true}).click();await page.getByRole("button",{name:"Salvar Alterações",exact:true}).first().click();await expect(page.getByText("Alterações salvas com sucesso!").first()).toBeVisible();expect(state.saved).toMatchObject({schemas:expect.arrayContaining([expect.objectContaining({schemaId:"other-source-table"}),expect.objectContaining({schemaId:"orders"})])});
+ await page.getByRole("button",{name:"Atualizar resumo"}).click();await expect(page.getByRole("heading",{name:"Permissões do profile: Equipe"})).toBeVisible();await page.screenshot({path:info.outputPath("source-access.png"),fullPage:true});const bounds=await page.locator("main.source-workspace").boundingBox();expect(bounds!.width).toBeLessThanOrEqual(width);expect(await page.locator("main.source-workspace").evaluate(e=>parseFloat(getComputedStyle(e).paddingLeft))).toBe(width<=720?16:24);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ });
+ test("modelo compatível, biblioteca contextual e rodapé acessível em "+width,async({page},info)=>{
+ await page.setViewportSize({width,height:850});const state=await setup(page);await page.goto("/organizations/org/data-sources/source?step=tables");await page.getByRole("button",{name:"Usar modelo de catálogo"}).click();const dialog=page.getByRole("dialog");await dialog.getByRole("combobox",{name:"Template"}).selectOption("template");await dialog.getByRole("button",{name:"Gerar prévia"}).click();await expect(dialog.getByRole("button",{name:"Aplicar 39 campos"})).toBeInViewport();await dialog.getByRole("button",{name:"Ver campos de Pedidos"}).click();await dialog.getByRole("button",{name:"Próxima página de Pedidos"}).click();await expect(dialog.getByText("Campo ausente no destino")).toBeVisible();await dialog.locator(".modal-body").evaluate(e=>{e.scrollTop=e.scrollHeight;});await expect(dialog.getByRole("button",{name:"Aplicar 39 campos"})).toBeInViewport();await page.screenshot({path:info.outputPath("source-template.png"),fullPage:true});await dialog.getByRole("button",{name:"Aplicar 39 campos"}).click();await expect(dialog.getByText("Catálogo copiado com sucesso.")).toBeVisible();expect((state.saved as {schemas:{fieldIds:string[]}[]}).schemas[0].fieldIds).toHaveLength(39);await dialog.getByRole("link",{name:"Ver catálogo"}).click();await expect(page).toHaveURL(/step=fields/);await page.goto("/catalog-templates?dataSourceId=source");await expect(page).toHaveURL(new RegExp("organizations/org/data-sources/source.*library=catalog"));await expect(page.getByRole("heading",{name:"Modelos reutilizáveis"})).toBeVisible();await expect(page.getByRole("heading",{name:"ERP padrão"})).toBeVisible();
+ });
+}
+test("administrador sem ações root e organização divergente",async({page})=>{await setup(page,"administrator");await page.goto("/organizations/org/data-sources/source?step=tables");await expect(page.getByText(/Somente root pode cadastrar tabelas/)).toBeVisible();await expect(page.getByRole("button",{name:"Importar do banco"})).toHaveCount(0);await page.goto("/organizations/other/data-sources/source");await expect(page.getByText(/Fonte não encontrada nesta organização/)).toBeVisible();});
+
+test("links antigos resolvem tabela ou oferecem organização e fonte",async({page})=>{const state=await setup(page);state.schemas=[{id:"orders",dataSourceId:"source",publicName:"Pedidos",publicType:"object",internalSchemaName:"public",internalObjectName:"orders",description:null,isEnabled:true}];await page.goto("/report-schemas/orders/fields");await expect(page).toHaveURL(new RegExp("organizations/org/data-sources/source.*schemaId=orders"));await expect(page.getByRole("heading",{name:"Pedidos",exact:true})).toBeVisible();await page.goto("/data-sources");await page.getByRole("combobox",{name:"Organização"}).selectOption("org");await expect(page.getByRole("link",{name:"Banco ERP · Configurar fonte"})).toBeVisible();const nav=page.getByRole("navigation",{name:"Navegação principal"});await expect(nav.getByRole("link",{name:"Catálogo",exact:true})).toHaveCount(0);await expect(nav.getByRole("link",{name:"Fontes de dados",exact:true})).toHaveCount(0);});
+
+test("cria e cancela profile mantendo o contexto da fonte",async({page})=>{await setup(page);await page.goto("/organizations/org/data-sources/source?step=access");await page.getByRole("button",{name:"Criar profile",exact:true}).click();let dialog=page.getByRole("dialog",{name:"Criar profile"});await dialog.getByRole("button",{name:"Cancelar"}).click();await expect(dialog).toHaveCount(0);await expect(page).toHaveURL(/step=access/);await page.getByRole("button",{name:"Criar profile",exact:true}).click();dialog=page.getByRole("dialog",{name:"Criar profile"});await dialog.getByLabel("Nome do Perfil *").fill("Operação");await dialog.getByRole("button",{name:"Criar Perfil",exact:true}).click();await expect(page).toHaveURL(/profileId=created/);await expect(page.getByRole("heading",{name:"Permissões do profile: Operação"})).toBeVisible();await expect(page.getByRole("navigation",{name:"Caminho de navegação"})).toContainText("Banco ERP");});
+
+for(const width of [1280,390])test("organização e card da fonte organizados em "+width,async({page},info)=>{await page.setViewportSize({width,height:850});await setup(page);await page.goto("/organizations/org");await expect(page.getByRole("heading",{name:"Empresa",exact:true})).toBeVisible();const card=page.locator(".organization-source-card");await expect(card.getByRole("heading",{name:"Banco ERP"})).toBeVisible();await expect(card.getByText("0 tabelas",{exact:true})).toBeVisible();await expect(card.getByText("Validação pendente",{exact:true})).toBeVisible();await expect(card.getByText(/escolher tabelas/)).toBeVisible();await expect(card.getByRole("link",{name:"Configurar fonte"})).toHaveCount(1);await expect(card.getByRole("button")).toHaveCount(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:info.outputPath("organization-sources.png"),fullPage:true});await page.getByRole("button",{name:"Membros e convites"}).click();await expect(page.getByRole("link",{name:"Gerenciar membros"})).toHaveAttribute("href","/organizations/org/members");await expect(page.getByRole("link",{name:"Gerenciar convites"})).toHaveAttribute("href","/organizations/org/invitations");await page.keyboard.press("Escape");await page.getByRole("link",{name:"Profiles de acesso",exact:true}).click();await expect(page.getByRole("heading",{name:"Profiles de acesso",exact:true})).toBeVisible();await expect(page.getByText("Equipe",{exact:true})).toBeVisible();await expect(page.getByRole("link",{name:"Voltar para Organizações"})).toHaveCount(0);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:info.outputPath("organization-profiles.png"),fullPage:true});await page.getByRole("button",{name:"Opções",exact:true}).click();await page.getByRole("button",{name:"Editar profile",exact:true}).click();await expect(page.getByRole("dialog",{name:"Editar profile"})).toBeVisible();await page.getByRole("button",{name:"Cancelar",exact:true}).click();await expect(page.getByRole("dialog")).toHaveCount(0);});
+
+for(const width of [1280,390])test("padrão administrativo da organização em "+width,async({page},info)=>{await page.setViewportSize({width,height:850});await setup(page);let geometry:{x:number;width:number}|undefined;for(const [path,title]of [["/organizations/org","Fontes de dados"],["/organizations/org/members","Membros da Organização"],["/organizations/org/invitations","Convites da Organização"],["/organizations/org/profiles","Profiles de acesso"],["/organizations/org/profiles/profile/grants","Permissões do profile: Equipe"]]){await page.goto(path);await expect(page.getByRole("heading",{name:"Empresa",exact:true,level:1})).toBeVisible();await expect(page.getByRole("heading",{name:title,exact:true,level:2})).toBeVisible();await expect(page.getByRole("navigation",{name:"Caminho da organização"})).toContainText("Empresa");await expect(page.getByRole("navigation",{name:"Recursos da organização"})).toBeVisible();const main=page.locator("main"),box=await main.boundingBox();const padding=await main.evaluate(e=>parseFloat(getComputedStyle(e).paddingLeft));expect(padding).toBe(width<=720?16:24);if(geometry){expect(box!.x).toBe(geometry.x);expect(box!.width).toBe(geometry.width);}else geometry={x:box!.x,width:box!.width};expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.screenshot({path:info.outputPath(path.split("/").filter(Boolean).join("-")+".png"),fullPage:true});}
+ await page.goto("/organizations/org/members");await page.getByRole("button",{name:"Adicionar / Convidar Membro",exact:true}).click();const dialog=page.getByRole("dialog",{name:"Adicionar ou convidar membro"});await expect(dialog).toBeVisible();expect(await dialog.evaluate(e=>parseFloat(getComputedStyle(e).paddingLeft))).toBe(width<=720?16:24);await dialog.getByRole("button",{name:"Cancelar",exact:true}).click();await page.goto("/organizations");await expect(page.getByRole("heading",{name:"Organizações",exact:true,level:1})).toBeVisible();expect(await page.locator("main").evaluate(e=>parseFloat(getComputedStyle(e).paddingLeft))).toBe(width<=720?16:24);await page.getByRole("button",{name:"Nova Organização",exact:true}).click();const create=page.getByRole("dialog",{name:"Nova organização",exact:true});await expect(create).toBeVisible();expect(await create.evaluate(e=>parseFloat(getComputedStyle(e).paddingLeft))).toBe(width<=720?16:24);await create.getByRole("button",{name:"Cancelar",exact:true}).click();await page.getByRole("article").filter({has:page.getByRole("heading",{name:"Empresa",exact:true})}).getByRole("button",{name:"Opções",exact:true}).click();await page.getByRole("button",{name:"Editar organização Empresa",exact:true}).click();await expect(page.getByRole("dialog",{name:"Editar organização"})).toBeVisible();});
+
+test("modelos incorporados e erro de permissões mantêm o contexto",async({page})=>{await setup(page);for(const [library,title]of [["catalog","Modelos de catálogo"],["relationships","Modelos de relacionamento"]]){await page.goto("/organizations/org/data-sources/source?library="+library);await expect(page.getByRole("heading",{name:title,exact:true,level:3})).toBeVisible();await expect(page.locator("h1")).toHaveCount(1);await expect(page.getByRole("heading",{name:"Banco ERP",exact:true,level:1})).toBeVisible();}await page.route("**/profiles/profile/schema-grants",route=>route.fulfill({status:500,contentType:"application/problem+json",body:JSON.stringify({type:"about:blank",status:500,title:"Falha",detail:"Não foi possível ler grants",instance:"/schema-grants"})}));await page.goto("/organizations/org/profiles/profile/grants");await expect(page.getByRole("button",{name:"Consultar permissões novamente"})).toBeVisible();await expect(page.getByRole("heading",{name:"Empresa",exact:true,level:1})).toBeVisible();await expect(page.getByRole("navigation",{name:"Recursos da organização"})).toBeVisible();expect(await page.locator("main").evaluate(e=>parseFloat(getComputedStyle(e).paddingLeft))).toBe(24);});
+
+for(const width of [1280,390])test("ações do passo escolher tabelas em "+width,async({page},info)=>{await page.setViewportSize({width,height:850});const state=await setup(page);await page.goto("/organizations/org/data-sources/source?step=tables");const actions=page.getByRole("group",{name:"Cadastro de tabelas"}),importButton=actions.getByRole("button",{name:"Importar do banco"}),modelButton=actions.getByRole("button",{name:"Usar modelo de catálogo"});await expect(importButton).toBeEnabled();await expect(modelButton).toBeEnabled();await expect(page.getByRole("button",{name:"Cadastrar tabela manualmente"})).toHaveCount(0);const first=await importButton.boundingBox(),second=await modelButton.boundingBox();if(width===390){expect(first!.x).toBe(second!.x);expect(first!.width).toBe(second!.width);expect(second!.y).toBeGreaterThan(first!.y);}else expect(first!.y).toBe(second!.y);await actions.scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath("step-tables-actions.png")});await actions.getByRole("button",{name:"Opções avançadas"}).click();await page.getByRole("button",{name:"Cadastrar tabela manualmente"}).click();await expect(page.getByRole("dialog",{name:"Cadastrar tabela manualmente"})).toBeVisible();await page.getByRole("button",{name:"Fechar",exact:true}).click();state.schemas=[{id:"orders",dataSourceId:"source",publicName:"Pedidos",publicType:"object",internalSchemaName:"public",internalObjectName:"orders",description:null,isEnabled:true}];await page.reload();await expect(modelButton).toBeDisabled();await expect(page.getByText(/Modelos de catálogo só podem ser aplicados/)).toBeVisible();await expect(importButton).toBeEnabled();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);});

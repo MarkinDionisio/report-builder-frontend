@@ -1,5 +1,7 @@
+import { OrganizationContextHeader } from "../../organizations/components/OrganizationContextHeader";
+import { SourceActionMenu } from "../components/SourceActionMenu";
 import React, { useState, useEffect, useCallback } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import type {
   AvailableCatalogSchema,
@@ -16,17 +18,20 @@ import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { 
-  Key, ArrowLeft, CheckSquare, ShieldAlert, Database, Layers, CheckCircle2, 
+  Key, CheckSquare, ShieldAlert, Database, Layers, CheckCircle2,
   Save, ChevronDown, ChevronRight, Search, XCircle, Loader2, X
 } from "lucide-react";
 
-export const ProfileGrantsEditorPage: React.FC = () => {
-  const { organizationId, profileId } = useParams<{ organizationId: string; profileId: string }>();
+export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?: string; sourceId?: string; onSaved?: () => void }> = ({ embedded = false, profileId: suppliedProfileId, sourceId, onSaved }) => {
+  const Container = embedded ? "section" : "main";
+  const { organizationId, profileId: routeProfileId } = useParams<{ organizationId: string; profileId: string }>();
+  const profileId = suppliedProfileId ?? routeProfileId;
   const { state, refreshUser } = useAuth();
   const user = state.status === "authenticated" ? state.user : null;
 
   const canManage = Boolean(user && organizationId && canManageOrganization(user, organizationId));
 
+  const [grantsLoaded, setGrantsLoaded] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
   const [selectedDataSourceId, setSelectedDataSourceId] = useState<string>("");
@@ -60,6 +65,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
     }
 
     setLoading(true);
+    setGrantsLoaded(false);
     setErrorMsg(null);
 
     const [profRes, dsRes, grantsRes] = await Promise.all([
@@ -80,6 +86,10 @@ export const ProfileGrantsEditorPage: React.FC = () => {
       return;
     }
 
+    if (isErr(grantsRes) || isErr(dsRes)) { setErrorMsg("Não foi possível carregar todas as permissões existentes. Nenhuma alteração será permitida até uma nova consulta."); return; }
+    if (sourceId && !dsRes.value.some(s => s.id === sourceId && s.organizationId === organizationId)) {setErrorMsg("Fonte não encontrada nesta organização."); return;}
+    if (profRes.value.organizationId !== organizationId) {setErrorMsg("Profile não encontrado nesta organização."); return;}
+    setGrantsLoaded(true);
     setProfile(profRes.value);
     if (!isErr(grantsRes)) {
       setGrants(grantsRes.value);
@@ -90,10 +100,10 @@ export const ProfileGrantsEditorPage: React.FC = () => {
     if (!isErr(dsRes)) {
       setDataSources(dsRes.value);
       if (dsRes.value.length > 0) {
-        setSelectedDataSourceId(dsRes.value[0].id);
+        setSelectedDataSourceId(sourceId && dsRes.value.some(ds => ds.id === sourceId) ? sourceId : sourceId ? "" : dsRes.value[0].id);
       }
     }
-  }, [organizationId, profileId, canManage, refreshUser]);
+  }, [organizationId, profileId, canManage, refreshUser, sourceId]);
 
   useEffect(() => {
     initLoad();
@@ -119,7 +129,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
         setErrorMsg(res.error.detail || "Erro ao carregar catálogo disponível do DataSource.");
       }
     } else {
-      setAvailableCatalog(res.value);
+      setAvailableCatalog(res.value.filter(s => s.dataSourceId === selectedDataSourceId));
       setExpandedSchemas(new Set());
     }
   }, [organizationId, selectedDataSourceId, refreshUser]);
@@ -170,6 +180,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
       setGrants(res.value);
       setDraftGrants(res.value);
       setHasUnsavedChanges(false);
+      onSaved?.();
       setSuccessMsg("Todos os schemas e campos disponíveis no DataSource foram liberados com sucesso!");
     }
   };
@@ -199,6 +210,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
       setGrants(res.value);
       setDraftGrants(res.value);
       setHasUnsavedChanges(false);
+      onSaved?.();
       setIsRevokingAll(false);
       setSuccessMsg("Todos os grants deste DataSource foram revogados com sucesso!");
     }
@@ -302,6 +314,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
       setGrants(res.value);
       setDraftGrants(res.value);
       setHasUnsavedChanges(false);
+      onSaved?.();
       setSuccessMsg("Alterações salvas com sucesso!");
       setShowSuccessBar(true);
       setTimeout(() => {
@@ -324,11 +337,13 @@ export const ProfileGrantsEditorPage: React.FC = () => {
     return true;
   });
 
+  if (!loading && !accessDenied && !grantsLoaded) return <>{!embedded&&<Navbar/>}<Container className={embedded?"source-embedded":"source-workspace organization-overview"}>{!embedded&&<OrganizationContextHeader organizationId={organizationId||""} section="profiles" page="Permissões do profile"/>}<section className="card organization-page-error"><p role="alert">{errorMsg || "Permissões indisponíveis."}</p><button className="btn btn-secondary" onClick={() => void initLoad()}>Consultar permissões novamente</button></section></Container></>;
+
   if (accessDenied || (!canManage && !loading)) {
     return (
       <>
-        <Navbar />
-        <main className="container" style={{ padding: "2rem 1rem" }}>
+        {!embedded && <Navbar />}
+        <Container className={embedded ? "source-embedded source-grants-editor" : "source-workspace organization-overview source-grants-editor"}>
           <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
             <ShieldAlert size={48} style={{ color: "var(--danger-500)", marginBottom: "1rem" }} />
             <h2>Acesso Negado</h2>
@@ -336,46 +351,39 @@ export const ProfileGrantsEditorPage: React.FC = () => {
               Apenas usuários Root ou Administradores podem gerenciar as permissões do perfil.
             </p>
           </div>
-        </main>
+        </Container>
       </>
     );
   }
 
   return (
     <>
-      <Navbar />
-      <main className="container" style={{ padding: "2rem 1rem", paddingBottom: hasUnsavedChanges ? "6rem" : "2rem" }}>
-        <div style={{ marginBottom: "1rem" }}>
-          <Link
-            to={`/organizations/${organizationId}/profiles`}
-            className="btn btn-secondary"
-            style={{ padding: "0.4rem 0.75rem", fontSize: "0.85rem" }}
-          >
-            <ArrowLeft size={16} /> Voltar para Perfis
-          </Link>
-        </div>
+      {!embedded && <Navbar />}
+      <Container className={embedded ? "source-embedded source-grants-editor" : "source-workspace organization-overview source-grants-editor"} style={{ paddingBottom: hasUnsavedChanges ? "6rem" : undefined }}>
+        {!embedded&&<OrganizationContextHeader organizationId={organizationId||""} organization={profile?.organizationName?{name:profile.organizationName,description:null}:undefined} section="profiles" page="Permissões do profile"/>}
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <div className="source-grants-heading" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <div>
-            <h1 style={{ fontSize: "1.75rem", margin: "0 0 0.25rem 0", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <Key size={28} className="text-accent" /> Editor de Grants: {profile?.name}
-            </h1>
+            <h2 style={{ fontSize: "1.25rem", margin: "0 0 0.25rem 0", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Key size={28} className="text-accent" /> Permissões do profile: {profile?.name}
+            </h2>
             <p style={{ color: "var(--text-secondary)", margin: 0 }}>
-              Libere permissões por <strong>DataSource em lote</strong>, por <strong>Schema completo</strong> ou <strong>individualmente por campo</strong>.
+              Defina acesso para a fonte, tabelas ou campos. Salve as alterações para aplicar aos membros deste profile.
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+          <div className="source-grants-actions" style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            {availableCatalog.length > 0 && <SourceActionMenu label="Ações da fonte" disabled={saving}>
             {draftGrants.schemas.some(s => availableCatalog.some(c => c.id === s.schemaId)) && (
               <button
                 onClick={() => setIsRevokingAll(true)}
                 className="btn btn-danger"
                 disabled={saving}
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-                title="Revogar todos os grants concedidos neste DataSource (Imediato)"
+                title="Revogar todos os grants concedidos nesta fonte (salva imediatamente)"
               >
                 {savingAction === "revokeAll" ? <Loader2 size={18} className="animate-spin" /> : <XCircle size={18} />}
-                {savingAction === "revokeAll" ? "Revogando..." : "Revogar Tudo (Imediato)"}
+                {savingAction === "revokeAll" ? "Revogando..." : "Revogar fonte agora"}
               </button>
             )}
 
@@ -388,10 +396,11 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                 title="Liberar 100% dos Schemas e Campos deste DataSource de uma vez (Salva imediatamente no banco)"
               >
                 {savingAction === "grantAll" ? <Loader2 size={18} className="animate-spin" /> : <CheckSquare size={18} />}
-                {savingAction === "grantAll" ? "Liberando..." : "Liberar Tudo (Imediato)"}
+                {savingAction === "grantAll" ? "Liberando..." : "Liberar fonte agora"}
               </button>
             )}
 
+            </SourceActionMenu>}
             {hasUnsavedChanges && (
               <button
                 onClick={handleSaveChanges}
@@ -414,19 +423,20 @@ export const ProfileGrantsEditorPage: React.FC = () => {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {/* Cascading Selector Step 1 */}
-            <div className="card" style={{ padding: "1.25rem" }}>
+            <div hidden={Boolean(sourceId)} className="card" style={{ padding: "1.25rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.75rem" }}>
                 <Layers size={18} className="text-accent" /> Seleção do DataSource da Organização ({profile?.organizationName})
               </div>
 
               <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600, fontSize: "0.9rem" }}>
-                  <Database size={18} className="text-accent" /> DataSource:
+                  <Database size={18} className="text-accent" /> Fonte:
                 </div>
                 <select
                   className="form-select"
                   style={{ maxWidth: "380px" }}
                   value={selectedDataSourceId}
+                  disabled={Boolean(sourceId)}
                   onChange={(e) => setSelectedDataSourceId(e.target.value)}
                 >
                   <option value="">-- Selecione um DataSource --</option>
@@ -459,20 +469,20 @@ export const ProfileGrantsEditorPage: React.FC = () => {
             ) : availableCatalog.length === 0 ? (
               <div className="card" style={{ textAlign: "center", padding: "3.5rem 1.5rem", color: "var(--text-secondary)" }}>
                 <Key size={48} style={{ opacity: 0.3, marginBottom: "0.75rem" }} />
-                <h3>Nenhum schema disponível no DataSource selecionado</h3>
+                <h3>Nenhuma tabela disponível nesta fonte</h3>
                 <p style={{ maxWidth: "480px", margin: "0 auto" }}>
-                  O DataSource <strong>{currentDs?.name}</strong> ainda não possui schemas habilitados no catálogo. Importe schemas para este DataSource para liberar permissões aos perfis.
+                  A fonte <strong>{currentDs?.name}</strong> ainda não possui tabelas habilitadas no catálogo. Importe tabelas para esta fonte para liberar permissões aos perfis.
                 </p>
               </div>
             ) : (
               /* Step 2: Grant Matrix with Multi-Level Release */
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
-                  <div style={{ position: "relative", flex: 1, minWidth: "300px", maxWidth: "600px" }}>
+                  <div className="source-grants-search" style={{ position: "relative", flex: 1, minWidth: 0, maxWidth: "600px" }}>
                     <Search size={18} style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
                     <input
                       type="text"
-                      placeholder="Buscar por nome do schema..."
+                      placeholder="Buscar tabela..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       style={{ 
@@ -502,12 +512,12 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                       onChange={(e) => setShowOnlyGranted(e.target.checked)}
                       style={{ width: "18px", height: "18px", cursor: "pointer", accentColor: "var(--primary-500)" }}
                     />
-                    Mostrar apenas schemas liberados
+                    Mostrar apenas tabelas com acesso
                   </label>
                 </div>
                 {filteredCatalog.length === 0 ? (
                   <div className="card" style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
-                    Nenhum schema encontrado com o termo "{searchTerm}".
+                    Nenhuma tabela encontrada com o termo "{searchTerm}".
                   </div>
                 ) : (
                   filteredCatalog.map((schema) => {
@@ -517,8 +527,8 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                 const totalFieldsCount = schema.fields.length;
 
                 return (
-                  <div key={schema.id} className="card" style={{ padding: 0, overflow: "hidden" }}>
-                    <div
+                  <div key={schema.id} className="card" style={{ padding: 0, overflowX: "auto" }}>
+                    <div className="source-grants-schema-header"
                       style={{
                         background: "var(--surface-color)",
                         padding: "0.85rem 1.25rem",
@@ -549,7 +559,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                             {grantedFieldsCount === 0 ? "Nenhum acesso" : `${grantedFieldsCount}/${totalFieldsCount} campos com acesso`}
                           </span>
                           <span style={{ display: "block", fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
-                            DataSource: {schema.dataSourceName}
+                            Fonte: {schema.dataSourceName}
                           </span>
                         </div>
                       </div>
@@ -557,6 +567,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
                         <span className="badge badge-info">{schema.type}</span>
 
+                        <SourceActionMenu label={"Ações de " + schema.name} disabled={saving}>
                         {/* Level 2: Grant ALL Fields of this Schema */}
                         <button
                           onClick={(e) => {
@@ -568,7 +579,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                           style={{ padding: "0.3rem 0.6rem", fontSize: "0.775rem", display: "flex", alignItems: "center", gap: "0.3rem" }}
                           title="Liberar todas as capacidades de todos os campos deste schema de uma vez"
                         >
-                          <CheckCircle2 size={14} className="text-accent" /> Liberar Schema
+                          <CheckCircle2 size={14} className="text-accent" /> Liberar tabela
                         </button>
 
                         {/* Level 2.5: Revoke ALL Fields of this Schema */}
@@ -590,8 +601,9 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                           }}
                           title={grantedFieldsCount === 0 ? "Schema já está revogado" : "Revogar todas as capacidades de todos os campos deste schema de uma vez"}
                         >
-                          <XCircle size={14} /> Revogar Schema
+                          <XCircle size={14} /> Revogar tabela
                         </button>
+                        </SourceActionMenu>
                       </div>
                     </div>
 
@@ -601,11 +613,11 @@ export const ProfileGrantsEditorPage: React.FC = () => {
                           <tr>
                             <th>Campo do Catálogo</th>
                             <th>Tipo</th>
-                            <th style={{ textAlign: "center" }}>Selectable</th>
-                            <th style={{ textAlign: "center" }}>Filterable</th>
-                            <th style={{ textAlign: "center" }}>Sortable</th>
-                            <th style={{ textAlign: "center" }}>Groupable</th>
-                            <th style={{ textAlign: "center" }}>Aggregatable</th>
+                            <th style={{ textAlign: "center" }}>Selecionar</th>
+                            <th style={{ textAlign: "center" }}>Filtrar</th>
+                            <th style={{ textAlign: "center" }}>Ordenar</th>
+                            <th style={{ textAlign: "center" }}>Agrupar</th>
+                            <th style={{ textAlign: "center" }}>Agregar</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -688,7 +700,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
           )}
           </div>
         )}
-      </main>
+      </Container>
 
       {/* Delete Confirmation Modal */}
       {isRevokingAll && (
@@ -725,7 +737,7 @@ export const ProfileGrantsEditorPage: React.FC = () => {
 
       {/* Floating Save Button Bar / Success Toast */}
       {(hasUnsavedChanges || showSuccessBar) && (
-        <div style={{
+        <div className={embedded ? "source-grants-save" : undefined} style={{
           position: "fixed",
           bottom: 0,
           left: 0,

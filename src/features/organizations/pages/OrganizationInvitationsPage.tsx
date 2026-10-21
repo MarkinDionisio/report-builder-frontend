@@ -1,3 +1,4 @@
+import { OrganizationContextHeader } from "../components/OrganizationContextHeader";
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -130,8 +131,8 @@ export const OrganizationInvitationsPage: React.FC = () => {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Navbar />
-        <main style={{ maxWidth: "800px", width: "100%", margin: "4rem auto", padding: "0 1.5rem", flex: 1, textAlign: "center" }}>
-          <div className="glass-card animate-fade-in" style={{ padding: "3rem 2rem" }}>
+        <main className="source-workspace organization-overview">
+          <div className="card organization-page-error">
             <ProblemAlert
               problem={
                 problem || {
@@ -158,41 +159,18 @@ export const OrganizationInvitationsPage: React.FC = () => {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
-      <main style={{ maxWidth: "1200px", width: "100%", margin: "2rem auto", padding: "0 1.5rem", flex: 1 }}>
-      <div style={{ marginBottom: "1.5rem" }}>
-        <Link
-          to={`/organizations/${organizationId}/members`}
-          style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.9rem", marginBottom: "1rem" }}
-        >
-          <ArrowLeft size={16} /> Voltar para Membros
-        </Link>
-
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
-          <div>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.6rem" }}>
-              <Mail size={28} style={{ color: "var(--primary-500)" }} />
-              Convites da Organização
-            </h1>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: "0.25rem" }}>
-              Histórico e gerenciamento de convites enviados aos usuários
-            </p>
-          </div>
-
-          <Link to={`/organizations/${organizationId}/members`} className="btn btn-secondary">
-            <Users size={16} /> Gerenciar Membros
-          </Link>
-        </div>
-      </div>
-
+      <main className="source-workspace organization-overview organization-invitations">
+      <OrganizationContextHeader organizationId={organizationId||""} section="invitations" page="Convites"/>
+      <header className="organization-section-header"><div><h2>Convites da Organização</h2><p>Acompanhe os convites enviados e revogue os que ainda estão pendentes.</p></div><Link to={"/organizations/"+organizationId+"/members"} className="btn btn-secondary"><Users size={16}/>Gerenciar Membros</Link></header>
       <ProblemAlert problem={problem} />
       <ProblemAlert problem={actionProblem} />
 
       {isLoading ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: "4rem 0" }}>
+        <div role="status" className="organization-loading"><span>Consultando convites da organização…</span>
           <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary-500)" }} />
         </div>
       ) : invitations.length === 0 ? (
-        <div className="glass-card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+        <div className="card organization-empty">
           <Mail size={48} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />
           <h3 style={{ fontSize: "1.2rem", fontWeight: 600 }}>Nenhum Convite Encontrado</h3>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: "0.5rem" }}>
@@ -200,9 +178,9 @@ export const OrganizationInvitationsPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="glass-card" style={{ padding: "1.5rem" }}>
+        <div className="card organization-data-card">
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
+            <table className="organization-invitations-table" style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "0.9rem" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border-color)", color: "var(--text-secondary)" }}>
                   <th style={{ padding: "0.75rem 1rem" }}>E-mail</th>
@@ -217,13 +195,13 @@ export const OrganizationInvitationsPage: React.FC = () => {
                   const badge = getStatusBadge(inv.status);
                   return (
                     <tr key={inv.id || inv.email} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                      <td style={{ padding: "1rem", fontWeight: 600 }}>{inv.email}</td>
-                      <td style={{ padding: "1rem" }}>
+                      <td data-label="E-mail" style={{ padding: "1rem", fontWeight: 600 }}>{inv.email}</td>
+                      <td data-label="Papel atribuído" style={{ padding: "1rem" }}>
                         <span style={{ fontSize: "0.8rem", padding: "0.2rem 0.5rem", borderRadius: "4px", background: "rgba(255,255,255,0.06)" }}>
                           {getOrganizationRoleLabel(inv.organizationRole)}
                         </span>
                       </td>
-                      <td style={{ padding: "1rem" }}>
+                      <td data-label="Status" style={{ padding: "1rem" }}>
                         <span
                           style={{
                             display: "inline-flex",
@@ -241,7 +219,7 @@ export const OrganizationInvitationsPage: React.FC = () => {
                           {badge.icon} {badge.label}
                         </span>
                       </td>
-                      <td style={{ padding: "1rem", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
+                      <td data-label="Expiração / aceite" style={{ padding: "1rem", fontSize: "0.825rem", color: "var(--text-secondary)" }}>
                         {inv.acceptedAt ? (
                           <div>Aceito em: {new Date(inv.acceptedAt).toLocaleDateString()}</div>
                         ) : inv.expiresAt ? (
@@ -250,7 +228,7 @@ export const OrganizationInvitationsPage: React.FC = () => {
                           <div>-</div>
                         )}
                       </td>
-                      <td style={{ padding: "1rem", textAlign: "right" }}>
+                      <td data-label="Ações" style={{ padding: "1rem", textAlign: "right" }}>
                         {inv.status === "pending" && inv.id ? (
                           <button
                             onClick={() => handleOpenRevoke(inv)}

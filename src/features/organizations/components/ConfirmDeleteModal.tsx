@@ -1,3 +1,4 @@
+import "../styles/organizationOverview.css";
 import React, { useState } from "react";
 import type { ApiProblemDetails } from "../../../shared/api/types";
 import { ProblemAlert } from "../../../shared/components/Alert";
@@ -49,7 +50,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
         padding: "1rem",
       }}
     >
-      <div className="glass-card animate-fade-in" style={{ maxWidth: "480px", padding: "1.75rem" }}>
+      <div className="card organization-dialog animate-fade-in" role="dialog" aria-modal="true" aria-label={title} style={{ maxWidth: "480px", padding: "1.75rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", color: "#ef4444" }}>
           <AlertTriangle size={28} />
           <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>{title}</h2>

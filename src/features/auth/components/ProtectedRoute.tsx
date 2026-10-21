@@ -24,7 +24,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
   const isReportDetail = /^\/reports\/[^/]+\/run$/.test(path);
   const isOrganizationCentral = Boolean(organizationId && path === `/organizations/${organizationId}`);
   const isCatalogRoute = path.startsWith("/catalog-templates") || path.startsWith("/data-sources") || path.startsWith("/report-schemas") || path.startsWith("/report-join-templates");
-  const isOrganizationManagement = Boolean(organizationId && (path.includes("/members") || path.includes("/invitations") || path.includes("/profiles")));
+  const isOrganizationManagement = Boolean(organizationId && (path.includes("/members") || path.includes("/invitations") || path.includes("/profiles") || path.includes("/data-sources")));
   const isCreatorRoute = path === "/creator" || path.includes("/creator");
 
   const unavailable =

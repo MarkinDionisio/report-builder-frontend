@@ -246,3 +246,8 @@ describe("Catalog API Service (Result Pattern)", () => {
     }
   });
 });
+
+it("filters a global schema response to the requested data source", async()=>{
+ vi.spyOn(client,"apiFetch").mockResolvedValueOnce(ok(new Response(JSON.stringify([{id:"own",dataSourceId:"source"},{id:"foreign",dataSourceId:"other"}]),{status:200})));
+ const result=await catalogApi.listReportSchemas("source");expect(result).toEqual(ok([{id:"own",dataSourceId:"source"}]));
+});

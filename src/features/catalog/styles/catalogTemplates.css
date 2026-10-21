@@ -141,3 +141,5 @@
 .catalog-schema-picker__bulk > div { display: flex; flex-wrap: wrap; gap: .5rem; }
 .catalog-schema-picker__bulk .btn { min-height: 34px; padding: .4rem .75rem; font-size: .8rem; }
 .catalog-schema-picker__bulk p { margin: 0; color: var(--text-secondary); font-size: .8rem; }
+
+.catalog-templates-page__header h3{margin:0;font-size:1.2rem;}.catalog-template-card h4{margin:0;font-size:1.15rem;}

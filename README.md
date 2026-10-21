@@ -48,3 +48,9 @@ O catálogo usa o mesmo fluxo de duas etapas em desktop e celular. A ação
 **Trocar relatório** preserva a busca, a página e a configuração; escolher outro
 modelo redefine o título e exige nova verificação de compatibilidade. O rodapé
 mantém as ações acessíveis enquanto o conteúdo da etapa pode ser rolado.
+
+## Administração de fontes de dados
+
+O fluxo fica em **Organizações → organização → Fontes de dados → Configurar fonte**. Consulte [o guia de configuração](docs/data-source-configuration.md) para os quatro passos, modelos e permissões.
+
+O [padrão de layout administrativo](docs/organization-layout.md) descreve cabeçalhos, navegação, espaçamento, modais e validação das telas relacionadas à organização.

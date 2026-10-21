@@ -1,3 +1,6 @@
+import { SourceActionMenu } from "../../catalog/components/SourceActionMenu";
+import "../styles/organizationOverview.css";
+import "../../catalog/styles/dataSourceWorkspace.css";
 import React, { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -119,17 +122,8 @@ export const OrganizationsListPage: React.FC = () => {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
-      <main style={{ maxWidth: "1200px", width: "100%", margin: "2rem auto", padding: "0 1.5rem", flex: 1 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "2rem",
-          flexWrap: "wrap",
-          gap: "1rem",
-        }}
-      >
+      <main className="source-workspace organization-overview organization-list">
+      <header className="organization-section-header organization-list-header">
         <div>
           <h1 style={{ fontSize: "1.75rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.6rem" }}>
             <Building2 size={28} style={{ color: "var(--primary-500)" }} />
@@ -137,10 +131,10 @@ export const OrganizationsListPage: React.FC = () => {
           </h1>
           <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: "0.25rem" }}>
             {isRoot
-              ? "Visão global completa de todas as organizações da plataforma (papel root)"
+              ? "Gerencie as organizações e suas configurações."
               : userGlobalRole && userGlobalRole !== "unassigned"
-              ? "Visão global de todas as organizações da plataforma"
-              : "Organizações nas quais você possui membership ativa"}
+              ? "Acesse as organizações disponíveis na plataforma."
+              : "Acesse as organizações das quais você faz parte."}
           </p>
         </div>
 
@@ -149,16 +143,16 @@ export const OrganizationsListPage: React.FC = () => {
             <Plus size={18} /> Nova Organização
           </button>
         )}
-      </div>
+      </header>
 
       <ProblemAlert problem={problem} />
 
       {isLoading ? (
-        <div style={{ display: "flex", justifyContent: "center", padding: "4rem 0" }}>
+        <div role="status" className="organization-loading"><span>Consultando organizações…</span>
           <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary-500)" }} />
         </div>
       ) : organizations.length === 0 ? (
-        <div className="glass-card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+        <div className="card organization-empty">
           <Building2 size={48} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />
           <h3 style={{ fontSize: "1.2rem", fontWeight: 600, marginBottom: "0.5rem" }}>
             Nenhuma Organização Encontrada
@@ -177,86 +171,7 @@ export const OrganizationsListPage: React.FC = () => {
               : false;
 
             return (
-              <div key={org.id} className="glass-card animate-fade-in" style={{ padding: "1.75rem" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
-                  <div>
-                    <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>{org.name}</h3>
-                    <div style={{ fontFamily: "monospace", fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.2rem" }}>
-                      ID: {org.id}
-                    </div>
-                  </div>
-
-                  {isRoot && (
-                    <div className="action-buttons">
-                      <button
-                        onClick={() => handleOpenEdit(org)}
-                        className="btn-icon"
-                        aria-label={`Editar organização ${org.name}`}
-                        title="Editar Organização"
-                      >
-                        <Edit2 size={15} />
-                      </button>
-                      <button
-                        onClick={() => handleOpenDelete(org)}
-                        className="btn-icon btn-icon-danger"
-                        aria-label={`Excluir organização ${org.name}`}
-                        title="Excluir Organização"
-                      >
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                <p style={{ fontSize: "0.9rem", color: "var(--text-secondary)", minHeight: "2.8rem", marginBottom: "1.5rem" }}>
-                  {org.description || <em style={{ color: "var(--text-muted)" }}>Sem descrição informada.</em>}
-                </p>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "1rem" }}>Fuso: {org.timeZone}</div>
-
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.75rem",
-                    borderTop: "1px solid var(--border-color)",
-                    paddingTop: "1rem",
-                  }}
-                >
-                  {userCanManage && <Link
-                    to={`/organizations/${org.id}`}
-                    className="btn btn-primary"
-                    style={{ width: "100%", justifyContent: "center", fontSize: "0.85rem", padding: "0.55rem" }}
-                  >
-                    <Building2 size={16} /> Acessar Central da Organização
-                  </Link>}
-
-                  {userCanManage && (
-                    <div style={{ display: "flex", gap: "0.5rem" }}>
-                      <Link
-                        to={`/organizations/${org.id}/members`}
-                        className="btn btn-secondary"
-                        style={{ flex: 1, padding: "0.45rem 0.5rem", fontSize: "0.775rem", justifyContent: "center" }}
-                      >
-                        <Users size={14} /> Membros
-                      </Link>
-                      <Link
-                        to={`/organizations/${org.id}/invitations`}
-                        className="btn btn-secondary"
-                        style={{ flex: 1, padding: "0.45rem 0.5rem", fontSize: "0.775rem", justifyContent: "center" }}
-                      >
-                        <Mail size={14} /> Convites
-                      </Link>
-                      <Link
-                        to={`/organizations/${org.id}/profiles`}
-                        className="btn btn-secondary"
-                        style={{ flex: 1, padding: "0.45rem 0.5rem", fontSize: "0.775rem", justifyContent: "center" }}
-                      >
-                        <Users size={14} /> Perfis
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
+              <article key={org.id} className="card organization-list-card"><header><h3>{org.name}</h3></header><p>{org.description||"Sem descrição informada."}</p>{org.timeZone&&<small>Fuso horário: {org.timeZone}</small>}<footer>{userCanManage&&<Link to={"/organizations/"+org.id} className="btn btn-primary"><Building2 size={16}/>Acessar Central da Organização</Link>}{(isRoot||userCanManage)&&<SourceActionMenu label="Opções">{userCanManage&&<><Link to={"/organizations/"+org.id+"/members"}><Users size={16}/>Membros</Link><Link to={"/organizations/"+org.id+"/invitations"}><Mail size={16}/>Convites</Link><Link to={"/organizations/"+org.id+"?tab=profiles"}><Users size={16}/>Profiles de acesso</Link></>}{isRoot&&<><button onClick={()=>handleOpenEdit(org)} aria-label={"Editar organização "+org.name}><Edit2 size={16}/>Editar organização</button><button className="btn-danger" onClick={()=>handleOpenDelete(org)} aria-label={"Excluir organização "+org.name}><Trash2 size={16}/>Excluir organização</button></>}</SourceActionMenu>}</footer></article>
             );
           })}
         </div>
