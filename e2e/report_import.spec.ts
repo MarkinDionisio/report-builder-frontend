@@ -45,9 +45,13 @@ test(`importa em etapas no ${viewport.name} e abre a cópia no editor`, async ({
     await expect(page.locator(selector)).toHaveCSS("padding-left", gutter);
     await expect(page.locator(selector)).toHaveCSS("padding-right", gutter);
   }
-  const cards = await page.locator(".global-report-catalog__card").all();
-  const firstCard = await cards[0].boundingBox();
-  const secondCard = await cards[1].boundingBox();
+  // Measure both cards in the same frame while the application shell animates.
+  const [firstCard, secondCard] = await page.locator(".global-report-catalog__card").evaluateAll(elements =>
+    elements.slice(0, 2).map(element => {
+      const { x, y, height } = element.getBoundingClientRect();
+      return { x, y, height };
+    })
+  );
   expect(secondCard!.y).toBeGreaterThan(firstCard!.y + firstCard!.height);
   expect(secondCard!.x).toBe(firstCard!.x);
   await content.evaluate(element => { element.scrollTop = element.scrollHeight; });
