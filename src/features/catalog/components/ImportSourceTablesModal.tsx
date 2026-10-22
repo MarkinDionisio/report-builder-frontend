@@ -3,10 +3,10 @@ import { catalogApi } from "../api/catalogApi";
 import { isErr } from "../../../shared/result/result";
 import { matchesTextSearch } from "../../../shared/utils/textSearch";
 import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
-import type { ImportSchemaPreview, IntrospectionObject } from "../types/catalogTypes";
-interface Item { object: IntrospectionObject; preview?: ImportSchemaPreview; error?: string; imported?: boolean; }
+import type { ImportSchemaPreview, IntrospectionObject, RootReportSchema } from "../types/catalogTypes";
+interface Item { object: IntrospectionObject; preview?: ImportSchemaPreview; error?: string; imported?: boolean; importedSchema?: RootReportSchema; }
 const keyOf = (object: IntrospectionObject) => JSON.stringify([object.schemaName, object.objectName]);
-export function ImportSourceTablesModal({ sourceId, sourceName, onClose, onChanged, onReview }: { sourceId: string; sourceName: string; onClose: () => void; onChanged: () => void; onReview?: () => void }) {
+export function ImportSourceTablesModal({ sourceId, sourceName, onClose, onChanged, onReview }: { sourceId: string; sourceName: string; onClose: () => void; onChanged: () => void; onReview?: (schemaId: string) => void }) {
   const [objects, setObjects] = useState<IntrospectionObject[]>([]);
   const [selected, setSelected] = useState(new Set<string>());
   const [search, setSearch] = useState("");
@@ -59,7 +59,7 @@ export function ImportSourceTablesModal({ sourceId, sourceName, onClose, onChang
         try {
           if(!item.preview) { const preview = await catalogApi.previewImportSchema(request(item.object)); if(isErr(preview)) { const index=updated.findIndex(v=>keyOf(v.object)===keyOf(item.object)); updated[index]={...item,error:preview.error.detail||"Falha ao gerar prévia."};setItems([...updated]);continue;} draft={...item,preview:preview.value}; }
           const result = await catalogApi.importSchema(request(item.object));
-          next = isErr(result) ? { ...draft, error: result.error.detail || "Falha ao importar a tabela." } : { ...draft, imported: true, error: undefined };
+          next = isErr(result) ? { ...draft, error: result.error.detail || "Falha ao importar a tabela." } : { ...draft, imported: true, importedSchema: result.value.schema, error: undefined };
         } catch { next = { ...item, error: "Falha de comunicação. Tente novamente esta tabela." }; }
         changed ||= Boolean(next.imported);
         updated[updated.findIndex(value => keyOf(value.object) === keyOf(item.object))] = next;
@@ -90,7 +90,7 @@ export function ImportSourceTablesModal({ sourceId, sourceName, onClose, onChang
     <footer className="catalog-template-footer"><span>{stage === "result" ? `${items.filter(item => item.imported).length} tabelas importadas` : `${selected.size} tabelas selecionadas`}</span>
       {stage === "choose" && <button className="btn btn-primary" disabled={busy || selected.size === 0} onClick={() => void preview()}>Revisar prévia</button>}
       {stage === "preview" && <><button className="btn btn-secondary" disabled={busy} onClick={() => setStage("choose")}>Alterar seleção</button><button className="btn btn-primary" disabled={busy || !items.some(item => item.preview)} onClick={() => void apply(false)}>Importar tabelas compatíveis</button></>}
-      {stage === "result" && <>{items.some(item => item.error && !item.imported) && <button className="btn btn-secondary" disabled={busy} onClick={() => void apply(true)}>Tentar novamente somente as falhas</button>}<button className="btn btn-primary" disabled={busy} onClick={onReview || onClose}>Revisar campos</button></>}
+      {stage === "result" && <>{items.some(item => item.error && !item.imported) && <button className="btn btn-secondary" disabled={busy} onClick={() => void apply(true)}>Tentar novamente somente as falhas</button>}<button className="btn btn-primary" disabled={busy || !items.some(item=>item.importedSchema)} onClick={()=>{const table=items.find(item=>item.importedSchema)?.importedSchema;if(table&&onReview)onReview(table.id);else onClose();}}>Revisar campos</button></>}
     </footer>
   </section></div>;
 }

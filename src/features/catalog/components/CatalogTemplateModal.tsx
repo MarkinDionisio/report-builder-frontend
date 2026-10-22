@@ -8,8 +8,8 @@ import type { CatalogTemplate } from '../types/catalogTemplateTypes';
 import { isErr } from '../../../shared/result/result';
 import { useAuth } from '../../auth/context/AuthContext';
 
-export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClose, onSuccess, catalogPath, fieldsPath }: {
-  dataSourceId: string; dataSourceName: string; mode: 'save' | 'apply'; onClose: () => void; onSuccess: () => void; catalogPath?: string; fieldsPath?: string;
+export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClose, onSuccess, onApplied, catalogPath, fieldsPath }: {
+  dataSourceId: string; dataSourceName: string; mode: 'save' | 'apply'; onClose: () => void; onSuccess: () => void; onApplied?: (table: {internalSchemaName: string; internalObjectName: string}) => void; catalogPath?: string; fieldsPath?: string;
 }) {
   const { refreshUser } = useAuth();
   const [templates, setTemplates] = useState<CatalogTemplate[]>([]);
@@ -65,7 +65,14 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
       } else if (action === 'preview') {
         setPreview(result.value);
         setSelected(new Set(result.value.schemas.filter(s => s.compatible).flatMap(s => s.fields.filter(f => f.compatible).map(f => f.id))));
-      } else { setDone(true); onSuccess(); }
+      } else {
+        setDone(true);
+        if(action === "apply" && onApplied) {
+          const applied = preview?.schemas.find(table=>schemas.some(selection=>selection.schemaId===table.id));
+          if(applied) onApplied({internalSchemaName:applied.internalSchemaName,internalObjectName:applied.internalObjectName});
+          else onSuccess();
+        } else onSuccess();
+      }
     } finally { lock.current = false; setBusy(false); }
   }
   const progress = operation === "load"
@@ -86,7 +93,7 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
         <Loader2 size={22} className="animate-spin" aria-hidden="true" />
         <div><strong>{progress.title}</strong><p>{progress.detail}</p></div>
       </div>}
-      {done ? <div role="status"><p>{mode === 'save' ? 'Template salvo.' : 'Catálogo copiado com sucesso.'}</p><Link to={mode === 'save' ? (catalogPath || '/catalog-templates') : (fieldsPath || '/report-schemas')}>Ver {mode === 'save' ? 'templates' : 'catálogo'}</Link></div>
+      {done ? <div role="status"><p>{mode === 'save' ? 'Template salvo.' : 'Catálogo copiado com sucesso.'}</p><Link onClick={onClose} to={mode === 'save' ? (catalogPath || '/catalog-templates') : (fieldsPath || '/report-schemas')}>Ver {mode === 'save' ? 'templates' : 'catálogo'}</Link></div>
       : mode === 'save' ? <form onSubmit={e => { e.preventDefault(); void run('save'); }}>
         {emptySource && <p>O catálogo de origem está vazio ou indisponível.</p>}
         <label>Nome<input className="form-input" required maxLength={200} value={name} onChange={e => setName(e.target.value)} /></label>

@@ -6,7 +6,7 @@ export function SourceSchemaEditorModal({ sourceId, schema, onClose, onSaved }: 
     sourceId: string;
     schema?: RootReportSchema;
     onClose: () => void;
-    onSaved: () => void;
+    onSaved: (schema: RootReportSchema) => void;
 }) {
     const [name, setName] = useState(schema?.publicName || "");
     const [internalSchema, setInternalSchema] = useState(schema?.internalSchemaName || "public");
@@ -28,7 +28,7 @@ export function SourceSchemaEditorModal({ sourceId, schema, onClose, onSaved }: 
             if (isErr(result))
                 setError(result.error.detail || "Não foi possível salvar a tabela.");
             else {
-                onSaved();
+                onSaved(result.value);
                 onClose();
             }
         }

@@ -1,4 +1,6 @@
-import { Database, Copy } from "lucide-react";
+import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
+import type { ApiProblemDetails } from "../../../shared/api/types";
+import { Database, Copy, Loader2 } from "lucide-react";
 import { SourceActionMenu } from "../components/SourceActionMenu";
 import { OrganizationProfilesPage } from "./OrganizationProfilesPage";
 import { useEffect, useRef, useState } from "react";
@@ -34,19 +36,31 @@ export function DataSourceWorkspacePage() {
     const [schemas, setSchemas] = useState<RootReportSchema[]>([]), [available, setAvailable] = useState<AvailableCatalogSchema[]>([]), [fields, setFields] = useState<Record<string, RootReportField[]>>({}), [profiles, setProfiles] = useState<Profile[]>([]);
     const [granted, setGranted] = useState<boolean | null>(null), [fieldError, setFieldError] = useState(false), [loading, setLoading] = useState(true), [error, setError] = useState(""), [version, setVersion] = useState(0), [busy, setBusy] = useState(false);
     const [modal, setModal] = useState<"connection" | "import" | "save" | "apply" | "schema" | null>(null), [editing, setEditing] = useState<RootReportSchema | undefined>();
+    const [deletingTable, setDeletingTable] = useState<RootReportSchema | null>(null);
+    const [deleteProblem, setDeleteProblem] = useState<ApiProblemDetails | null>(null);
     const [creatingProfile, setCreatingProfile] = useState(false);
     const [tablePickerOpen, setTablePickerOpen] = useState(false);
     const tableSearchRef = useRef<HTMLInputElement>(null);
     useEffect(()=>{if(tablePickerOpen)tableSearchRef.current?.focus();},[tablePickerOpen]);
     const [query, setQuery] = useState(""), [matchCase, setMatchCase] = useState(false), [exactMatch, setExactMatch] = useState(false);
+    const [pendingReview,setPendingReview]=useState<{schemaId?:string;internalSchemaName?:string;internalObjectName?:string}|null>(null);
+    const [completionMessage,setCompletionMessage]=useState("");
     const actionLock = useRef(false);
     const loadedScope = useRef("");
-    const refresh = () => setVersion(v => v + 1);
+    const refresh = () => {if(pendingReview)setLoading(true);setVersion(v => v + 1);};
+    function reviewCreatedTable(target:{schemaId?:string;internalSchemaName?:string;internalObjectName?:string},message:string){
+      setModal(null);setPendingReview(target);setCompletionMessage(message);setLoading(true);
+      setQuery("");setMatchCase(false);setExactMatch(false);setTablePickerOpen(false);
+      setParams(new URLSearchParams({step:"fields",...(target.schemaId?{schemaId:target.schemaId}:{})}));
+      setVersion(v=>v+1);
+    }
     useEffect(() => {
         let active = true;
         const scope = organizationId + "/" + dataSourceId;
         if (loadedScope.current !== scope) {
             setLoading(true);
+            setPendingReview(null);
+            setCompletionMessage("");
             setSource(null);
             setOrg("");
             setSchemas([]);
@@ -122,16 +136,22 @@ export function DataSourceWorkspacePage() {
     }, [organizationId, dataSourceId, allowed, root, version]);
     const stepIndex = Math.max(0, steps.findIndex(s => s.id === (params.get("step") || (schemas.length ? "fields" : "tables"))));
     const step = steps[stepIndex];
-    const selected = schemas.find(s => s.id === params.get("schemaId")) || (!params.get("schemaId") ? schemas[0] : undefined);
+    const selected = pendingReview ? undefined : schemas.find(s => s.id === params.get("schemaId")) || (!params.get("schemaId") ? schemas[0] : undefined);
     const profile = profiles.find(p => p.id === params.get("profileId"));
     const library = params.get("library");
     const href = (stepId: string, extra: Record<string, string> = {}) => { const next = new URLSearchParams(params); next.set("step", stepId); next.delete("library"); for (const [k, v] of Object.entries(extra))
         next.set(k, v); return "?" + next.toString(); };
-    useEffect(() => { if (!source || loading)
+    useEffect(() => { if (!source || loading || pendingReview)
         return; const next = new URLSearchParams(params); if (!steps.some(s => s.id === params.get("step")))
         next.set("step", schemas.length ? "fields" : "tables"); if ((next.get("step") === "fields") && !next.get("schemaId") && schemas[0])
         next.set("schemaId", schemas[0].id); if (next.toString() !== params.toString())
-        setParams(next, { replace: true }); }, [source, loading, schemas, params, setParams]);
+        setParams(next, { replace: true }); }, [source, loading, schemas, params, setParams, pendingReview]);
+    useEffect(()=>{
+      if(!pendingReview||loading)return;
+      const table=schemas.find(table=>pendingReview.schemaId?table.id===pendingReview.schemaId:table.internalSchemaName===pendingReview.internalSchemaName&&table.internalObjectName===pendingReview.internalObjectName);
+      if(table){setParams(new URLSearchParams({step:"fields",schemaId:table.id}),{replace:true});setPendingReview(null);}
+      else if(!error)setError("Não foi possível localizar a tabela criada no catálogo desta fonte. Consulte novamente para revisar os campos.");
+    },[pendingReview,loading,schemas,error,setParams]);
     const base = "/organizations/" + organizationId + "/data-sources/" + encodeURIComponent(dataSourceId);
     const fieldCount = root ? Object.values(fields).reduce((n, f) => n + f.length, 0) : available.reduce((n, t) => n + t.fields.length, 0);
     async function action(run: () => ReturnType<typeof catalogApi.deleteDataSource>, done?: () => void) { if (actionLock.current)
@@ -158,8 +178,9 @@ export function DataSourceWorkspacePage() {
     } }
     const filtered = schemas.filter(t => [t.publicName, t.internalSchemaName, t.internalObjectName, t.internalSchemaName + "." + t.internalObjectName].some(v => matchesTextSearch(v, query, { matchCase, exactMatch })));
     return <><Navbar /><main className="container source-workspace"><nav className="source-breadcrumb" aria-label="Caminho de navegação"><Link to="/organizations">Organizações</Link><span>›</span><Link to={"/organizations/" + organizationId}>{org || "Organização"}</Link><span>› Fontes de dados ›</span><span>{source?.name || "Fonte"}</span></nav>
- {loading ? <p role="status">Consultando conexão, tabelas, campos e permissões desta fonte…</p> : <>{error && <div role="alert" className="source-notice source-error">{error} <button className="btn btn-secondary" onClick={refresh}>Consultar novamente</button></div>}{source && <>
+ {(loading || (pendingReview && !error)) ? <section className="source-loading-status" role="status" aria-live="polite" aria-atomic="true"><span className="source-loading-status__icon"><Loader2 size={30} className="animate-spin" aria-hidden="true"/></span><div><strong>Carregando configuração da fonte</strong><p>Consultando conexão, tabelas, campos e permissões desta fonte…</p></div></section> : <>{error && <div role="alert" className="source-notice source-error">{error} <button className="btn btn-secondary" onClick={refresh}>Consultar novamente</button></div>}{source && <>
  <header className="source-workspace__header"><div><h1>{source.name}</h1><p>{org} · {source.provider} · {schemas.length} tabelas · {fieldError ? "Quantidade de campos indisponível" : fieldCount + " campos"}</p></div>{root && <SourceActionMenu label="Opções da fonte"><Link to={"?" + new URLSearchParams({ ...Object.fromEntries(params), library: "catalog" })}>Modelos reutilizáveis</Link><button className="btn btn-secondary" disabled={!schemas.length || fieldCount === 0 || fieldError} onClick={() => setModal("save")}>Salvar catálogo como modelo</button></SourceActionMenu>}</header>
+ {completionMessage && !pendingReview && <p role="status" className="source-notice">{completionMessage}</p>}
  {!source.isEnabled && <p className="source-notice">Fonte desabilitada. Habilite a conexão para importar tabelas e executar relatórios.</p>}
  {source.readOnlyVerificationStatus !== "verified" && <p role="status" className="source-notice"><strong>Conexão salva; validação de somente leitura pendente.</strong> Você pode preparar o catálogo. A execução de relatórios exige a validação da conexão.</p>}
  <nav className="source-stepper" aria-label="Passos de configuração">{steps.map((s, i) => <Link key={s.id} aria-current={step.id === s.id ? "step" : undefined} to={href(s.id)}><strong>{i + 1}. {s.name}</strong><small>{i === 0 ? (source.readOnlyVerificationStatus === "verified" ? "Conexão salva e validada" : "Conexão salva; validar leitura") : i === 1 ? schemas.length + " tabelas cadastradas" : i === 2 ? "Revisão manual disponível" : granted === null ? "Permissões não verificadas" : granted ? "Há operações concedidas" : "Sem operações concedidas"}</small></Link>)}</nav>
@@ -175,7 +196,7 @@ export function DataSourceWorkspacePage() {
  {step.id === "fields" && <>{!schemas.length ? <p>Nenhuma tabela cadastrada. Volte a Escolher tabelas.</p> : <>
  {!root&&<button type="button" className="source-table-switch btn btn-secondary" aria-expanded={tablePickerOpen} aria-controls="source-table-picker" onClick={()=>setTablePickerOpen(v=>!v)}><span>Tabela: <strong>{selected?.publicName || "Escolher tabela"}</strong></span><span>{tablePickerOpen?"Fechar":"Trocar"}</span></button>}
  <div className="source-table-layout"><aside id="source-table-picker" className={"source-table-selector"+(tablePickerOpen?" is-open":"")}><h3>Tabelas <small>{schemas.length}</small><button className="source-table-close btn btn-secondary" aria-label="Fechar tabelas" onClick={()=>setTablePickerOpen(false)}>Fechar</button></h3><div className="source-table-search"><input ref={tableSearchRef} className="form-input" aria-label="Buscar tabela" placeholder="Buscar tabela" value={query} onChange={e=>setQuery(e.target.value)}/><SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch}/></div><nav className="source-table-nav" aria-label="Tabelas desta fonte">{filtered.length===0&&<p>Nenhuma tabela corresponde à busca.</p>}{filtered.map(t=><Link key={t.id} to={href("fields",{schemaId:t.id})} onClick={()=>setTablePickerOpen(false)} aria-current={selected?.id===t.id}>{t.publicName}<small>{t.internalObjectName?t.internalSchemaName+"."+t.internalObjectName:"Tabela disponível"}</small></Link>)}</nav></aside>
- <div className="source-fields-content">{selected ? root ? <ReportFieldsPage embedded schemaId={selected.id} tableName={selected.publicName} physicalName={selected.internalSchemaName+"."+selected.internalObjectName} key={selected.id} onChanged={refresh} tableActions={<><button className="source-table-switch btn btn-secondary" aria-controls="source-table-picker" aria-expanded={tablePickerOpen} onClick={()=>setTablePickerOpen(true)}>Trocar tabela</button><button className="btn btn-secondary" onClick={()=>{setEditing(selected);setModal("schema");}}>Editar tabela</button><button className="btn btn-danger" disabled={busy} onClick={()=>{if(window.confirm("Excluir a tabela "+selected.publicName+" e seus campos do catálogo?"))void action(()=>catalogApi.deleteReportSchema(selected.id),()=>{const next=new URLSearchParams(params);next.delete("schemaId");setParams(next);refresh();});}}>Excluir tabela</button></>}/> : <><h3>{selected.publicName}</h3><ul>{available.find(t=>t.id===selected.id)?.fields.map(f=><li key={f.id}>{f.name} · {f.type}</li>)}</ul></> : <p role="alert">A tabela indicada na URL não pertence ao catálogo desta fonte.</p>}</div></div></>}</>}
+ <div className="source-fields-content">{selected ? root ? <ReportFieldsPage embedded schemaId={selected.id} tableName={selected.publicName} physicalName={selected.internalSchemaName+"."+selected.internalObjectName} key={selected.id} onChanged={refresh} tableActions={<><button className="source-table-switch btn btn-secondary" aria-controls="source-table-picker" aria-expanded={tablePickerOpen} onClick={()=>setTablePickerOpen(true)}>Trocar tabela</button><button className="btn btn-secondary" onClick={()=>{setEditing(selected);setModal("schema");}}>Editar tabela</button><button className="btn btn-danger" disabled={busy} onClick={()=>{setDeleteProblem(null);setDeletingTable(selected);}}>Excluir tabela</button></>}/> : <><h3>{selected.publicName}</h3><ul>{available.find(t=>t.id===selected.id)?.fields.map(f=><li key={f.id}>{f.name} · {f.type}</li>)}</ul></> : <p role="alert">A tabela indicada na URL não pertence ao catálogo desta fonte.</p>}</div></div></>}</>}
  {step.id === "access" && <><div className="source-profile-toolbar"><label>Profile da organização<select className="form-input" value={profile?.id || ""} onChange={e => setParams(new URLSearchParams(href("access", { profileId: e.target.value }).slice(1)))}><option value="">Escolha um profile</option>{profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label><div className="source-actions"><button className="btn btn-secondary" onClick={() => setCreatingProfile(true)}>Criar profile</button><Link to={"/organizations/" + organizationId + "/members"}>Associar membros ao profile</Link></div></div><p>As permissões das outras fontes deste profile serão preservadas. Nenhuma permissão é concedida automaticamente.</p>{params.get("profileId") && !profile && <p role="alert">Profile não encontrado nesta organização. Escolha um profile válido.</p>}{profile && <ProfileGrantsEditorPage embedded profileId={profile.id} sourceId={source.id} key={profile.id + source.id} onSaved={refresh}/>}<section className="source-notice"><h3>Configuração e pendências</h3><ul><li>Conexão cadastrada: {source.isEnabled ? "habilitada" : "habilitação pendente"}.</li><li>Somente leitura: {source.readOnlyVerificationStatus === "verified" ? "validada" : "validação pendente"}.</li><li>{schemas.length} tabelas e {fieldError ? "quantidade de campos não verificada" : fieldCount + " campos cadastrados"}. A existência de campos não confirma revisão humana.</li><li>{granted === null ? "Consulte novamente para atualizar o estado das permissões." : granted ? "Há operações concedidas a profiles. Verifique a associação dos membros." : "Permissões para esta fonte ainda não configuradas."}</li></ul><div className="source-summary-actions"><button className="btn btn-secondary" onClick={refresh}>Atualizar resumo</button><Link className="btn btn-primary" to={"/organizations/" + organizationId + "/creator"}>Ir para criação de relatórios</Link></div></section></>}
  </section><footer className="source-workspace__footer"><span>Passo {stepIndex + 1} de 4 · {source.name}</span><div className="source-workspace__navigation">{stepIndex > 0 && <Link className="btn btn-secondary" to={href(steps[stepIndex - 1].id)}>Voltar</Link>}{stepIndex < 3 && <Link className="btn btn-primary" to={href(steps[stepIndex + 1].id)}>Continuar: {steps[stepIndex + 1].name}</Link>}</div></footer></>}
  {creatingProfile && <OrganizationProfilesPage embedded createOnly sourceId={source.id} onCancelCreate={() => setCreatingProfile(false)} onCreated={p => { setCreatingProfile(false); setParams(new URLSearchParams(href("access", { profileId: p.id }).slice(1))); refresh(); }}/>}
@@ -183,9 +204,20 @@ export function DataSourceWorkspacePage() {
                 setError(r.error.detail || "Não foi possível salvar a conexão.");
                 return false;
             } setModal(null); refresh(); return true; }}/>}
- {root && modal === "import" && <ImportSourceTablesModal sourceId={source.id} sourceName={source.name} onClose={() => setModal(null)} onChanged={refresh} onReview={() => { setModal(null); setParams(new URLSearchParams(href("fields").slice(1))); }}/>}
- {root && (modal === "save" || modal === "apply") && <CatalogTemplateModal dataSourceId={source.id} dataSourceName={source.name} mode={modal} onClose={() => setModal(null)} onSuccess={refresh} catalogPath={base + "?library=catalog"} fieldsPath={base + "?step=fields"}/>}
- {root && modal === "schema" && <SourceSchemaEditorModal sourceId={source.id} schema={editing} onClose={() => setModal(null)} onSaved={refresh}/>}
+ {root && modal === "import" && <ImportSourceTablesModal sourceId={source.id} sourceName={source.name} onClose={() => setModal(null)} onChanged={refresh} onReview={schemaId=>reviewCreatedTable({schemaId},"Tabelas importadas. Revise os campos da tabela selecionada.")}/>}
+ {root && (modal === "save" || modal === "apply") && <CatalogTemplateModal dataSourceId={source.id} dataSourceName={source.name} mode={modal} onClose={() => setModal(null)} onSuccess={refresh} onApplied={table=>reviewCreatedTable(table,"Modelo aplicado com sucesso. Revise os campos da tabela selecionada.")} catalogPath={base + "?library=catalog"} fieldsPath={base + "?step=fields"}/>}
+ {root && deletingTable && <ConfirmDeleteModal isOpen onClose={()=>{setDeletingTable(null);setDeleteProblem(null);}} title="Excluir tabela" itemName={deletingTable.publicName} warningText="A tabela e seus campos serão removidos do catálogo desta fonte. A tabela e os dados do banco não serão excluídos." problem={deleteProblem} onConfirm={async()=>{
+   if(actionLock.current)return false;
+   actionLock.current=true;setBusy(true);setDeleteProblem(null);
+   try {
+     const result=await catalogApi.deleteReportSchema(deletingTable.id);
+     if(isErr(result)){setDeleteProblem(result.error);if(result.error.status===403)void refreshUser();return false;}
+     setSchemas(current=>current.filter(table=>table.id!==deletingTable.id));
+     const next=new URLSearchParams(params);next.delete("schemaId");setParams(next);setCompletionMessage("");refresh();return true;
+   } catch {setDeleteProblem({type:"about:blank",title:"Falha ao excluir tabela",status:0,detail:"Falha de comunicação. Consulte o catálogo antes de tentar novamente.",instance:""});return false;}
+   finally {actionLock.current=false;setBusy(false);}
+ }}/>}
+ {root && modal === "schema" && <SourceSchemaEditorModal sourceId={source.id} schema={editing} onClose={() => setModal(null)} onSaved={saved=>{if(editing)refresh();else reviewCreatedTable({schemaId:saved.id},"Tabela cadastrada. Configure seus campos para continuar.");}}/>}
  </>}</>}
  </main></>;
 }
