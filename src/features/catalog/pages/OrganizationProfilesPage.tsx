@@ -1,7 +1,9 @@
+import { useModalFocus } from "../../../shared/hooks/useModalFocus";
+import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
 import { OrganizationContextHeader } from "../../organizations/components/OrganizationContextHeader";
 import { SourceActionMenu } from "../components/SourceActionMenu";
 import "../../organizations/styles/organizationOverview.css";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { Profile, UpsertProfileRequest } from "../types/catalogTypes";
@@ -35,7 +37,9 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
   const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
   const [deletingProfile, setDeletingProfile] = useState<Profile | null>(null);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deleteError,setDeleteError]=useState("");
+  const saveLock=useRef(false);
+  const formDialogRef=useModalFocus(isModalOpen,()=>{setIsModalOpen(false);onCancelCreate?.();},saving);
 
   // Form State
   const [name, setName] = useState("");
@@ -87,6 +91,7 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(saveLock.current)return;
     if (!organizationId) return;
     const trimmedName = name.trim();
     if (!trimmedName) {
@@ -94,6 +99,8 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
       return;
     }
 
+    saveLock.current=true;
+    try {
     setSaving(true);
     setErrorMsg(null);
 
@@ -140,37 +147,26 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
         else await loadProfiles();
       }
     }
+    } catch {setErrorMsg("Não foi possível salvar. Verifique os dados e tente novamente.");}
+    finally {saveLock.current=false;setSaving(false);}
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deletingProfile || !organizationId) return;
-    setDeleting(true);
-    setErrorMsg(null);
-
-    const res = await catalogApi.deleteProfile(organizationId, deletingProfile.id);
-    setDeleting(false);
-
-    if (isErr(res)) {
-      if (res.error.status === 403) {
-        setAccessDenied(true);
-        refreshUser();
-      } else {
-        setErrorMsg(res.error.detail || "Erro ao excluir perfil.");
-      }
-    } else {
-      setDeletingProfile(null);
-      await loadProfiles();
-    }
+    if(!deletingProfile||!organizationId)return false;
+    setDeleteError("");
+    const res=await catalogApi.deleteProfile(organizationId,deletingProfile.id);
+    if(isErr(res)){setDeleteError(res.error.detail||"Erro ao excluir profile.");if(res.error.status===403)void refreshUser();return false;}
+    setProfiles(current=>current.filter(profile=>profile.id!==deletingProfile.id));return true;
   };
 
   const profileModal = isModalOpen && (
           <div className="modal-backdrop">
-            <div className="modal-container" role="dialog" aria-modal="true" aria-label={editingProfile ? "Editar profile" : "Criar profile"} style={{ maxWidth: "500px" }}>
+            <div ref={formDialogRef} tabIndex={-1} className="modal-container admin-form-dialog" role="dialog" aria-modal="true" aria-label={editingProfile ? "Editar profile" : "Criar profile"} style={{ maxWidth: "500px" }}>
               <div className="modal-header">
                 <h3 style={{ margin: 0, fontSize: "1.2rem" }}>
                   {editingProfile ? `Editar Perfil: ${editingProfile.name}` : "Novo Perfil de Acesso"}
                 </h3>
-                <button onClick={() => { if (!saving) {setIsModalOpen(false);onCancelCreate?.();} }} className="btn-icon">
+                <button aria-label="Fechar" disabled={saving} onClick={() => { if (!saving) {setIsModalOpen(false);onCancelCreate?.();} }} className="btn-icon">
                   <X size={20} />
                 </button>
               </div>
@@ -257,10 +253,10 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
           </button>
         </header>
 
-        {errorMsg && <Alert type="error" message={errorMsg} style={{ marginBottom: "1.25rem" }} />}
+        {errorMsg && !isModalOpen && <Alert type="error" message={errorMsg} style={{ marginBottom: "1.25rem" }} />}
 
         {loading ? (
-          <NeutralLoader message="Carregando perfis..." />
+          <NeutralLoader message="Consultando profiles da organização…" />
         ) : profiles.length === 0 ? (
           <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem", color: "var(--text-secondary)" }}>
             <Users size={40} style={{ opacity: 0.4, marginBottom: "0.75rem" }} />
@@ -308,7 +304,7 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
                         <SourceActionMenu label="Opções"><button onClick={() => openEditModal(profile)} className="btn-icon" title="Editar Perfil">
                           <Edit2 size={16} /> Editar profile
                         </button>
-                        <button onClick={() => setDeletingProfile(profile)} className="btn-icon text-danger" title="Excluir Perfil">
+                        <button onClick={() => {setDeleteError("");setDeletingProfile(profile);}} className="btn-icon text-danger" title="Excluir Perfil">
                           <Trash2 size={16} /> Excluir profile
                         </button></SourceActionMenu>
                       </div>
@@ -323,37 +319,7 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
         {/* Create / Edit Modal */}
         {profileModal}
 
-        {/* Delete Confirmation Modal */}
-        {deletingProfile && (
-          <div className="modal-backdrop">
-            <div className="modal-container" style={{ maxWidth: "450px" }}>
-              <div className="modal-header">
-                <h3 style={{ margin: 0, color: "var(--danger-500)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <ShieldAlert size={20} /> Confirmar Exclusão
-                </h3>
-                <button onClick={() => setDeletingProfile(null)} className="btn-icon">
-                  <X size={20} />
-                </button>
-              </div>
-              <div style={{ padding: "1.25rem" }}>
-                <p style={{ margin: "0 0 1rem 0", fontSize: "0.95rem" }}>
-                  Tem certeza que deseja excluir o perfil <strong>{deletingProfile.name}</strong>?
-                </p>
-                <div style={{ background: "rgba(239, 68, 68, 0.1)", padding: "0.75rem", borderRadius: "6px", fontSize: "0.85rem", color: "var(--danger-500)", marginBottom: "1.25rem" }}>
-                  Esta ação revogará todos os grants associados a este perfil e desvinculará os usuários associados.
-                </div>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
-                  <button onClick={() => setDeletingProfile(null)} className="btn btn-secondary" disabled={deleting}>
-                    Cancelar
-                  </button>
-                  <button onClick={handleDeleteConfirm} className="btn btn-danger" disabled={deleting}>
-                    {deleting ? "Excluindo..." : "Sim, Excluir Perfil"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {deletingProfile && <ConfirmDeleteModal isOpen title="Excluir profile" itemName={deletingProfile.name} warningText="Esta ação revogará todos os grants associados a este profile e desvinculará os usuários associados." problem={null} errorMessage={deleteError} onClose={()=>{setDeletingProfile(null);setDeleteError("");}} onConfirm={handleDeleteConfirm}/>}
       </Container>
     </>
   );

@@ -1,3 +1,4 @@
+import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import React, { useState, useEffect } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "../../../shared/components/Navbar";
@@ -328,7 +329,7 @@ export const ReportDesignerPage: React.FC = () => {
     return <div className="report-designer-loading-page">
       <Navbar />
       <main className="report-designer-loading" aria-live="polite" aria-busy="true">
-        <NeutralLoader message="Carregando relatório..." minHeight="auto" />
+        <NeutralLoader message="Consultando configuração e permissões do relatório…" minHeight="auto" />
       </main>
     </div>;
   }
@@ -555,7 +556,7 @@ export const ReportDesignerPage: React.FC = () => {
             </p>
             {errorMsg && <div style={{ marginBottom: "1.5rem" }}><Alert type="error" message={errorMsg} /></div>}
             {loading ? (
-              <div style={{ display: "flex", justifyContent: "center", padding: "2rem" }}><NeutralLoader /></div>
+              <div style={{ display: "flex", justifyContent: "center", padding: "2rem" }}><NeutralLoader message="Consultando fontes e tabelas disponíveis para o relatório…"/></div>
             ) : availableDataSources.length === 0 ? (
               <div style={{ textAlign: "center", padding: "3rem", background: "var(--background-color)", borderRadius: "8px" }}>
                 <p style={{ color: "var(--text-secondary)" }}>Nenhum DataSource disponível.</p>
@@ -630,11 +631,7 @@ export const ReportDesignerPage: React.FC = () => {
           onChange={(e) => onChange(e.target.value)}
           style={value ? { paddingRight: "2.5rem" } : {}}
         />
-        {value && (
-          <button onClick={() => onChange("")} style={{ position: "absolute", right: "0.5rem", top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: "0.2rem", display: "flex", alignItems: "center", justifyContent: "center" }} title="Limpar busca">
-            <X size={16} />
-          </button>
-        )}
+        <ClearSearchButton value={value} onClear={()=>onChange("")}/>
       </div>
       <div style={{ display: "flex", gap: "0.5rem", padding: "0 0.25rem" }}>
         <button onClick={() => setMatchCase(!matchCase)} style={{ background: matchCase ? "rgba(168, 85, 247, 0.2)" : "transparent", color: matchCase ? "var(--accent)" : "var(--text-muted)", border: `1px solid ${matchCase ? "var(--accent-border)" : "var(--border-color)"}`, borderRadius: "4px", padding: "0.15rem 0.4rem", fontSize: "0.7rem", cursor: "pointer", fontWeight: 600 }} title="Diferenciar Maiúsculas/Minúsculas">Aa</button>

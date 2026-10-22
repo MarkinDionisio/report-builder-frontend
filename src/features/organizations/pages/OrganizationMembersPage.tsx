@@ -1,3 +1,4 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { OrganizationContextHeader } from "../components/OrganizationContextHeader";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -340,9 +341,7 @@ export const OrganizationMembersPage: React.FC = () => {
         <ProblemAlert problem={actionProblem} />
 
         {isLoading ? (
-          <div role="status" className="organization-loading"><span>Consultando membros e profiles da organização…</span>
-            <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary-500)" }} />
-          </div>
+          <NeutralLoader message="Consultando membros e profiles da organização…"/>
         ) : members.length === 0 ? (
           <div className="card organization-empty">
             <Users size={48} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />

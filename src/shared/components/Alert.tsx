@@ -256,7 +256,7 @@ export const Alert: React.FC<{
       : "#3b82f6";
 
   return (
-    <div
+    <div role={type === "error" ? "alert" : "status"}
       style={{
         padding: "0.75rem 1rem",
         borderRadius: "6px",

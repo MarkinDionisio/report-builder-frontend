@@ -1,3 +1,4 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { OrganizationContextHeader } from "../components/OrganizationContextHeader";
 import { useEffect, useState } from "react";
 import { Navigate, useParams, useSearchParams } from "react-router-dom";
@@ -37,7 +38,7 @@ export function OrganizationDetailPage() {
   }, [organizationId, allowed, version]);
   if (allowed && params.get("ds")) return <Navigate replace to={"/organizations/" + organizationId + "/data-sources/" + encodeURIComponent(params.get("ds")!)} />;
   return <><Navbar /><main className="container source-workspace organization-overview">
-    {!allowed ? <p role="alert" className="source-notice">Acesso negado.</p> : error ? <div role="alert" className="source-notice source-error">{error} <button className="btn btn-secondary" onClick={()=>setVersion(v=>v+1)}>Tentar novamente</button></div> : !organization ? <p role="status">Consultando organização…</p> : <>
+    {!allowed ? <p role="alert" className="source-notice">Acesso negado.</p> : error ? <div role="alert" className="source-notice source-error">{error} <button className="btn btn-secondary" onClick={()=>setVersion(v=>v+1)}>Tentar novamente</button></div> : !organization ? <NeutralLoader message="Consultando organização e fontes de dados…"/> : <>
       <OrganizationContextHeader organizationId={organizationId} organization={organization} section={profiles?"profiles":"sources"}/>
       <div className="organization-overview__content">{profiles?<OrganizationProfilesPage embedded/>:<OrganizationDataSources organizationId={organizationId} isRoot={user?.globalRole==="root"}/>}</div>
     </>}

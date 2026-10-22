@@ -1,3 +1,4 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { SourceActionMenu } from "../../catalog/components/SourceActionMenu";
 import "../styles/organizationOverview.css";
 import "../../catalog/styles/dataSourceWorkspace.css";
@@ -20,8 +21,7 @@ import {
   Trash2,
   Users,
   Mail,
-  Loader2,
-} from "lucide-react";
+  } from "lucide-react";
 
 export const OrganizationsListPage: React.FC = () => {
   const { state, refreshUser } = useAuth();
@@ -148,9 +148,7 @@ export const OrganizationsListPage: React.FC = () => {
       <ProblemAlert problem={problem} />
 
       {isLoading ? (
-        <div role="status" className="organization-loading"><span>Consultando organizações…</span>
-          <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary-500)" }} />
-        </div>
+        <NeutralLoader message="Consultando organizações…"/>
       ) : organizations.length === 0 ? (
         <div className="card organization-empty">
           <Building2 size={48} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />

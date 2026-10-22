@@ -1,3 +1,5 @@
+import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
+import { SourceActionMenu } from "../components/SourceActionMenu";
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { ReportJoinTemplate, CreateReportJoinTemplateRequest, UpdateReportJoinTemplateRequest } from "../types/catalogTypes";
@@ -9,7 +11,7 @@ import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { JoinTemplateModal } from "../components/JoinTemplateModal";
 import { Plus, Trash2, Edit2, Link, ShieldAlert, Loader2 } from "lucide-react";
 
-export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean; sourceId?: string }> = ({ embedded = false, sourceId }) => {
   const Container = embedded ? "section" : "main";
   const Heading = embedded ? "h3" : "h1";
   const { state, refreshUser } = useAuth();
@@ -23,6 +25,9 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [templateToEdit, setTemplateToEdit] = useState<ReportJoinTemplate | undefined>(undefined);
+  const [deleteTarget,setDeleteTarget]=useState<ReportJoinTemplate|null>(null);
+  const [deleteError,setDeleteError]=useState("");
+  const [formError,setFormError]=useState("");
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
@@ -35,6 +40,7 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
     setLoading(true);
     setErrorMsg(null);
 
+    try {
     const res = await catalogApi.listJoinTemplates();
     setLoading(false);
 
@@ -48,6 +54,8 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
     } else {
       setTemplates(res.value);
     }
+    } catch {setErrorMsg("Falha de comunicação ao consultar modelos de relacionamento.");}
+    finally {setLoading(false);}
   }, [isRoot, refreshUser]);
 
   useEffect(() => {
@@ -61,7 +69,7 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
         setAccessDenied(true);
         refreshUser();
       }
-      setErrorMsg(res.error.detail || "Erro ao criar Join Template.");
+      setFormError(res.error.detail || "Erro ao criar modelo de relacionamento.");
       return false;
     }
     
@@ -79,7 +87,7 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
         setAccessDenied(true);
         refreshUser();
       }
-      setErrorMsg(res.error.detail || "Erro ao atualizar Join Template.");
+      setFormError(res.error.detail || "Erro ao atualizar modelo de relacionamento.");
       return false;
     }
 
@@ -88,34 +96,34 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
   };
 
   const handleDelete = async (id: string) => {
-    // "Desabilitar ou excluir um template faz com que ele deixe de aparecer... Exija confirmação explícita... Não use atualização otimista"
-    if (!window.confirm("Tem certeza que deseja excluir este template? Relatórios antigos que o utilizam podem quebrar (report_definition.join_template_unavailable).")) {
-      return;
-    }
-
     setIsDeleting(id);
-    setErrorMsg(null);
+    setDeleteError("");
+    try {
 
     const res = await catalogApi.deleteJoinTemplate(id);
     setIsDeleting(null);
 
     if (isErr(res)) {
       if (res.error.status === 403) {
-        setAccessDenied(true);
-        refreshUser();
+        void refreshUser();
       }
-      setErrorMsg(res.error.detail || "Erro ao excluir Join Template.");
+      setDeleteError(res.error.detail || "Erro ao excluir modelo de relacionamento.");
+      return false;
     } else {
       setTemplates((prev) => prev.filter((t) => t.id !== id));
+      return true;
     }
+    } finally {setIsDeleting(null);}
   };
 
   const openCreateModal = () => {
+    setFormError("");
     setTemplateToEdit(undefined);
     setIsModalOpen(true);
   };
 
   const openEditModal = (template: ReportJoinTemplate) => {
+    setFormError("");
     setTemplateToEdit(template);
     setIsModalOpen(true);
   };
@@ -138,7 +146,7 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
   return (
     <div style={{ minHeight: embedded ? undefined : "100vh", display: "flex", flexDirection: "column" }}>
       {!embedded && <Navbar />}
-      <Container className={embedded ? "source-embedded" : undefined} style={{ maxWidth: "1200px", width: "100%", margin: "2rem auto", padding: "0 1.5rem", flex: 1 }}>
+      <Container className={embedded ? "source-embedded" : "admin-page"}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "2rem" }}>
           <div>
             <Heading style={{ fontSize: embedded ? "1.2rem" : "1.75rem", fontWeight: 700, margin: "0 0 0.25rem 0", display: "flex", alignItems: "center", gap: "0.6rem" }}>
@@ -159,14 +167,14 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
 
         {errorMsg && (
           <div style={{ marginBottom: "1.5rem" }}>
-            <Alert type="error" message={errorMsg} />
+            <Alert type="error" message={errorMsg} /><button className="btn btn-secondary" onClick={()=>void loadData()}>Consultar modelos novamente</button>
           </div>
         )}
 
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
           {loading ? (
             <div style={{ padding: "4rem 2rem", display: "flex", justifyContent: "center" }}>
-              <NeutralLoader />
+              <NeutralLoader message="Consultando modelos de relacionamento…" />
             </div>
           ) : templates.length === 0 ? (
             <div style={{ padding: "4rem 2rem", textAlign: "center", color: "var(--text-secondary)" }}>
@@ -216,17 +224,17 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
                         )}
                       </td>
                       <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                        <SourceActionMenu label={"Opções de " + t.name}>
                           <button
                             onClick={() => openEditModal(t)}
                             className="btn-icon"
                             title="Editar Template"
                             disabled={isDeleting === t.id}
                           >
-                            <Edit2 size={16} />
+                            <Edit2 size={16} /> Editar modelo
                           </button>
                           <button
-                            onClick={() => handleDelete(t.id)}
+                            onClick={() => {setDeleteError("");setDeleteTarget(t);}}
                             className="btn-icon text-danger"
                             title="Excluir Template"
                             disabled={isDeleting === t.id}
@@ -234,10 +242,10 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
                             {isDeleting === t.id ? (
                               <Loader2 size={16} className="animate-spin" />
                             ) : (
-                              <Trash2 size={16} />
+                              <><Trash2 size={16} /> Excluir modelo</>
                             )}
                           </button>
-                        </div>
+                        </SourceActionMenu>
                       </td>
                     </tr>
                   ))}
@@ -248,8 +256,11 @@ export const ReportJoinTemplatesPage: React.FC<{ embedded?: boolean }> = ({ embe
         </div>
       </Container>
 
+      {deleteTarget && <ConfirmDeleteModal isOpen title="Excluir modelo de relacionamento" itemName={deleteTarget.name} warningText="Relatórios que utilizam este modelo podem deixar de funcionar. Esta biblioteca é global e compartilhada entre organizações." problem={null} errorMessage={deleteError} onClose={()=>setDeleteTarget(null)} onConfirm={()=>handleDelete(deleteTarget.id)}/> }
       {isModalOpen && (
         <JoinTemplateModal
+          sourceId={sourceId}
+          error={formError}
           isOpen={isModalOpen}
           templateToEdit={templateToEdit}
           onClose={() => setIsModalOpen(false)}

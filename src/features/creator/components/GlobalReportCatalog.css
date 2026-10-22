@@ -51,3 +51,5 @@
   .global-report-import__footer { padding-top: .75rem; }
   .global-report-import__footer .btn-primary { flex: 1; }
 }
+
+.global-report-catalog__search .search-input-clear > input {padding-right:2.75rem;min-height:40px;}

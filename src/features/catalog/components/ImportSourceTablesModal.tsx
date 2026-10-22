@@ -1,3 +1,5 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { useEffect, useRef, useState } from "react";
 import { catalogApi } from "../api/catalogApi";
 import { isErr } from "../../../shared/result/result";
@@ -76,9 +78,9 @@ export function ImportSourceTablesModal({ sourceId, sourceName, onClose, onChang
     <div className="source-import-body">
       <p>Escolha as tabelas ou views que poderão ser usadas nos relatórios. Os campos serão cadastrados para revisão no próximo passo; os dados do banco não são copiados.</p>
       {error && <p role="alert">{error}</p>}
-      {busy && <p role="status">{operation === "objects" ? "Consultando tabelas e views do banco…" : operation === "preview" ? "Preparando a prévia das tabelas selecionadas…" : "Importando tabelas e campos selecionados…"} Aguarde.</p>}
+      {busy && <NeutralLoader compact message={operation === "objects" ? "Consultando tabelas e views do banco…" : operation === "preview" ? "Preparando a prévia das tabelas selecionadas…" : "Importando tabelas e campos selecionados…"}/> }
       {stage === "choose" ? <>
-        <label>Buscar tabela ou view<input className="form-input" value={search} onChange={event => { setSearch(event.target.value); setPage(0); }} /></label>
+        <label>Buscar tabela ou view<div className="search-input-clear"><input className="form-input" value={search} onChange={event => { setSearch(event.target.value); setPage(0); }} /><ClearSearchButton value={search} onClear={()=>{setSearch("");setPage(0);}}/></div></label>
         <SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch} />
         <div className="source-actions"><button className="btn btn-secondary" disabled={busy || filtered.length === 0} onClick={() => setSelected(previous => new Set([...previous, ...filtered.map(keyOf)]))}>Marcar resultados</button><button className="btn btn-secondary" disabled={busy || selected.size === 0} onClick={() => setSelected(previous => new Set([...previous].filter(id => !filtered.some(object => keyOf(object) === id))))}>Desmarcar resultados</button></div>
         <p>{filtered.length} tabelas/views encontradas · {selected.size} selecionadas, incluindo outras páginas e filtros.</p>

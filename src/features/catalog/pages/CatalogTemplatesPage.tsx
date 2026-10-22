@@ -1,3 +1,5 @@
+import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import "../styles/catalogTemplates.css";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navbar } from '../../../shared/components/Navbar';
@@ -15,22 +17,26 @@ export function CatalogTemplatesPage({ embedded = false }: { embedded?: boolean 
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(true);
   const [deleting, setDeleting] = useState<CatalogTemplate | null>(null);
+  const [deleteError,setDeleteError]=useState("");
   const lock = useRef(false);
   const load = useCallback(async () => {
     setBusy(true); setError('');
-    const result = await catalogApi.listCatalogTemplates();
-    if (isErr(result)) { setError(result.error.detail || 'Erro ao carregar templates.'); if (result.error.status === 403) void refreshUser(); }
-    else setTemplates(result.value);
-    setBusy(false);
+    try {
+      const result = await catalogApi.listCatalogTemplates();
+      if (isErr(result)) { setError(result.error.detail || 'Erro ao carregar templates.'); if (result.error.status === 403) void refreshUser(); }
+      else setTemplates(result.value);
+    } catch {setError('Falha de comunicação ao consultar modelos de catálogo. Tente atualizar novamente.');}
+    finally {setBusy(false);}
   }, [refreshUser]);
   useEffect(() => { void load(); }, [load]);
   async function remove() {
-    if (!deleting || lock.current) return;
+    if (!deleting || lock.current) return false;
     lock.current = true; setBusy(true);
     try {
       const result = await catalogApi.deleteCatalogTemplate(deleting.id);
-      if (isErr(result)) { setError(result.error.detail || 'Erro ao excluir template.'); if (result.error.status === 403) void refreshUser(); }
-      else { setDeleting(null); await load(); }
+      if (isErr(result)) { setDeleteError(result.error.detail || 'Erro ao excluir template.'); if (result.error.status === 403) void refreshUser(); }
+      else { setTemplates(current=>current.filter(template=>template.id!==deleting.id)); return true; }
+      return false;
     } finally { lock.current = false; setBusy(false); }
   }
   return <>
@@ -44,13 +50,13 @@ export function CatalogTemplatesPage({ embedded = false }: { embedded?: boolean 
         <button className="btn btn-secondary" disabled={busy} onClick={() => void load()}>Atualizar</button>
       </header>
       {error && <p role="alert">{error}</p>}
-      {busy && <p role="status">Consultando modelos de catálogo…</p>}
+      {busy && <NeutralLoader message="Consultando modelos de catálogo…"/>}
       {!busy && templates.length === 0 && <p>Nenhum template cadastrado.</p>}
       <div className="catalog-template-list">
         {templates.map(t => <article className="card catalog-template-card" key={t.id}>
           <header className="catalog-template-card__header">
             <div><TemplateHeading>{t.name}</TemplateHeading>{t.description && <p className="catalog-template-card__description">{t.description}</p>}</div>
-            <button className="btn btn-secondary" disabled={busy} onClick={() => setDeleting(t)}>Excluir</button>
+            <button className="btn btn-secondary" disabled={busy} onClick={() => {setDeleteError("");setDeleting(t);}}>Excluir</button>
           </header>
           <details>
             <summary>{t.schemas.length} schemas — consultar conteúdo</summary>
@@ -65,17 +71,7 @@ export function CatalogTemplatesPage({ embedded = false }: { embedded?: boolean 
           </details>
         </article>)}
       </div>
-      {deleting && <div className="modal-backdrop">
-        <section role="dialog" aria-modal="true" aria-label="Excluir template" className="modal-container catalog-template-modal">
-          <div className="modal-body">
-            <p>Excluir o template “{deleting.name}”? Catálogos já copiados continuam disponíveis.</p>
-            <div className="catalog-template-dialog-actions">
-              <button className="btn btn-secondary" disabled={busy} onClick={() => setDeleting(null)}>Cancelar</button>
-              <button className="btn btn-danger" disabled={busy} onClick={() => void remove()}>Confirmar exclusão</button>
-            </div>
-          </div>
-        </section>
-      </div>}
+      {deleting && <ConfirmDeleteModal isOpen title="Excluir template" itemName={deleting.name} warningText="Modelo global compartilhado entre organizações. Catálogos já copiados continuam disponíveis." problem={null} errorMessage={deleteError} onClose={()=>setDeleting(null)} onConfirm={remove}/>}
     </Container>
   </>;
 }

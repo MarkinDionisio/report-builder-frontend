@@ -1012,3 +1012,58 @@ option {
 .filter-editor__advanced summary { cursor: pointer; font-weight: 600; margin-bottom: .75rem; }
 .filter-editor__advanced label { min-width: 0; overflow-wrap: anywhere; }
 .filter-editor__advanced .form-input { width: 100%; min-width: 0; }
+
+/* Shared administration and feedback patterns. Workflow canvases keep their own layout. */
+.admin-page { width:100%;max-width:1440px;margin:0 auto;padding:2rem 1.5rem;min-width:0;flex:1; }
+.admin-page h1,.admin-page h2,.admin-page h3,.page-container strong {overflow-wrap:anywhere;}
+.admin-page .table {min-width:600px;}
+.admin-table-scroll {max-width:100%;overflow-x:auto;}
+.confirm-dialog {overflow-wrap:anywhere;}
+.confirm-dialog__actions {display:flex;justify-content:flex-end;gap:.75rem;position:sticky;bottom:-1.5rem;background:var(--bg-card);padding:1rem 0 1.5rem;}
+.modal-header {gap:1rem;}
+.modal-header h2,.modal-header h3 {min-width:0;overflow-wrap:anywhere;}
+.modal-header button {flex-shrink:0;}
+@media(max-width:720px){
+ .admin-page {padding:1rem;}
+ .confirm-dialog__actions {bottom:-1rem;padding-bottom:1rem;flex-wrap:wrap;}
+ .confirm-dialog__actions .btn {flex:1;justify-content:center;}
+ .admin-page .dashboard-grid > a {min-width:0;}
+ .admin-page .dashboard-grid > a > div {min-width:0;}
+ .admin-page .dashboard-grid > a > div > div {min-width:0;}
+}
+
+.creator-workspace-header {padding:calc(var(--topbar-height) + 2rem) 1.5rem 0!important;}
+.creator-workspace-header .organization-overview__header {margin-bottom:1rem;}
+.join-template-dialog > div:not(.modal-header) {padding:1.5rem!important;}
+@media(max-width:720px){.creator-workspace-header{padding:calc(var(--topbar-height) + 1rem) 1rem 0!important;}.join-template-dialog > div:not(.modal-header){padding:1rem!important;}.join-template-dialog .modal-header{padding:1rem;}}
+
+.admin-form-dialog > .modal-header {position:sticky;top:0;background:var(--bg-card);z-index:2;}
+.admin-form-dialog form {padding:1.5rem!important;}
+.admin-form-dialog form > div:last-child {position:sticky;bottom:-1.5rem;background:var(--bg-card);padding:1rem 0 1.5rem;z-index:1;flex-wrap:wrap;}
+@media(max-width:720px){.admin-form-dialog .modal-header,.admin-form-dialog form{padding:1rem!important;}.admin-form-dialog form > div:last-child{bottom:-1rem;padding-bottom:1rem;}}
+
+.page-container {width:100%;max-width:1440px;padding-left:1.5rem;padding-right:1.5rem;}
+@media(max-width:720px){.page-container{width:100%;padding-left:1rem;padding-right:1rem;}}
+
+.admin-form-dialog label:has(> input[type="checkbox"]) {display:flex;align-items:center;gap:.5rem;min-height:32px;}
+.admin-form-dialog input[type="checkbox"] {width:auto;min-width:0;flex:0 0 auto;margin:0;}
+
+/* Explicit search clearing works consistently across browsers. */
+.search-input-clear {position:relative;min-width:0;width:100%;}
+.search-input-clear > input {width:100%;padding-right:2.75rem;}
+.search-clear-button {display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px;width:32px;height:32px;min-height:32px;padding:0;border:1px solid transparent;border-radius:var(--radius-md);color:var(--text-secondary);background:transparent;cursor:pointer;}
+.search-clear-button:hover {background:var(--bg-card);color:var(--text-primary);border-color:var(--border-color);}
+.search-clear-button--overlay {position:absolute;right:.35rem;top:50%;transform:translateY(-50%);}
+input[type="search"]::-webkit-search-cancel-button {-webkit-appearance:none;}
+
+.search-input-clear > input {padding-right:2.75rem;}
+
+/* Consistent data-loading feedback in pages, modals and compact regions. */
+.data-loading {display:flex;align-items:center;justify-content:center;gap:1rem;min-width:0;min-height:144px;padding:1.5rem;border:1px solid var(--primary-500);border-radius:var(--radius-lg);background:color-mix(in srgb,var(--primary-500) 8%,var(--bg-card));color:var(--text-primary);}
+.data-loading > svg {flex:0 0 auto;color:var(--primary-500);}
+.data-loading > div {min-width:0;}
+.data-loading strong {display:block;font-size:1.05rem;}
+.data-loading p {margin:.35rem 0 0;color:var(--text-secondary);overflow-wrap:anywhere;}
+.data-loading--compact {justify-content:flex-start;min-height:44px;gap:.65rem;padding:.65rem .85rem;font-size:.9rem;}
+.data-loading--compact > span {min-width:0;overflow-wrap:anywhere;}
+@media(max-width:720px){.data-loading{padding:1rem;gap:.75rem;}.data-loading--compact{padding:.65rem .75rem;}}

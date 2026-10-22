@@ -1,3 +1,4 @@
+import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import React, { useState, useRef, useEffect } from "react";
 import { Search, ChevronDown } from "lucide-react";
 
@@ -166,16 +167,18 @@ export const SearchableFieldSelect: React.FC<SearchableFieldSelectProps> = ({
               <input
                 ref={searchInputRef}
                 type="text"
+                aria-label="Buscar campo nas opções"
                 placeholder="Buscar campo..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="form-input"
                 style={{
                   width: "100%",
-                  padding: "0.4rem 0.5rem 0.4rem 1.75rem",
+                  padding: "0.4rem 2.75rem 0.4rem 1.75rem",
                   fontSize: "0.85rem",
                 }}
               />
+              <ClearSearchButton value={search} onClear={()=>setSearch("")}/>
             </div>
           </div>
 

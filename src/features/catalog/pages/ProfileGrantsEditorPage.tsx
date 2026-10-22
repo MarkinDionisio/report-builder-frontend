@@ -1,3 +1,7 @@
+import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
+import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
+import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
+import { matchesTextSearch } from "../../../shared/utils/textSearch";
 import { OrganizationContextHeader } from "../../organizations/components/OrganizationContextHeader";
 import { SourceActionMenu } from "../components/SourceActionMenu";
 import React, { useState, useEffect, useCallback } from "react";
@@ -19,7 +23,7 @@ import { Alert } from "../../../shared/components/Alert";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { 
   Key, CheckSquare, ShieldAlert, Database, Layers, CheckCircle2,
-  Save, ChevronDown, ChevronRight, Search, XCircle, Loader2, X
+  Save, ChevronDown, ChevronRight, Search, XCircle, Loader2
 } from "lucide-react";
 
 export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?: string; sourceId?: string; onSaved?: () => void }> = ({ embedded = false, profileId: suppliedProfileId, sourceId, onSaved }) => {
@@ -44,6 +48,9 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
 
   const [expandedSchemas, setExpandedSchemas] = useState<Set<string>>(new Set());
   const [isRevokingAll, setIsRevokingAll] = useState(false);
+  const [matchCase,setMatchCase]=useState(false);
+  const [exactMatch,setExactMatch]=useState(false);
+  const [revokeError,setRevokeError]=useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [showOnlyGranted, setShowOnlyGranted] = useState(false);
 
@@ -186,12 +193,13 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
   };
 
   const handleRevokeAllProfileGrants = async () => {
-    if (!organizationId || !profileId || !selectedDataSourceId) return;
+    if (!organizationId || !profileId || !selectedDataSourceId) return false;
     setSaving(true);
     setSavingAction("revokeAll");
-    setErrorMsg(null);
+    setRevokeError("");
     setSuccessMsg(null);
 
+    try {
     const currentDsSchemaIds = new Set(availableCatalog.map(s => s.id));
     const nextSchemas = draftGrants.schemas.filter(s => !currentDsSchemaIds.has(s.schemaId));
 
@@ -201,19 +209,22 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
 
     if (isErr(res)) {
       if (res.error.status === 403) {
-        setAccessDenied(true);
-        refreshUser();
+        void refreshUser();
       } else {
-        setErrorMsg(res.error.detail || "Erro ao revogar permissões do DataSource.");
+        setRevokeError(res.error.detail || "Erro ao revogar permissões da fonte.");
       }
+      return false;
     } else {
       setGrants(res.value);
       setDraftGrants(res.value);
       setHasUnsavedChanges(false);
       onSaved?.();
-      setIsRevokingAll(false);
-      setSuccessMsg("Todos os grants deste DataSource foram revogados com sucesso!");
+
+      setSuccessMsg("Todos os grants desta fonte foram revogados com sucesso!");
+      return true;
     }
+    } catch {setRevokeError("Falha de comunicação ao revogar permissões. Consulte novamente antes de tentar outra vez.");return false;}
+    finally {setSaving(false);setSavingAction(null);}
   };
 
   // Level 2: Grant ALL Fields of a SPECIFIC Schema at once (Updates Draft)
@@ -325,7 +336,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
 
   const currentDs = dataSources.find((d) => d.id === selectedDataSourceId);
   const filteredCatalog = availableCatalog.filter((schema) => {
-    const matchesSearch = schema.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = matchesTextSearch(schema.name,searchTerm,{matchCase,exactMatch});
     if (!matchesSearch) return false;
 
     if (showOnlyGranted) {
@@ -419,7 +430,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
         {successMsg && <Alert type="success" message={successMsg} style={{ marginBottom: "1.25rem" }} />}
 
         {loading ? (
-          <NeutralLoader message="Carregando matriz de permissões em cascata..." />
+          <NeutralLoader message="Consultando profile, fontes e permissões existentes…" />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
             {/* Cascading Selector Step 1 */}
@@ -465,7 +476,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
                 )}
               </div>
             ) : loadingCatalog ? (
-              <NeutralLoader message={`Carregando catálogo do DataSource ${currentDs?.name}...`} />
+              <NeutralLoader message={`Consultando tabelas e campos da fonte ${currentDs?.name || "selecionada"}…`} />
             ) : availableCatalog.length === 0 ? (
               <div className="card" style={{ textAlign: "center", padding: "3.5rem 1.5rem", color: "var(--text-secondary)" }}>
                 <Key size={48} style={{ opacity: 0.3, marginBottom: "0.75rem" }} />
@@ -478,10 +489,12 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
               /* Step 2: Grant Matrix with Multi-Level Release */
               <>
                 <div style={{ display: "flex", alignItems: "center", gap: "1.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+                  <SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch}/>
                   <div className="source-grants-search" style={{ position: "relative", flex: 1, minWidth: 0, maxWidth: "600px" }}>
                     <Search size={18} style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
                     <input
                       type="text"
+                      aria-label="Buscar tabela nas permissões"
                       placeholder="Buscar tabela..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -495,15 +508,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
                         fontSize: "0.95rem"
                       }}
                     />
-                    {searchTerm && (
-                      <button
-                        onClick={() => setSearchTerm("")}
-                        style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
-                        title="Limpar busca"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
+                    <ClearSearchButton value={searchTerm} onClear={()=>setSearchTerm("")}/>
                   </div>
                   <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.95rem", color: "var(--text-secondary)", userSelect: "none" }}>
                     <input 
@@ -702,38 +707,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
         )}
       </Container>
 
-      {/* Delete Confirmation Modal */}
-      {isRevokingAll && (
-        <div className="modal-backdrop">
-          <div className="modal-container" style={{ maxWidth: "450px" }}>
-            <div className="modal-header">
-              <h3 style={{ margin: 0, color: "var(--danger-500)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <ShieldAlert size={20} /> Confirmar Revogação
-              </h3>
-              <button onClick={() => setIsRevokingAll(false)} className="btn-icon" disabled={saving}>
-                <XCircle size={20} />
-              </button>
-            </div>
-            <div style={{ padding: "1.25rem" }}>
-              <p style={{ margin: "0 0 1rem 0", fontSize: "0.95rem" }}>
-                Tem certeza que deseja revogar os acessos deste perfil para <strong>todos os schemas e campos do DataSource selecionado</strong>?
-              </p>
-              <div style={{ background: "rgba(239, 68, 68, 0.1)", padding: "0.75rem", borderRadius: "6px", fontSize: "0.85rem", color: "var(--danger-500)", marginBottom: "1.25rem" }}>
-                Esta ação limpará apenas as permissões associadas a este DataSource e será aplicada imediatamente no banco de dados.
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
-                <button onClick={() => setIsRevokingAll(false)} className="btn btn-secondary" disabled={saving}>
-                  Cancelar
-                </button>
-                <button onClick={handleRevokeAllProfileGrants} className="btn btn-danger" disabled={saving}>
-                  {savingAction === "revokeAll" ? <Loader2 size={18} className="animate-spin" /> : null}
-                  {savingAction === "revokeAll" ? "Revogando..." : "Sim, Revogar Tudo"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {isRevokingAll && <ConfirmDeleteModal isOpen title="Revogar permissões da fonte" question="Tem certeza de que deseja revogar as permissões de" itemName={currentDs?.name||"fonte selecionada"} warningText="As permissões desta fonte para o profile serão removidas imediatamente. As permissões das outras fontes serão preservadas." confirmLabel="Confirmar revogação" problem={null} errorMessage={revokeError} onClose={()=>{setIsRevokingAll(false);setRevokeError("");}} onConfirm={handleRevokeAllProfileGrants}/>}
 
       {/* Floating Save Button Bar / Success Toast */}
       {(hasUnsavedChanges || showSuccessBar) && (

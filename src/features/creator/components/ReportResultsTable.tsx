@@ -16,13 +16,13 @@ interface Props {
 }
 
 export function ReportResultsTable({ result, loading, page, pageSize, onPageChange, onPageSizeChange, aggregationsByAlias = {}, dateGranularitiesByAlias = {} }: Props) {
-  if (loading && !result) return <section className="report-results report-results--state" aria-live="polite"><NeutralLoader message="Executando relatório..." minHeight="auto"/><span>A consulta pode levar alguns instantes.</span></section>;
+  if (loading && !result) return <section className="report-results report-results--state" aria-live="polite"><NeutralLoader title="Executando relatório" message="Executando consulta do relatório…" minHeight="auto"/><span>A consulta pode levar alguns instantes.</span></section>;
   if (!result) return <section className="report-results report-results--state"><strong>Pronto para executar</strong><span>Preencha os parâmetros necessários e execute o relatório.</span></section>;
 
   return <section className="report-results" aria-busy={loading}>
     <div className="report-results__summary">
       <div><strong>Resultado</strong><span>{result.rowCount} {result.rowCount === 1 ? "linha carregada" : "linhas carregadas"} · {result.durationMs} ms</span></div>
-      {loading && <span className="report-results__updating">Atualizando...</span>}
+      {loading && <NeutralLoader compact message="Atualizando resultados do relatório…"/>}
     </div>
     {result.rows.length === 0 ? <div className="report-results__empty"><strong>Nenhum dado encontrado</strong><span>Tente alterar os parâmetros e executar novamente.</span></div> : <div className="report-results__scroller" tabIndex={0} aria-label="Resultados do relatório">
       <table className="report-results__table">

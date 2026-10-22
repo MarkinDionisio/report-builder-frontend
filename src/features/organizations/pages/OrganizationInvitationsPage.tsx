@@ -1,3 +1,4 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { OrganizationContextHeader } from "../components/OrganizationContextHeader";
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
@@ -12,7 +13,6 @@ import { ConfirmDeleteModal } from "../components/ConfirmDeleteModal";
 import {
   Mail,
   ArrowLeft,
-  Loader2,
   Ban,
   Users,
   Clock,
@@ -166,9 +166,7 @@ export const OrganizationInvitationsPage: React.FC = () => {
       <ProblemAlert problem={actionProblem} />
 
       {isLoading ? (
-        <div role="status" className="organization-loading"><span>Consultando convites da organização…</span>
-          <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary-500)" }} />
-        </div>
+        <NeutralLoader message="Consultando convites da organização…"/>
       ) : invitations.length === 0 ? (
         <div className="card organization-empty">
           <Mail size={48} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />

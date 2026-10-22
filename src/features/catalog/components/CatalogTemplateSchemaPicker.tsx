@@ -1,3 +1,4 @@
+import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
 import { matchesTextSearch } from "../../../shared/utils/textSearch";
 import { useId, useState } from "react";
@@ -114,7 +115,8 @@ export function CatalogTemplateSchemaPicker({ schemas, selected, onChange, disab
         <label htmlFor={searchId}>Buscar tabela ou campo</label>
         <div>
           <Search size={18} aria-hidden="true" />
-          <input id={searchId} className="form-input" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Nome público ou nome no banco" />
+          <div className="search-input-clear"><input id={searchId} className="form-input" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="Nome público ou nome no banco" />
+          <ClearSearchButton value={search} onClear={()=>setSearch("")}/></div>
           <SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch} />
         </div>
       </div>

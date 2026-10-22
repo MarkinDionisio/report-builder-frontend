@@ -1,3 +1,4 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { CatalogTemplateSchemaPicker } from "./CatalogTemplateSchemaPicker";
 import { Loader2 } from "lucide-react";
 import "../styles/catalogTemplates.css";
@@ -78,7 +79,7 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
   const progress = operation === "load"
     ? mode === "save"
       ? { title: "Verificando tabelas e campos cadastrados…", detail: "Conferindo se esta fonte possui um catálogo para salvar como template." }
-      : { title: "Buscando templates disponíveis…", detail: "Carregando os modelos de catálogo que você pode aplicar nesta fonte." }
+      : { title: "Carregando modelos de catálogo", detail: "Consultando modelos disponíveis para aplicar nesta fonte…" }
     : operation === "save"
       ? { title: "Salvando template de catálogo…", detail: "Criando uma cópia das configurações de tabelas e campos." }
       : operation === "preview"
@@ -89,10 +90,7 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
     <div className="modal-header"><h3 id="template-title">{mode === 'save' ? 'Salvar catálogo como template' : 'Aplicar template'}: {dataSourceName}</h3><button className="btn btn-secondary" disabled={busy} onClick={onClose}>Fechar</button></div>
     <div className="modal-body">
       {error && <p role="alert">{error}</p>}
-      {busy && <div className="catalog-template-progress" role="status" aria-live="polite" aria-atomic="true">
-        <Loader2 size={22} className="animate-spin" aria-hidden="true" />
-        <div><strong>{progress.title}</strong><p>{progress.detail}</p></div>
-      </div>}
+      {busy && <NeutralLoader title={progress.title} message={progress.detail} minHeight="auto"/>}
       {done ? <div role="status"><p>{mode === 'save' ? 'Template salvo.' : 'Catálogo copiado com sucesso.'}</p><Link onClick={onClose} to={mode === 'save' ? (catalogPath || '/catalog-templates') : (fieldsPath || '/report-schemas')}>Ver {mode === 'save' ? 'templates' : 'catálogo'}</Link></div>
       : mode === 'save' ? <form onSubmit={e => { e.preventDefault(); void run('save'); }}>
         {emptySource && <p>O catálogo de origem está vazio ou indisponível.</p>}

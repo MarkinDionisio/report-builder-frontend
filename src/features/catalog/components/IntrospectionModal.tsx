@@ -1,5 +1,7 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import React, { useState, useEffect } from "react";
-import { X, Search, Database, CheckCircle2, RefreshCw } from "lucide-react";
+import { X, Search, Database, CheckCircle2 } from "lucide-react";
 import type {
   ImportReportSchemaRequest,
   ImportSchemaPreview,
@@ -297,22 +299,11 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
                     onChange={(e) => setSearchTerm(e.target.value)}
                     style={{ paddingLeft: "30px", paddingRight: "30px", fontSize: "0.85rem", width: "100%" }}
                   />
-                  {searchTerm && (
-                    <button
-                      onClick={() => setSearchTerm("")}
-                      style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", display: "flex", padding: 0 }}
-                      title="Limpar busca"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
+                  <ClearSearchButton value={searchTerm} onClear={()=>setSearchTerm("")}/>
                 </div><SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch}/></div>
 
                 {loadingObjects ? (
-                  <div style={{ textAlign: "center", padding: "2rem 0", color: "var(--text-secondary)" }}>
-                    <RefreshCw className="animate-spin" size={20} style={{ margin: "0 auto 0.5rem auto" }} />
-                    Carregando tabelas...
-                  </div>
+                  <NeutralLoader compact message="Consultando tabelas e views do banco…"/>
                 ) : filteredObjects.length === 0 ? (
                   <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", textAlign: "center", padding: "1rem 0" }}>
                     Nenhum objeto encontrado.
@@ -501,9 +492,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
                         </div>
                       </div>
                     ) : loadingFields ? (
-                      <div style={{ textAlign: "center", padding: "2rem", color: "var(--text-secondary)" }}>
-                        Carregando campos do objeto...
-                      </div>
+                      <NeutralLoader compact message="Consultando campos da tabela ou view selecionada…"/>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.5rem", flexShrink: 0 }}>

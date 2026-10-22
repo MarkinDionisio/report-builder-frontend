@@ -1,5 +1,7 @@
 import "../styles/organizationOverview.css";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { useModalFocus } from "../../../shared/hooks/useModalFocus";
+import { Alert } from "../../../shared/components/Alert";
 import type { ApiProblemDetails } from "../../../shared/api/types";
 import { ProblemAlert } from "../../../shared/components/Alert";
 import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
@@ -12,6 +14,9 @@ interface ConfirmDeleteModalProps {
   itemName: string;
   warningText: string;
   problem: ApiProblemDetails | null;
+  errorMessage?: string;
+  confirmLabel?: string;
+  question?: string;
 }
 
 export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
@@ -22,18 +27,23 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   itemName,
   warningText,
   problem,
+  errorMessage,
+  confirmLabel = "Confirmar Exclusão",
+  question = "Tem certeza de que deseja excluir",
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const lock = useRef(false);
+  const [unexpectedError, setUnexpectedError] = useState("");
+  const dialogRef = useModalFocus(isOpen, onClose, isDeleting);
   if (!isOpen) return null;
 
   const handleConfirm = async () => {
-    setIsDeleting(true);
-    const success = await onConfirm();
-    setIsDeleting(false);
-    if (success) {
-      onClose();
-    }
+    if(lock.current)return;
+    lock.current=true;setIsDeleting(true);setUnexpectedError("");
+    try {if(await onConfirm())onClose();}
+    catch {setUnexpectedError("Não foi possível concluir a operação. Tente novamente.");}
+    finally {lock.current=false;setIsDeleting(false);}
   };
 
   return (
@@ -46,20 +56,21 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 110,
+        zIndex: 10000,
         padding: "1rem",
       }}
     >
-      <div className="card organization-dialog animate-fade-in" role="dialog" aria-modal="true" aria-label={title} style={{ maxWidth: "480px", padding: "1.75rem" }}>
+      <div ref={dialogRef} tabIndex={-1} className="card organization-dialog confirm-dialog animate-fade-in" role="dialog" aria-modal="true" aria-label={title} style={{ maxWidth: "480px", padding: "1.75rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1rem", color: "#ef4444" }}>
           <AlertTriangle size={28} />
           <h2 style={{ fontSize: "1.25rem", fontWeight: 700, color: "var(--text-primary)" }}>{title}</h2>
         </div>
 
         <ProblemAlert problem={problem} />
+        {(errorMessage || unexpectedError) && <Alert type="error" message={errorMessage || unexpectedError}/>}
 
         <p style={{ fontSize: "0.95rem", color: "var(--text-secondary)", marginBottom: "1rem" }}>
-          Tem certeza de que deseja excluir <strong style={{ color: "var(--text-primary)" }}>{itemName}</strong>?
+          {question} <strong style={{ color: "var(--text-primary)" }}>{itemName}</strong>?
         </p>
 
         <div
@@ -76,7 +87,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
           {warningText}
         </div>
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+        <div className="confirm-dialog__actions">
           <button type="button" onClick={onClose} className="btn btn-secondary" disabled={isDeleting}>
             Cancelar
           </button>
@@ -93,7 +104,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
               </>
             ) : (
               <>
-                <Trash2 size={16} /> Confirmar Exclusão
+                <Trash2 size={16} /> {confirmLabel}
               </>
             )}
           </button>

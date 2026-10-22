@@ -1,6 +1,6 @@
 # Padrão visual da administração de organizações
 
-As telas administrativas compartilham o mesmo contêiner, com largura máxima de 1440 px e margens laterais de 24 px no desktop e 16 px no celular. A barra superior continua reservando seu espaço.
+Este documento complementa o [guia geral de interface e comportamento](ui-patterns.md), obrigatório para novas telas e alterações em todo o frontend. Layout, padding, ações, modais, estados e acessibilidade seguem o guia geral. Aqui ficam as particularidades da administração das organizações.
 
 | Tela | Contexto e conteúdo |
 | --- | --- |
@@ -15,9 +15,9 @@ As telas administrativas compartilham o mesmo contêiner, com largura máxima de
 
 O componente OrganizationContextHeader concentra identificação, navegação e o menu Membros e convites. Usa o nome já disponível na sessão ou os dados carregados pela página; consulta a organização quando necessário em um acesso direto autorizado.
 
-As seções usam títulos secundários, explicação curta e ações alinhadas. Ações menos usadas ficam em menus. As tabelas de membros, convites e profiles se adaptam ao celular mantendo contexto e ações. Erros de carregamento de permissões mantêm o contêiner da página e a opção de tentar novamente, sem liberar gravações com dados incompletos.
+As tabelas de membros, convites e profiles mantêm o contexto da organização no celular. No editor de permissões, uma falha na consulta de grants bloqueia alterações até nova leitura; a edição de uma fonte preserva os grants das demais fontes do profile.
 
-Os modais administrativos de organização, membro, convite gerado e confirmação usam padding de 24/16 px, altura limitada à janela e rolagem interna. Formulários longos mantêm o rodapé de ações acessível.
+Reutilize OrganizationContextHeader, os estilos administrativos compartilhados e ConfirmDeleteModal. O fluxo de fontes de dados e os editores incorporados seguem o [guia de configuração](data-source-configuration.md).
 
 Designer e execução de relatórios mantêm a estrutura própria de seus fluxos de trabalho. Este documento descreve a administração da organização.
 

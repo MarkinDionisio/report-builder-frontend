@@ -1,3 +1,5 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Check, ChevronRight, FileBarChart, Search } from "lucide-react";
 import { Alert, ProblemAlert } from "../../../shared/components/Alert";
@@ -116,8 +118,8 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
         <ProblemAlert problem={problem}/>
         {step === 1 ? <section aria-label="Modelos disponíveis" className="global-report-catalog">
           <p className="global-report-import__hint">Busque pelo título e selecione um modelo para continuar.</p>
-          <div className="global-report-catalog__search"><Search size={18} aria-hidden="true"/><input id="global-template-search" aria-label="Buscar relatórios globais" placeholder="Buscar pelo título do relatório..." value={search} onChange={event => { setSearch(event.target.value); setPage(1); setLoading(true); setTemplates([]); }}/></div>
-          {loading ? <p role="status">Buscando modelos...</p> : <>
+          <div className="global-report-catalog__search"><Search size={18} aria-hidden="true"/><div className="search-input-clear"><input id="global-template-search" aria-label="Buscar relatórios globais" placeholder="Buscar pelo título do relatório..." value={search} onChange={event => { setSearch(event.target.value); setPage(1); setLoading(true); setTemplates([]); }}/><ClearSearchButton value={search} onClear={()=>{setSearch("");setPage(1);setLoading(true);setTemplates([]);}}/></div></div>
+          {loading ? <NeutralLoader message="Consultando modelos de relatórios globais…"/> : <>
             <p className="global-report-catalog__count" role="status">{total} {total === 1 ? "modelo encontrado" : "modelos encontrados"}</p>
             {templates.length === 0 ? <div className="global-report-catalog__empty"><FileBarChart size={32} aria-hidden="true"/><p>{search.trim() ? "Nenhum modelo encontrado para esta busca." : "Nenhum modelo global disponível."}</p>{search.trim() && <small>Tente outro título ou limpe a busca.</small>}</div> : <div className="global-report-catalog__grid">
               {templates.map(template => <button type="button" key={template.id} className="global-report-catalog__card" aria-label={`Selecionar modelo ${template.title}`} aria-pressed={selectedTemplate?.id === template.id} onClick={() => chooseTemplate(template)}>
@@ -137,7 +139,7 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
           <div className="input-group">
             <label className="input-label" htmlFor="import-source">Data source de destino</label>
             <select className="form-input" id="import-source" value={dataSourceId} disabled={busy || loadingSources} onChange={event => { setDataSourceId(event.target.value); setCheck(null); }}><option value="">Selecione um data source</option>{sources.map(source => <option key={source.id} value={source.id}>{source.name}</option>)}</select>
-            {loadingSources ? <p role="status">Carregando data sources...</p> : sources.length === 0 && <p className="global-report-import__hint">Nenhum data source ativo e verificado disponível. Solicite a configuração ao administrador.</p>}
+            {loadingSources ? <NeutralLoader compact message="Consultando fontes ativas e validadas para importação…"/> : sources.length === 0 && <p className="global-report-import__hint">Nenhum data source ativo e verificado disponível. Solicite a configuração ao administrador.</p>}
           </div>
           <div className="input-group">
             <label className="input-label" htmlFor="import-title">Título da cópia</label>

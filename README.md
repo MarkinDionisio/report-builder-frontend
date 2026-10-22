@@ -54,3 +54,7 @@ mantém as ações acessíveis enquanto o conteúdo da etapa pode ser rolado.
 O fluxo fica em **Organizações → organização → Fontes de dados → Configurar fonte**. Consulte [o guia de configuração](docs/data-source-configuration.md) para os quatro passos, modelos e permissões.
 
 O [padrão de layout administrativo](docs/organization-layout.md) descreve cabeçalhos, navegação, espaçamento, modais e validação das telas relacionadas à organização.
+
+## Padrões de interface e comportamento
+
+Antes de implementar ou alterar telas, leia o [guia de interface e comportamento](docs/ui-patterns.md) e as [orientações para agentes](AGENTS.md). O guia reúne os padrões permanentes de layout, navegação, ações, carregamento, erros, seleção em lote, permissões e validação em desktop e celular.

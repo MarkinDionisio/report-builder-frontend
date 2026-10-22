@@ -1,3 +1,4 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { catalogApi } from "../api/catalogApi";
 import { isErr } from "../../../shared/result/result";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -413,8 +414,8 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
             </div>
             <p>Valida a conexão administrativa e o acesso somente leitura da conexão de execução, sem cadastrar a fonte.</p>
             {!adminConnectionString.trim() || !executionConnectionString.trim() ? <p>Preencha as duas connection strings para testar.</p> : null}
-            {readingCertificate && <p role="status">Lendo certificado PFX…</p>}
-            {testing && <p role="status">Conectando ao banco e verificando as permissões de leitura. Aguarde…</p>}
+            {readingCertificate && <NeutralLoader compact message="Lendo certificado PFX…"/>}
+            {testing && <NeutralLoader compact message="Conectando ao banco e verificando permissões de leitura…"/>}
             {testError && <div role="alert" className="data-source-connection-test__failure"><AlertCircle size={18} aria-hidden="true" /><span>{testError}</span></div>}
             {testResult && <div role="status" aria-live="polite" aria-atomic="true" className="data-source-connection-test__results">
               <div className={testResult.adminConnection.succeeded ? "data-source-connection-test__success" : "data-source-connection-test__failure"}>

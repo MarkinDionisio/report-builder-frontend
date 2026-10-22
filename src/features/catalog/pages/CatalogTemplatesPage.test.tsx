@@ -13,7 +13,7 @@ it('confirms deletion and reloads templates', async () => {
   vi.mocked(catalogApi.deleteCatalogTemplate).mockResolvedValue(ok(undefined));
   render(<CatalogTemplatesPage />); fireEvent.click(await screen.findByRole('button', { name: 'Excluir' }));
   expect(catalogApi.deleteCatalogTemplate).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirmar exclusão' }));
+  fireEvent.click(screen.getByRole('button', { name: /Confirmar Exclusão/i }));
   await waitFor(() => expect(catalogApi.deleteCatalogTemplate).toHaveBeenCalledWith('t1'));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 });

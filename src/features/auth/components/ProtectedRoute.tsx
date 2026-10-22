@@ -10,7 +10,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
   const location = useLocation();
 
   if (state.status === "initializing") {
-    return <NeutralLoader />;
+    return <NeutralLoader message="Verificando sua sessão e permissões de acesso…" />;
   }
 
   if (state.status === "anonymous") {

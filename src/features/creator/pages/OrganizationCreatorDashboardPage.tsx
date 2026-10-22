@@ -1,10 +1,12 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { OrganizationContextHeader } from "../../organizations/components/OrganizationContextHeader";
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { creatorApi } from "../../creator/api/creatorApi";
 import { isErr } from "../../../shared/result/result";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
-import { Loader2, Plus, FileBarChart, LayoutDashboard, Settings, Play } from "lucide-react";
+import { Plus, FileBarChart, LayoutDashboard, Settings, Play } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
 import { canOpenCreatorWorkspace } from "../../auth/utils/authUtils";
 import type { ReportListItem, DashboardListItem } from "../../creator/types/creatorTypes";
@@ -14,7 +16,10 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
   const { state } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<"reports" | "dashboards">("reports");
+  const [params,setParams]=useSearchParams();
+  const activeTab=params.get("tab")==="dashboards"?"dashboards":"reports";
+  const setActiveTab=(tab:string)=>{const next=new URLSearchParams(params);next.set("tab",tab);setParams(next);};
+  const [version,setVersion]=useState(0);
   
   const [reports, setReports] = useState<ReportListItem[]>([]);
   const [dashboards, setDashboards] = useState<DashboardListItem[]>([]);
@@ -27,12 +32,14 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
   useEffect(() => {
     if (!organizationId || !isAllowed) return;
 
+    let active=true;
     const fetchData = async () => {
       setLoading(true);
       setErrorMsg(null);
       try {
         // Fetch Reports
         const reportsRes = await creatorApi.listReports(1, 100);
+        if(!active)return;
         if (isErr(reportsRes)) {
           setErrorMsg(reportsRes.error.detail || "Erro ao carregar relatórios.");
         } else {
@@ -44,20 +51,22 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
 
         // Fetch Dashboards
         const dashRes = await creatorApi.listDashboards(1, 100);
+        if(!active)return;
         if (isErr(dashRes)) {
-          if (!errorMsg) setErrorMsg(dashRes.error.detail || "Erro ao carregar dashboards.");
+          setErrorMsg(dashRes.error.detail || "Erro ao carregar dashboards.");
         } else {
           setDashboards(dashRes.value.data.filter(d => d.organizationId === organizationId));
         }
       } catch {
-        setErrorMsg("Erro inesperado ao carregar dados do workspace.");
+        if(active)setErrorMsg("Erro inesperado ao carregar dados do workspace.");
       } finally {
-        setLoading(false);
+        if(active)setLoading(false);
       }
     };
 
-    fetchData();
-  }, [organizationId, isAllowed, errorMsg]);
+    void fetchData();
+    return()=>{active=false;};
+  }, [organizationId, isAllowed, version]);
 
   if (!isAllowed) {
     return (
@@ -76,10 +85,11 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
       
 
       <header className="creator-workspace-header" style={{ background: "var(--surface-color)", borderBottom: "1px solid var(--border-color)", padding: "2rem 1.5rem 0 1.5rem" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <div style={{ maxWidth: "1440px", margin: "0 auto" }}>
+          <OrganizationContextHeader organizationId={organizationId||""} section="creator" page="Área de criação"/>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "2rem" }}>
             <div>
-              <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem 0" }}>Área de criação</h1>
+              <h2 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem 0" }}>Área de criação</h2>
               <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>Gerencie relatórios e dashboards desta organização</p>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
@@ -122,20 +132,17 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
         </div>
       </header>
 
-      <main className="creator-workspace-main" style={{ maxWidth: "1200px", width: "100%", margin: "0 auto 2rem", padding: "0 1.5rem", flex: 1 }}>
+      <main className="creator-workspace-main admin-page">
         {errorMsg && (
           <div style={{ marginBottom: "1.5rem" }}>
-            <Alert type="error" message={errorMsg} />
+            <Alert type="error" message={errorMsg} /><button className="btn btn-secondary" onClick={()=>setVersion(value=>value+1)}>Consultar novamente</button>
           </div>
         )}
 
         {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "4rem 0", color: "var(--text-secondary)" }}>
-            <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary-500)", marginBottom: "1rem" }} />
-            <p>Carregando workspace...</p>
-          </div>
+          <NeutralLoader message="Consultando relatórios e dashboards desta organização…"/>
         ) : activeTab === "reports" ? (
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div className="card admin-table-scroll" style={{ padding: 0 }}>
             {reports.length === 0 ? (
               <div style={{ padding: "4rem 2rem", textAlign: "center", color: "var(--text-secondary)" }}>
                 <FileBarChart size={48} style={{ opacity: 0.2, margin: "0 auto 1rem auto" }} />

@@ -14,7 +14,6 @@
 .organization-section-header h2 {margin:0 0 .5rem;font-size:1.2rem;}
 .organization-section-header p {color:var(--text-secondary);font-size:.9rem;margin:0;max-width:65ch;}
 .organization-section-header > .btn {flex-shrink:0;}
-.organization-loading {padding:1.5rem;color:var(--text-secondary);}
 .organization-empty {padding:2.5rem;text-align:center;color:var(--text-secondary);}
 .organization-empty h3 {margin:.75rem 0;font-size:1rem;color:var(--text-primary);}
 .organization-empty p {max-width:55ch;margin:0 auto;}
@@ -64,7 +63,6 @@
 @media(min-width:381px) and (max-width:720px){.organization-source-card__facts{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}}
 
 .organization-data-card {padding:1.5rem;}
-.organization-overview .organization-loading {display:flex;align-items:center;justify-content:center;gap:1rem;flex-wrap:wrap;padding:2.5rem 1.5rem;}
 .organization-data-card table td {overflow-wrap:anywhere;}
 .organization-page-error {padding:1.5rem;margin-top:1.5rem;}
 .organization-page-error > .btn {margin-top:1rem;}

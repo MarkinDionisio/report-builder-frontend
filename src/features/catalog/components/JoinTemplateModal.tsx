@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { useModalFocus } from "../../../shared/hooks/useModalFocus";
+import React, { useState, useEffect, useRef } from "react";
 import { X, Loader2 } from "lucide-react";
 import type {
   ReportJoinTemplate,
@@ -14,6 +16,8 @@ import { Alert } from "../../../shared/components/Alert";
 
 interface JoinTemplateModalProps {
   isOpen: boolean;
+  error?: string;
+  sourceId?: string;
   onClose: () => void;
   onSubmit: (data: CreateReportJoinTemplateRequest) => Promise<boolean>;
   templateToEdit?: ReportJoinTemplate;
@@ -21,6 +25,8 @@ interface JoinTemplateModalProps {
 
 export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
   isOpen,
+  error,
+  sourceId,
   onClose,
   onSubmit,
   templateToEdit,
@@ -45,6 +51,9 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
   const [loadingInitial, setLoadingInitial] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const submitLock=useRef(false);
+  const dialogRef=useModalFocus(isOpen,onClose,submitting);
 
   // Filter schemas based on selected datasource
   const filteredSchemas = schemas.filter(s => s.dataSourceId === referenceDataSourceId);
@@ -79,28 +88,31 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
   }, [isOpen, templateToEdit]);
 
   const loadInitialData = async () => {
+    try {
     setLoadingInitial(true);
+    if(sourceId)setReferenceDataSourceId(sourceId);
     // Fetch data sources and all schemas
     const [dsRes, schemasRes] = await Promise.all([
       catalogApi.listDataSources(),
-      catalogApi.listReportSchemas()
+      catalogApi.listReportSchemas(sourceId)
     ]);
     
     setLoadingInitial(false);
     
     if (!isErr(dsRes)) {
-      setDataSources(dsRes.value);
+      setDataSources(dsRes.value.filter(source=>!sourceId||source.id===sourceId));
     } else {
       setErrorMsg("Erro ao carregar DataSources.");
     }
 
     if (!isErr(schemasRes)) {
-      setSchemas(schemasRes.value);
+      const scopedSchemas=schemasRes.value.filter(table=>!sourceId||table.dataSourceId===sourceId);
+      setSchemas(scopedSchemas);
       
       // If editing, map internal names to IDs and find the reference datasource
       if (templateToEdit && schemasRes.value.length > 0) {
-        const leftSch = schemasRes.value.find(s => s.internalSchemaName === templateToEdit.leftInternalSchemaName && s.internalObjectName === templateToEdit.leftInternalObjectName);
-        const rightSch = schemasRes.value.find(s => s.internalSchemaName === templateToEdit.rightInternalSchemaName && s.internalObjectName === templateToEdit.rightInternalObjectName);
+        const leftSch = scopedSchemas.find(s => s.internalSchemaName === templateToEdit.leftInternalSchemaName && s.internalObjectName === templateToEdit.leftInternalObjectName);
+        const rightSch = scopedSchemas.find(s => s.internalSchemaName === templateToEdit.rightInternalSchemaName && s.internalObjectName === templateToEdit.rightInternalObjectName);
         
         if (leftSch) {
           setReferenceDataSourceId(leftSch.dataSourceId);
@@ -112,11 +124,13 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
         if (rightSch) setRightSchemaId(rightSch.id);
       } else if (dsRes && !isErr(dsRes) && dsRes.value.length > 0) {
         // Automatically select the first datasource if not editing
-        setReferenceDataSourceId(dsRes.value[0].id);
+        setReferenceDataSourceId(sourceId||dsRes.value[0].id);
       }
     } else {
       setErrorMsg("Erro ao carregar schemas para o formulário.");
     }
+    } catch {setErrorMsg("Não foi possível consultar fontes e tabelas. Feche e tente novamente.");}
+    finally {setLoadingInitial(false);}
   };
 
   const [hasLoadedLeftInitial, setHasLoadedLeftInitial] = useState(false);
@@ -175,6 +189,7 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(submitLock.current || loadingInitial)return;
     if (!name.trim() || !suggestedAlias.trim()) {
       setErrorMsg("Nome e Alias sugerido são obrigatórios.");
       return;
@@ -212,40 +227,39 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
       isEnabled,
     };
 
+    submitLock.current=true;
     setSubmitting(true);
     setErrorMsg(null);
-    const success = await onSubmit(payload);
-    setSubmitting(false);
-
-    if (success) {
-      onClose();
-    }
+    try { if(await onSubmit(payload))onClose(); }
+    catch {setErrorMsg("Não foi possível salvar o modelo. Tente novamente.");}
+    finally {submitLock.current=false;setSubmitting(false);}
   };
 
   return (
     <div className="modal-backdrop">
-      <div className="modal-container" style={{ maxWidth: "600px", display: "flex", flexDirection: "column", overflow: "hidden", maxHeight: "90vh" }}>
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={templateToEdit ? "Editar modelo de relacionamento" : "Novo modelo de relacionamento"} className="modal-container join-template-dialog" style={{ maxWidth: "600px", display: "flex", flexDirection: "column", overflow: "hidden", maxHeight: "90vh" }}>
         <div className="modal-header" style={{ flexShrink: 0 }}>
           <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
-            {templateToEdit ? "Editar Join Template" : "Novo Join Template"}
+            {templateToEdit ? "Editar modelo de relacionamento" : "Novo modelo de relacionamento"}
           </h2>
-          <button onClick={onClose} className="btn-icon">
+          <button onClick={onClose} aria-label="Fechar" disabled={submitting} className="btn-icon">
             <X size={20} />
           </button>
         </div>
 
         <div style={{ padding: "1.25rem", overflowY: "auto", flex: 1 }}>
-          {errorMsg && (
+          {(errorMsg || error) && (
             <div style={{ marginBottom: "1rem" }}>
-              <Alert type="error" message={errorMsg} />
+              <Alert type="error" message={errorMsg || error || ""} />
             </div>
           )}
 
+          {loadingInitial&&<NeutralLoader compact message="Consultando tabelas e campos da fonte de referência…"/>}
           <form id="join-template-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {/* Reference DataSource */}
             <div style={{ background: "rgba(99, 102, 241, 0.05)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(99, 102, 241, 0.2)" }}>
               <label className="form-label" style={{ color: "var(--primary-600)" }}>
-                DataSource de Referência (Apenas para Autocompletar Schemas)
+                Fonte de referência para escolher tabelas e campos
               </label>
               <select
                 value={referenceDataSourceId}
@@ -255,7 +269,8 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                   setRightSchemaId("");
                 }}
                 className="form-input"
-                disabled={loadingInitial}
+                aria-label="Fonte de referência"
+                disabled={loadingInitial || Boolean(sourceId)}
               >
                 <option value="">Selecione um DataSource...</option>
                 {dataSources.map((ds) => (
@@ -404,7 +419,7 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
             type="submit"
             form="join-template-form"
             className="btn btn-primary"
-            disabled={submitting}
+            disabled={submitting || loadingInitial}
             style={{ minWidth: "120px", justifyContent: "center" }}
           >
             {submitting && <Loader2 size={16} className="animate-spin" />}

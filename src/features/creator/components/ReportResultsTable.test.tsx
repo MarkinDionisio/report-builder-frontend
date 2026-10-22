@@ -49,7 +49,7 @@ describe("ReportResultsTable", () => {
   it("shows loading, ready and empty states", () => {
     const props = { page: 1, pageSize: 50, onPageChange: vi.fn(), onPageSizeChange: vi.fn() };
     const { rerender } = render(<ReportResultsTable {...props} result={null} loading />);
-    expect(screen.getByText("Executando relatório...")).toBeInTheDocument();
+    expect(screen.getByText("Executando consulta do relatório…")).toBeInTheDocument();
     rerender(<ReportResultsTable {...props} result={null} loading={false} />);
     expect(screen.getByText("Pronto para executar")).toBeInTheDocument();
     rerender(<ReportResultsTable {...props} result={{ ...result, rows: [], rowCount: 0 }} loading={false} />);

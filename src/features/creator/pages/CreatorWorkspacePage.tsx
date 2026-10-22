@@ -1,9 +1,10 @@
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
-import { Building2, ArrowRight, Loader2 } from "lucide-react";
+import { Building2, ArrowRight } from "lucide-react";
 import { organizationsApi } from "../../organizations/api/organizationsApi";
 import type { Organization } from "../../organizations/types";
 import { isErr } from "../../../shared/result/result";
@@ -18,18 +19,23 @@ export const CreatorWorkspacePage: React.FC = () => {
   const [allowedOrgs, setAllowedOrgs] = useState<(Organization & { roleLabel?: string })[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const [version,setVersion]=useState(0);
   useEffect(() => {
     if (!user) {
       setLoading(false);
       return;
     }
 
+    let active=true;
     const fetchOrgs = async () => {
+      setLoading(true);setErrorMsg(null);
+      try {
       const isGlobal = ["root", "administrator", "creator"].includes(user.globalRole);
 
       if (isGlobal) {
         // Fetch all organizations
         const res = await organizationsApi.list();
+        if(!active)return;
         if (isErr(res)) {
           setErrorMsg(res.error.detail || "Erro ao buscar organizações.");
         } else {
@@ -48,11 +54,13 @@ export const CreatorWorkspacePage: React.FC = () => {
           roleLabel: getOrganizationRoleLabel(org.organizationRole)
         } as Organization & { roleLabel?: string })));
       }
-      setLoading(false);
+      } catch {if(active)setErrorMsg("Falha de comunicação ao consultar organizações.");}
+      finally {if(active)setLoading(false);}
     };
 
-    fetchOrgs();
-  }, [user]);
+    void fetchOrgs();
+    return()=>{active=false;};
+  }, [user,version]);
 
   useEffect(() => {
     if (!loading && allowedOrgs.length === 1 && !errorMsg) {
@@ -67,9 +75,9 @@ export const CreatorWorkspacePage: React.FC = () => {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Navbar />
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <Loader2 size={36} className="animate-spin" style={{ color: "var(--primary-500)" }} />
-        </div>
+        <main className="admin-page">
+          <NeutralLoader message="Consultando organizações disponíveis para criação…"/>
+        </main>
       </div>
     );
   }
@@ -78,9 +86,10 @@ export const CreatorWorkspacePage: React.FC = () => {
     return (
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Navbar />
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem" }}>
+        <main className="admin-page">
           <Alert type="error" message={errorMsg || "Você não possui permissão para acessar o workspace de criação em nenhuma organização."} />
-        </div>
+          {errorMsg&&<button className="btn btn-secondary" onClick={()=>setVersion(value=>value+1)}>Consultar organizações novamente</button>}
+        </main>
       </div>
     );
   }
@@ -88,7 +97,7 @@ export const CreatorWorkspacePage: React.FC = () => {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
-      <main style={{ maxWidth: "1200px", width: "100%", margin: "2rem auto", padding: "0 1.5rem", flex: 1 }}>
+      <main className="admin-page">
         <div style={{ marginBottom: "2rem" }}>
           <h1 style={{ fontSize: "1.75rem", fontWeight: 700, margin: "0 0 0.25rem 0", color: "var(--text-color)" }}>
             Área de criação

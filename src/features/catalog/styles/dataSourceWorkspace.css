@@ -112,8 +112,8 @@ main.source-workspace {width:100%;max-width:1440px;margin:0 auto;padding:2rem 1.
 .source-fields-heading p {font-size:.8rem;color:var(--text-secondary);margin:0;overflow-wrap:anywhere;}
 .source-fields-toolbar {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1rem;}
 .source-fields-search {position:relative;display:flex;align-items:center;gap:.5rem;flex:1;min-width:min(100%,240px);}
-.source-fields-search > svg {position:absolute;left:.75rem;pointer-events:none;color:var(--text-secondary);}
-.source-fields-search > input {padding-left:2rem;min-width:0;width:100%;}
+.source-fields-search .search-input-clear > svg {position:absolute;left:.75rem;pointer-events:none;color:var(--text-secondary);}
+.source-fields-search .search-input-clear > input {padding-left:2rem;min-width:0;width:100%;}
 .source-fields-search .search-match-options {flex-shrink:0;}
 .source-fields-tools {display:flex;gap:.5rem;}
 .source-fields-filter-label {display:grid;gap:.5rem;padding:.75rem;font-size:.85rem;}
@@ -178,9 +178,3 @@ main.source-workspace {width:100%;max-width:1440px;margin:0 auto;padding:2rem 1.
 }
 
 .source-table-actions__main > .btn-primary {border:1px solid transparent;}
-
-.source-loading-status {display:flex;align-items:center;gap:1rem;min-height:160px;margin:1.5rem 0;padding:1.5rem;border:1px solid color-mix(in srgb,var(--primary-500) 45%,var(--border-color));border-left:4px solid var(--primary-500);border-radius:var(--radius-md);background:color-mix(in srgb,var(--primary-500) 8%,var(--bg-card));}
-.source-loading-status__icon {display:grid;place-items:center;flex-shrink:0;width:52px;height:52px;border-radius:50%;color:var(--primary-400);background:color-mix(in srgb,var(--primary-500) 14%,transparent);}
-.source-loading-status strong {display:block;color:var(--text-primary);font-size:1.05rem;line-height:1.5;}
-.source-loading-status p {margin:.4rem 0 0;color:var(--text-secondary);font-size:.95rem;line-height:1.6;max-width:65ch;}
-@media(max-width:720px){.source-loading-status{align-items:flex-start;gap:.75rem;padding:1rem;}.source-loading-status__icon{width:44px;height:44px;}.source-loading-status strong{font-size:1rem;}}

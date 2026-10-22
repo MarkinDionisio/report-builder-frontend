@@ -1,7 +1,10 @@
+import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
+import { useModalFocus } from "../../../shared/hooks/useModalFocus";
+import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
 import { SourceActionMenu } from "../components/SourceActionMenu";
 import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
 import { matchesTextSearch } from "../../../shared/utils/textSearch";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
 import type { RootReportField, UpsertReportFieldRequest } from "../types/catalogTypes";
@@ -57,7 +60,9 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
   const [editingField, setEditingField] = useState<RootReportField | null>(null);
   const [deletingField, setDeletingField] = useState<RootReportField | null>(null);
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deleteError,setDeleteError]=useState("");
+  const saveLock=useRef(false);
+  const formDialogRef=useModalFocus(isModalOpen,()=>setIsModalOpen(false),saving);
 
   // Form State
   const [internalFieldName, setInternalFieldName] = useState("");
@@ -154,12 +159,15 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
 
   const handleSaveField = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(saveLock.current)return;
     if (!schemaId) return;
     if (!publicName.trim()) {
       setErrorMsg("O nome público do campo é obrigatório.");
       return;
     }
 
+    saveLock.current=true;
+    try {
     setSaving(true);
     setErrorMsg(null);
 
@@ -217,26 +225,28 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
         onChanged?.();
       }
     }
+    } catch {setErrorMsg("Não foi possível salvar. Verifique os dados e tente novamente.");}
+    finally {saveLock.current=false;setSaving(false);}
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deletingField) return;
-    setDeleting(true);
+    if (!deletingField) return false;
+    setDeleteError("");
     setErrorMsg(null);
 
     const res = await catalogApi.deleteReportField(deletingField.id);
-    setDeleting(false);
+
 
     if (isErr(res)) {
       if (res.error.status === 403) {
-        setAccessDenied(true);
-        refreshUser();
+        void refreshUser();
       }
-      setErrorMsg(res.error.detail || "Erro ao excluir campo.");
+      setDeleteError(res.error.detail || "Erro ao excluir campo.");
+      return false;
     } else {
-      setDeletingField(null);
       await loadFields();
-        onChanged?.();
+      onChanged?.();
+      return true;
     }
   };
 
@@ -263,13 +273,13 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
       <Container className={embedded ? "source-embedded" : "container"} style={{ padding: "2rem 1rem" }}>
         {!embedded && <button onClick={()=>navigate(-1)} className="btn btn-secondary"><ArrowLeft size={16}/> Voltar para tabelas</button>}
         <header className="source-fields-heading"><div>{embedded?<h3>{tableName || "Campos da tabela"}</h3>:<h1>Campos da tabela</h1>}<p>{loading?"Consultando campos…":fields.length+" campos"}{physicalName&&<> · <code>{physicalName}</code></>}</p></div><SourceActionMenu label="Opções da tabela"><button className="btn btn-secondary" onClick={openCreateModal}>Adicionar campo manualmente</button>{tableActions}</SourceActionMenu></header>
-        <div className="source-fields-toolbar"><div className="source-fields-search"><Search size={16} aria-hidden="true"/><input type="search" className="form-input" aria-label="Buscar campo" placeholder="Buscar campo…" value={searchTerm} onChange={e=>{setSearchTerm(e.target.value);setPage(0);}}/><SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch}/></div><div className="source-fields-tools"><SourceActionMenu label={statusFilter==="all"?"Filtros":"Filtros (1)"}><label className="source-fields-filter-label">Mostrar campos<select className="form-input" aria-label="Filtrar campos" value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(0);}}><option value="all">Todos</option><option value="enabled">Habilitados</option><option value="disabled">Desabilitados</option><option value="sensitive">Sensíveis</option></select></label></SourceActionMenu><button className="btn btn-secondary" aria-pressed={selectionMode||selected.size>0} onClick={()=>{setSelectionMode(v=>!v);setSelected(new Set());}}>Selecionar</button></div></div>
+        <div className="source-fields-toolbar"><div className="source-fields-search"><div className="search-input-clear"><Search size={16} aria-hidden="true"/><input type="search" className="form-input" aria-label="Buscar campo" placeholder="Buscar campo…" value={searchTerm} onChange={e=>{setSearchTerm(e.target.value);setPage(0);}}/><ClearSearchButton value={searchTerm} onClear={()=>{setSearchTerm("");setPage(0);}}/></div><SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch}/></div><div className="source-fields-tools"><SourceActionMenu label={statusFilter==="all"?"Filtros":"Filtros (1)"}><label className="source-fields-filter-label">Mostrar campos<select className="form-input" aria-label="Filtrar campos" value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(0);}}><option value="all">Todos</option><option value="enabled">Habilitados</option><option value="disabled">Desabilitados</option><option value="sensitive">Sensíveis</option></select></label></SourceActionMenu><button className="btn btn-secondary" aria-pressed={selectionMode||selected.size>0} onClick={()=>{setSelectionMode(v=>!v);setSelected(new Set());}}>Selecionar</button></div></div>
         {(selectionMode||selected.size>0)&&<div className="source-bulk-toolbar"><span>{selected.size>0?selected.size+" campos selecionados, incluindo outras páginas e filtros":"Marque os campos ou selecione todos os resultados."}</span><SourceActionMenu label="Ações de seleção"><button className="btn btn-secondary" disabled={batchBusy} onClick={()=>setSelected(new Set([...selected,...filteredFields.map(f=>f.id)]))}>Marcar resultados</button><button className="btn btn-secondary" disabled={batchBusy||selected.size===0} onClick={()=>setSelected(new Set([...selected].filter(id=>!filteredFields.some(f=>f.id===id))))}>Desmarcar resultados</button><button className="btn btn-secondary" disabled={batchBusy||selected.size===0} onClick={()=>void bulk(true)}>Habilitar selecionados</button><button className="btn btn-secondary" disabled={batchBusy||selected.size===0} onClick={()=>void bulk(false)}>Desabilitar selecionados</button></SourceActionMenu></div>}
-        {batchBusy&&<p role="status">Atualizando os campos selecionados…</p>}
-        {errorMsg && <Alert type="error" message={errorMsg} style={{ marginBottom: "1.25rem" }} />}
+        {batchBusy&&<NeutralLoader compact message="Atualizando configurações dos campos selecionados…"/>}
+        {errorMsg && !isModalOpen && <Alert type="error" message={errorMsg} style={{ marginBottom: "1.25rem" }} />}
 
         {loading ? (
-          <NeutralLoader message="Carregando campos do schema..." />
+          <NeutralLoader message="Consultando campos da tabela…" />
         ) : fields.length === 0 ? (
           <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem", color: "var(--text-secondary)" }}>
             <List size={40} style={{ opacity: 0.4, marginBottom: "0.75rem" }} />
@@ -330,7 +340,7 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
                         <button onClick={() => openEditModal(field)} className="btn-icon" title="Editar Campo" aria-label={"Editar "+field.name}>
                           <Edit2 size={16} />
                         </button>
-                        <button onClick={() => setDeletingField(field)} className="btn-icon text-danger" title="Excluir Campo" aria-label={"Excluir "+field.name}>
+                        <button onClick={() => {setDeleteError("");setDeletingField(field);}} className="btn-icon text-danger" title="Excluir Campo" aria-label={"Excluir "+field.name}>
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -348,17 +358,18 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
         {/* Upsert Modal */}
         {isModalOpen && (
           <div className="modal-backdrop">
-            <div className="modal-container" style={{ maxWidth: "650px", maxHeight: "90vh", overflowY: "auto" }}>
+            <div ref={formDialogRef} tabIndex={-1} className="modal-container admin-form-dialog" role="dialog" aria-modal="true" aria-label={editingField ? "Editar campo" : "Adicionar campo"} style={{ maxWidth: "650px", maxHeight: "90vh", overflowY: "auto" }}>
               <div className="modal-header">
                 <h3 style={{ margin: 0, fontSize: "1.2rem" }}>
                   {editingField ? `Editar Campo: ${editingField.name}` : "Novo Campo no Schema"}
                 </h3>
-                <button onClick={() => setIsModalOpen(false)} className="btn-icon">
+                <button aria-label="Fechar" disabled={saving} onClick={() => setIsModalOpen(false)} className="btn-icon">
                   <X size={20} />
                 </button>
               </div>
 
               <form onSubmit={handleSaveField} style={{ padding: "1.25rem" }}>
+                {errorMsg&&<Alert type="error" message={errorMsg}/>}
                 <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                   <div className="responsive-grid-2col">
                     <div>
@@ -494,37 +505,7 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
-        {deletingField && (
-          <div className="modal-backdrop">
-            <div className="modal-container" style={{ maxWidth: "450px" }}>
-              <div className="modal-header">
-                <h3 style={{ margin: 0, color: "var(--danger-500)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  <ShieldAlert size={20} /> Confirmar Exclusão
-                </h3>
-                <button onClick={() => setDeletingField(null)} className="btn-icon">
-                  <X size={20} />
-                </button>
-              </div>
-              <div style={{ padding: "1.25rem" }}>
-                <p style={{ margin: "0 0 1rem 0", fontSize: "0.95rem" }}>
-                  Tem certeza que deseja excluir o campo <strong>{deletingField.name}</strong>?
-                </p>
-                <div style={{ background: "rgba(239, 68, 68, 0.1)", padding: "0.75rem", borderRadius: "6px", fontSize: "0.85rem", color: "var(--danger-500)", marginBottom: "1.25rem" }}>
-                  A exclusão revoga imediatamente quaisquer grants associados a este campo.
-                </div>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
-                  <button onClick={() => setDeletingField(null)} className="btn btn-secondary" disabled={deleting}>
-                    Cancelar
-                  </button>
-                  <button onClick={handleDeleteConfirm} className="btn btn-danger" disabled={deleting}>
-                    {deleting ? "Excluindo..." : "Sim, Excluir Campo"}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {deletingField && <ConfirmDeleteModal isOpen title="Excluir campo" itemName={deletingField.name} warningText="O campo e seus grants serão removidos do catálogo. A coluna e os dados do banco não serão excluídos." problem={null} errorMessage={deleteError} onClose={()=>{setDeletingField(null);setDeleteError("");}} onConfirm={handleDeleteConfirm}/>}
       </Container>
     </>
   );
