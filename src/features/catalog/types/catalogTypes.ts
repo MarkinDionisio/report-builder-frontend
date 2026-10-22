@@ -276,7 +276,8 @@ export interface GrantAllRequest {
 
 export type JoinType = "inner" | "left";
 
-export interface ReportJoinTemplate {
+export interface ReportJoinModel {
+  organizationId: string;
   id: string;
   name: string;
   suggestedAlias: string;
@@ -290,7 +291,7 @@ export interface ReportJoinTemplate {
   isEnabled: boolean;
 }
 
-export interface CreateReportJoinTemplateRequest {
+export interface CreateReportJoinModelRequest {
   name: string;
   suggestedAlias: string;
   joinType: JoinType;
@@ -303,7 +304,7 @@ export interface CreateReportJoinTemplateRequest {
   isEnabled: boolean;
 }
 
-export type UpdateReportJoinTemplateRequest = CreateReportJoinTemplateRequest;
+export type UpdateReportJoinModelRequest = CreateReportJoinModelRequest;
 
 export interface TestDataSourceConfigurationRequest {
   provider: DataSourceProvider;
@@ -317,3 +318,7 @@ export interface TestDataSourceConfigurationResponse {
   adminConnection: { succeeded: boolean; errorCode: string | null };
   executionConnection: { succeeded: boolean; errorCode: string | null; readOnlyVerified: boolean };
 }
+
+export interface GlobalJoinTemplate {id:string;name:string;description:string|null;definition:CreateReportJoinModelRequest;}
+export interface JoinModelDependency {id:string;title:string;}
+export interface JoinTemplatePreview {proposed:ReportJoinModel;compatible:boolean;issues:string[];}

@@ -35,7 +35,7 @@ function resolveCatalogFieldName(fieldId: string | undefined, joinAlias: string 
   let schemaId = content.dataset.schemaId;
   if (joinAlias) {
     const selectedJoin = content.dataset.joins?.find((join) => join.alias === joinAlias);
-    const template = selectedJoin && catalog.joins.find((join) => join.joinTemplateId === selectedJoin.joinTemplateId);
+    const template = selectedJoin && catalog.joins.find((join) => join.joinModelId === selectedJoin.joinModelId);
     if (template) schemaId = template.toSchemaId;
   }
   const schema = catalog.schemas.find((item) => item.id === schemaId);
@@ -310,7 +310,7 @@ export const ReportDesignerPage: React.FC = () => {
             // Rebuild selected schema IDs
             const selectedIds = [r.content.dataset.schemaId];
             r.content.dataset.joins?.forEach(j => {
-              const tmpl = catRes.value.joins.find(t => t.joinTemplateId === j.joinTemplateId);
+              const tmpl = catRes.value.joins.find(t => t.joinModelId === j.joinModelId);
               if (tmpl) selectedIds.push(tmpl.toSchemaId);
             });
             setSelectedSchemaIds(Array.from(new Set(selectedIds)));
@@ -407,8 +407,8 @@ export const ReportDesignerPage: React.FC = () => {
         // Remover join
         const joinToRemove = catalog?.joins.find(j => j.fromSchemaId === reportContent.dataset.schemaId && j.toSchemaId === schemaId);
         if (joinToRemove) {
-          const removedAlias = reportContent.dataset.joins?.find(j => j.joinTemplateId === joinToRemove.joinTemplateId)?.alias;
-          const joins = (reportContent.dataset.joins || []).filter(j => j.joinTemplateId !== joinToRemove.joinTemplateId);
+          const removedAlias = reportContent.dataset.joins?.find(j => j.joinModelId === joinToRemove.joinModelId)?.alias;
+          const joins = (reportContent.dataset.joins || []).filter(j => j.joinModelId !== joinToRemove.joinModelId);
           const select = reportContent.dataset.select.filter(s => s.joinAlias !== removedAlias);
           setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, joins, select } });
         }
@@ -428,7 +428,7 @@ export const ReportDesignerPage: React.FC = () => {
             alias = `${directJoin.suggestedAlias || "j"}${counter}`;
             counter++;
           }
-          joins.push({ joinTemplateId: directJoin.joinTemplateId, alias });
+          joins.push({ joinModelId: directJoin.joinModelId, alias });
           setReportContent({ ...reportContent, dataset: { ...reportContent.dataset, joins } });
         }
       }
@@ -445,7 +445,7 @@ export const ReportDesignerPage: React.FC = () => {
     if (schema.id !== baseSchemaId) {
       const directJoin = catalog?.joins.find(j => j.fromSchemaId === baseSchemaId && j.toSchemaId === schema.id);
       if (directJoin) {
-        const existingJoin = reportContent.dataset.joins?.find(j => j.joinTemplateId === directJoin.joinTemplateId);
+        const existingJoin = reportContent.dataset.joins?.find(j => j.joinModelId === directJoin.joinModelId);
         if (existingJoin) joinAlias = existingJoin.alias;
       }
     }
@@ -902,7 +902,7 @@ export const ReportDesignerPage: React.FC = () => {
       if (reportContent && s.id !== reportContent.dataset.schemaId) {
         const directJoin = catalog?.joins.find(j => j.fromSchemaId === reportContent.dataset.schemaId && j.toSchemaId === s.id);
         if (directJoin) {
-          const existingJoin = reportContent.dataset.joins?.find(j => j.joinTemplateId === directJoin.joinTemplateId);
+          const existingJoin = reportContent.dataset.joins?.find(j => j.joinModelId === directJoin.joinModelId);
           if (existingJoin) joinAlias = existingJoin.alias;
         }
       }
@@ -953,7 +953,7 @@ export const ReportDesignerPage: React.FC = () => {
         if (sel.joinAlias) {
           const joinInfo = reportContent.dataset.joins?.find(j => j.alias === sel.joinAlias);
           if (joinInfo) {
-            const joinTemplate = catalog?.joins.find(j => j.joinTemplateId === joinInfo.joinTemplateId);
+            const joinTemplate = catalog?.joins.find(j => j.joinModelId === joinInfo.joinModelId);
             if (joinTemplate) schemaId = joinTemplate.toSchemaId;
           }
         }

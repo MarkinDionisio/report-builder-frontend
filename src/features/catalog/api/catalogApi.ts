@@ -350,36 +350,42 @@ export const catalogApi = {
   },
 
   // --- Report Join Templates ---
-  async listJoinTemplates(): Promise<Result<import("../types/catalogTypes").ReportJoinTemplate[], ApiProblemDetails>> {
-    const res = await apiFetch("/api/v1/report-join-templates");
-    return parseJsonResponse<import("../types/catalogTypes").ReportJoinTemplate[]>(res);
+  async listGlobalJoinTemplates(): Promise<Result<import("../types/catalogTypes").GlobalJoinTemplate[],ApiProblemDetails>> {return parseJsonResponse(await apiFetch("/api/v1/join-templates"));},
+  async saveGlobalJoinTemplate(sourceModelId:string,name:string,description:string): Promise<Result<import("../types/catalogTypes").GlobalJoinTemplate,ApiProblemDetails>> {return parseJsonResponse(await apiFetch("/api/v1/join-templates",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sourceModelId,name,description})}));},
+  async deleteGlobalJoinTemplate(id:string): Promise<Result<void,ApiProblemDetails>> {return handleVoidResponse(await apiFetch(`/api/v1/join-templates/${id}`,{method:"DELETE"}));},
+  async joinModelReports(organizationId:string,id:string): Promise<Result<import("../types/catalogTypes").JoinModelDependency[],ApiProblemDetails>> {return parseJsonResponse(await apiFetch(`/api/v1/organizations/${organizationId}/join-models/${id}/reports`));},
+  async previewJoinTemplate(organizationId:string,templateId:string,dataSourceId:string,name:string): Promise<Result<import("../types/catalogTypes").JoinTemplatePreview,ApiProblemDetails>> {return parseJsonResponse(await apiFetch(`/api/v1/organizations/${organizationId}/join-models/template-preview`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({templateId,dataSourceId,name})}));},
+  async applyJoinTemplate(organizationId:string,templateId:string,dataSourceId:string,name:string): Promise<Result<import("../types/catalogTypes").ReportJoinModel,ApiProblemDetails>> {return parseJsonResponse(await apiFetch(`/api/v1/organizations/${organizationId}/join-models/template-apply`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({templateId,dataSourceId,name})}));},
+  async listJoinModels(organizationId: string): Promise<Result<import("../types/catalogTypes").ReportJoinModel[], ApiProblemDetails>> {
+    const res = await apiFetch(`/api/v1/organizations/${organizationId}/join-models`);
+    return parseJsonResponse<import("../types/catalogTypes").ReportJoinModel[]>(res);
   },
 
-  async createJoinTemplate(
-    data: import("../types/catalogTypes").CreateReportJoinTemplateRequest
-  ): Promise<Result<import("../types/catalogTypes").ReportJoinTemplate, ApiProblemDetails>> {
-    const res = await apiFetch("/api/v1/report-join-templates", {
+  async createJoinModel(
+    organizationId: string, data: import("../types/catalogTypes").CreateReportJoinModelRequest
+  ): Promise<Result<import("../types/catalogTypes").ReportJoinModel, ApiProblemDetails>> {
+    const res = await apiFetch(`/api/v1/organizations/${organizationId}/join-models`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    return parseJsonResponse<import("../types/catalogTypes").ReportJoinTemplate>(res);
+    return parseJsonResponse<import("../types/catalogTypes").ReportJoinModel>(res);
   },
 
-  async updateJoinTemplate(
-    id: string,
-    data: import("../types/catalogTypes").UpdateReportJoinTemplateRequest
-  ): Promise<Result<import("../types/catalogTypes").ReportJoinTemplate, ApiProblemDetails>> {
-    const res = await apiFetch(`/api/v1/report-join-templates/${id}`, {
+  async updateJoinModel(
+    organizationId: string, id: string,
+    data: import("../types/catalogTypes").UpdateReportJoinModelRequest
+  ): Promise<Result<import("../types/catalogTypes").ReportJoinModel, ApiProblemDetails>> {
+    const res = await apiFetch(`/api/v1/organizations/${organizationId}/join-models/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    return parseJsonResponse<import("../types/catalogTypes").ReportJoinTemplate>(res);
+    return parseJsonResponse<import("../types/catalogTypes").ReportJoinModel>(res);
   },
 
-  async deleteJoinTemplate(id: string): Promise<Result<void, ApiProblemDetails>> {
-    const res = await apiFetch(`/api/v1/report-join-templates/${id}`, {
+  async deleteJoinModel(organizationId: string, id: string): Promise<Result<void, ApiProblemDetails>> {
+    const res = await apiFetch(`/api/v1/organizations/${organizationId}/join-models/${id}`, {
       method: "DELETE",
     });
     return handleVoidResponse(res);

@@ -9,9 +9,14 @@ Acesse **Organizações → organização → Fontes de dados → Configurar fon
 
 ## Modelos reutilizáveis
 
-Na fonte, abra **Mais opções → Modelos reutilizáveis**. A biblioteca é global e compartilhada entre organizações. Modelos de catálogo guardam cópias independentes das configurações de tabelas e campos, sem credenciais ou permissões. Excluir um modelo não remove cópias já aplicadas. Salvar catálogo como modelo exige campos cadastrados. A aplicação faz introspecção e permite selecionar somente itens compatíveis. Um conflito exige nova prévia. Cancelar a aplicação mantém a conexão cadastrada.
+Na fonte, abra **Mais opções → Modelos reutilizáveis**. Modelos de catálogo continuam globais e guardam cópias independentes das configurações de tabelas e campos, sem credenciais ou permissões. Excluir um modelo não remove cópias já aplicadas. Salvar catálogo como modelo exige campos cadastrados. A aplicação faz introspecção e permite selecionar somente itens compatíveis. Um conflito exige nova prévia. Cancelar a aplicação mantém a conexão cadastrada.
 
-Modelos de relacionamento descrevem como combinar tabelas nos relatórios. São uma configuração avançada e opcional; mudanças nesses modelos globais podem afetar outras fontes com os mesmos nomes internos.
+Em **Modelos de junção**, duas áreas distinguem os escopos:
+
+- **Modelos de junção da organização:** usados pelos relatórios da organização em qualquer fonte compatível. A fonte atual é referência para preenchimento e compatibilidade. Root pode cadastrar, editar, duplicar, consultar dependências e salvar como template global. Modelos em uso permitem editar nome e alias sugerido; estrutura, tipo, habilitação e exclusão ficam protegidos. Duplique para criar uma alternativa.
+- **Templates globais de junção:** snapshots compartilhados entre organizações, consultáveis e aplicáveis com prévia para criar um modelo local independente. Para mudar o conteúdo, salve outro template. Excluir o template não altera os modelos já aplicados. Um conflito exige gerar nova prévia.
+
+Junções são avançadas e opcionais, sem bloquear a configuração inicial da fonte. Modelos e templates não concedem permissões. Na importação de relatório global, a prévia mostra os modelos locais que serão reutilizados ou criados automaticamente. Essa exceção é permitida ao usuário autorizado a importar, sem liberar gerenciamento manual. Relatório e modelos necessários são gravados juntos; falhas desfazem toda a importação.
 
 ## Acesso, retomada e compatibilidade
 
@@ -19,6 +24,6 @@ Somente root cadastra conexões, tabelas, campos e modelos. Administradores mant
 
 A rota é /organizations/:organizationId/data-sources/:dataSourceId. Os parâmetros step (connection, tables, fields, access), schemaId e profileId permitem retomar o contexto e usar voltar/avançar do navegador. Credenciais ficam apenas no formulário transitório.
 
-Links antigos de fontes, catálogo e modelos encaminham ao novo contexto quando informam dataSourceId ou schemaId. Links sem contexto exibem a escolha de organização e fonte. Nenhum catálogo adicional ou migração de dados foi criado.
+Links antigos de fontes, catálogo e modelos encaminham ao novo contexto quando informam dataSourceId ou schemaId. Links sem contexto exibem a escolha de organização e fonte. A navegação não cria outro catálogo. A transição das junções preserva as antigas definições compartilhadas como templates globais, sem remapear relatórios antigos; relatórios com junções antigas precisam ser ajustados ou recriados.
 
 A execução dos relatórios exige conexão habilitada e validada como somente leitura, além de catálogo e permissões adequados. Preparar o catálogo pode ocorrer antes da validação.

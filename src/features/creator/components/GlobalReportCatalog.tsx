@@ -146,6 +146,7 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
             <input className="form-input" id="import-title" value={title} disabled={busy} onChange={event => setTitle(event.target.value)}/>
           </div>
           {check && <div className="global-report-import__diagnostics" aria-live="polite">
+            {check.joinModels && check.joinModels.length>0&&<section><h3>Junções da organização</h3><p>A importação reutiliza ou cria cópias locais, sem conceder permissões.</p><ul>{check.joinModels.map((model,index)=><li key={index}>{model.name} · {model.action==="create"?"Será criada uma cópia independente":"Modelo local será reutilizado"}</li>)}</ul></section>}
             {check.canImport ? <Alert type="success" message="Modelo compatível. A cópia será criada como privada."/> : <div role="alert"><p>Não é possível importar:</p><ul>{check.issues.map((issue, index) => <li key={index}>{issue.message} <small>({issue.path})</small></li>)}</ul></div>}
           </div>}
         </section>}

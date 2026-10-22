@@ -39,7 +39,7 @@ export interface DesignerSchema {
 }
 
 export interface DesignerJoin {
-  joinTemplateId: string;
+  joinModelId: string;
   name: string;
   joinType: JoinType;
   fromSchemaId: string;
@@ -79,7 +79,7 @@ export interface SelectItem extends FieldReference {
 }
 
 export interface JoinItem {
-  joinTemplateId: string;
+  joinModelId: string;
   alias: string;
 }
 
@@ -306,5 +306,5 @@ export interface PreviewRequest {
 export interface GlobalReportTemplate { id: string; title: string; updatedAt: string; }
 export interface ReportImportRequest { organizationId: string; dataSourceId: string; title?: string; }
 export interface ReportImportIssue { code: string; path: string; referenceId: string | null; message: string; }
-export interface ReportImportCheck { canImport: boolean; issues: ReportImportIssue[]; }
+export interface ReportImportCheck { canImport: boolean; issues: ReportImportIssue[]; joinModels?: Array<{name:string;action:"create"|"reuse";modelId:string|null}>; }
 export interface ReportImportDataSource { id: string; name: string; }

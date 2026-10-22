@@ -62,7 +62,7 @@ export function getFieldTypeInfo(fieldId: string, joinAlias?: string, catalog?: 
     if (joinAlias && joins) {
       const joinInfo = joins.find(j => j.alias === joinAlias);
       if (joinInfo) {
-        const joinTemplate = catalog.joins.find(j => j.joinTemplateId === joinInfo.joinTemplateId);
+        const joinTemplate = catalog.joins.find(j => j.joinModelId === joinInfo.joinModelId);
         if (joinTemplate) schemaId = joinTemplate.toSchemaId;
       }
     }

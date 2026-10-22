@@ -71,3 +71,9 @@ Novos padrões explicitamente aprovados pelo usuário devem ser incorporados aqu
 - ConfirmDeleteModal centraliza confirmações de exclusão e revogação, bloqueio de repetição, erro no modal e comportamento de teclado. useModalFocus mantém o foco nos formulários abertos e o devolve ao controle de origem ao fechar.
 - SourceActionMenu agrupa ações secundárias; OrganizationContextHeader mantém a identidade da organização. A área de criação também preserva a aba pela URL.
 - A classe admin-page aplica largura e padding administrativos; admin-form-dialog mantém cabeçalho e ações dos formulários longos acessíveis. Designer e execução mantêm os próprios contêineres.
+
+## Escopos de junção e importação
+
+- Distinguir modelos de junção da organização e templates globais de junção na biblioteca da fonte. A fonte é referência de compatibilidade e preenchimento, sem limitar o modelo local a ela. Templates são snapshots independentes; excluir a origem ou o template não altera cópias.
+- Somente root gerencia modelos e templates manualmente. A importação autorizada de relatórios globais pode criar modelos locais automaticamente para creators e administradores, sem conceder permissões nem liberar gerenciamento manual. A prévia deve indicar modelos reutilizados e criados; o servidor grava relatório e modelos na mesma transação.
+- Modelos em uso mostram dependências e restrições de estrutura, tipo, habilitação e exclusão; nome e alias sugerido podem mudar. Oferecer Duplicar modelo como alternativa independente. Confirmações e erros permanecem no modal; conflito de aplicação invalida a prévia.

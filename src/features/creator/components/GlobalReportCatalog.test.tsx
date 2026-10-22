@@ -26,6 +26,18 @@ beforeEach(() => {
 });
 
 describe("GlobalReportCatalog steps", () => {
+  it("mostra modelos locais reutilizados e cópias planejadas sem conceder acesso", async () => {
+    vi.mocked(creatorApi.checkReportImport).mockResolvedValue({ ok: true, value: { canImport: true, issues: [], joinModels: [
+      { name: "Cliente local", action: "reuse", modelId: "local" },
+      { name: "Filial (2)", action: "create", modelId: null },
+    ] } });
+    show(); await select(); await verify();
+    expect(screen.getByText(/Cliente local · Modelo local será reutilizado/)).toBeVisible();
+    expect(screen.getByText(/Filial \(2\) · Será criada uma cópia independente/)).toBeVisible();
+    expect(screen.getByText(/sem conceder permissões/)).toBeVisible();
+    fireEvent.change(screen.getByLabelText("Data source de destino"), { target: { value: "second" } });
+    expect(screen.queryByText(/Filial \(2\)/)).not.toBeInTheDocument();
+  });
   it("bloqueia a segunda etapa sem modelo e move o foco ao avançar e voltar", async () => {
     show();
     expect(screen.getByRole("button", { name: "Configurar importação" })).toBeDisabled();

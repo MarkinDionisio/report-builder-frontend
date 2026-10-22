@@ -3,8 +3,8 @@ import { useModalFocus } from "../../../shared/hooks/useModalFocus";
 import React, { useState, useEffect, useRef } from "react";
 import { X, Loader2 } from "lucide-react";
 import type {
-  ReportJoinTemplate,
-  CreateReportJoinTemplateRequest,
+  ReportJoinModel,
+  CreateReportJoinModelRequest,
   RootReportSchema,
   RootReportField,
   JoinType,
@@ -16,15 +16,21 @@ import { Alert } from "../../../shared/components/Alert";
 
 interface JoinTemplateModalProps {
   isOpen: boolean;
+  organizationId: string;
+  structureLocked?: boolean;
+  title?: string;
   error?: string;
   sourceId?: string;
   onClose: () => void;
-  onSubmit: (data: CreateReportJoinTemplateRequest) => Promise<boolean>;
-  templateToEdit?: ReportJoinTemplate;
+  onSubmit: (data: CreateReportJoinModelRequest) => Promise<boolean>;
+  templateToEdit?: ReportJoinModel;
 }
 
 export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
   isOpen,
+  organizationId,
+  structureLocked=false,
+  title,
   error,
   sourceId,
   onClose,
@@ -58,143 +64,101 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
   // Filter schemas based on selected datasource
   const filteredSchemas = schemas.filter(s => s.dataSourceId === referenceDataSourceId);
 
-  // Initialize form
   useEffect(() => {
-    if (isOpen) {
-      setErrorMsg(null);
-      if (templateToEdit) {
-        setName(templateToEdit.name);
-        setSuggestedAlias(templateToEdit.suggestedAlias);
-        setJoinType(templateToEdit.joinType);
-        setIsEnabled(templateToEdit.isEnabled);
-        
-        // We will need to map internalSchemaName to schemaId based on fetched schemas
-        setLeftSchemaId(templateToEdit.leftInternalSchemaName);
-        setRightSchemaId(templateToEdit.rightInternalSchemaName);
-        setLeftFieldId(templateToEdit.leftInternalFieldName);
-        setRightFieldId(templateToEdit.rightInternalFieldName);
-      } else {
-        setName("");
-        setSuggestedAlias("");
-        setJoinType("left");
-        setIsEnabled(true);
-        setLeftSchemaId("");
-        setRightSchemaId("");
-        setLeftFieldId("");
-        setRightFieldId("");
-      }
-      loadInitialData();
-    }
-  }, [isOpen, templateToEdit]);
-
-  const loadInitialData = async () => {
-    try {
+    if (!isOpen) return;
+    let cancelled = false;
+    setErrorMsg(null);
     setLoadingInitial(true);
-    if(sourceId)setReferenceDataSourceId(sourceId);
-    // Fetch data sources and all schemas
-    const [dsRes, schemasRes] = await Promise.all([
-      catalogApi.listDataSources(),
-      catalogApi.listReportSchemas(sourceId)
-    ]);
-    
-    setLoadingInitial(false);
-    
-    if (!isErr(dsRes)) {
-      setDataSources(dsRes.value.filter(source=>!sourceId||source.id===sourceId));
-    } else {
-      setErrorMsg("Erro ao carregar DataSources.");
-    }
-
-    if (!isErr(schemasRes)) {
-      const scopedSchemas=schemasRes.value.filter(table=>!sourceId||table.dataSourceId===sourceId);
-      setSchemas(scopedSchemas);
-      
-      // If editing, map internal names to IDs and find the reference datasource
-      if (templateToEdit && schemasRes.value.length > 0) {
-        const leftSch = scopedSchemas.find(s => s.internalSchemaName === templateToEdit.leftInternalSchemaName && s.internalObjectName === templateToEdit.leftInternalObjectName);
-        const rightSch = scopedSchemas.find(s => s.internalSchemaName === templateToEdit.rightInternalSchemaName && s.internalObjectName === templateToEdit.rightInternalObjectName);
-        
-        if (leftSch) {
-          setReferenceDataSourceId(leftSch.dataSourceId);
-          setLeftSchemaId(leftSch.id);
-        } else if (rightSch) {
-          setReferenceDataSourceId(rightSch.dataSourceId);
+    setName(templateToEdit?.name || "");
+    setSuggestedAlias(templateToEdit?.suggestedAlias || "");
+    setJoinType(templateToEdit?.joinType || "left");
+    setIsEnabled(templateToEdit?.isEnabled ?? true);
+    setSchemas([]);
+    setDataSources([]);
+    setLeftSchemaId("");
+    setRightSchemaId("");
+    setLeftFieldId("");
+    setRightFieldId("");
+    setReferenceDataSourceId(sourceId || "");
+    void (async () => {
+      try {
+        const [sources, tables] = await Promise.all([
+          catalogApi.listDataSources(organizationId), catalogApi.listReportSchemas(),
+        ]);
+        if (cancelled) return;
+        if (isErr(sources) || isErr(tables)) {
+          setErrorMsg("Não foi possível consultar fontes e tabelas da organização. Feche e tente novamente.");
+          return;
         }
-        
-        if (rightSch) setRightSchemaId(rightSch.id);
-      } else if (dsRes && !isErr(dsRes) && dsRes.value.length > 0) {
-        // Automatically select the first datasource if not editing
-        setReferenceDataSourceId(sourceId||dsRes.value[0].id);
-      }
-    } else {
-      setErrorMsg("Erro ao carregar schemas para o formulário.");
-    }
-    } catch {setErrorMsg("Não foi possível consultar fontes e tabelas. Feche e tente novamente.");}
-    finally {setLoadingInitial(false);}
-  };
+        const scopedSources = sources.value.filter(source => source.organizationId === organizationId);
+        const sourceIds = new Set(scopedSources.map(source => source.id));
+        const scopedTables = tables.value.filter(table => sourceIds.has(table.dataSourceId));
+        setDataSources(scopedSources);
+        setSchemas(scopedTables);
+        if (templateToEdit) {
+          const ordered = [...scopedTables].sort((a,b) => Number(b.dataSourceId === sourceId) - Number(a.dataSourceId === sourceId));
+          const left = ordered.find(table => table.internalSchemaName === templateToEdit.leftInternalSchemaName && table.internalObjectName === templateToEdit.leftInternalObjectName);
+          const right = ordered.find(table => table.dataSourceId === left?.dataSourceId && table.internalSchemaName === templateToEdit.rightInternalSchemaName && table.internalObjectName === templateToEdit.rightInternalObjectName);
+          setReferenceDataSourceId(left?.dataSourceId || sourceId || "");
+          setLeftSchemaId(left?.id || "");
+          setRightSchemaId(right?.id || "");
+          if (!left || !right) setErrorMsg("As tabelas deste modelo não estão disponíveis nesta fonte. Escolha outra fonte compatível para editar a estrutura; nome e alias podem ser atualizados em modelos em uso.");
+        } else setReferenceDataSourceId(sourceId || scopedSources[0]?.id || "");
+      } catch {
+        if (!cancelled) setErrorMsg("Não foi possível consultar fontes e tabelas. Feche e tente novamente.");
+      } finally { if (!cancelled) setLoadingInitial(false); }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, templateToEdit, organizationId, sourceId]);
 
-  const [hasLoadedLeftInitial, setHasLoadedLeftInitial] = useState(false);
+  const [loadingLeft, setLoadingLeft] = useState(false);
+  const [loadingRight, setLoadingRight] = useState(false);
   useEffect(() => {
-    if (leftSchemaId) {
-      if (hasLoadedLeftInitial || !templateToEdit) {
-        setLeftFieldId("");
-      }
-      setHasLoadedLeftInitial(true);
-    }
-    const loadFields = async () => {
-      if (!leftSchemaId) {
-        setLeftFields([]);
-        return;
-      }
-      setLeftFields([]);
-      const res = await catalogApi.listReportFields(leftSchemaId);
-      if (!isErr(res)) {
-        setLeftFields(res.value);
-        if (templateToEdit && !hasLoadedLeftInitial) {
-          const field = res.value.find(f => f.internalFieldName === templateToEdit.leftInternalFieldName);
-          if (field) setLeftFieldId(field.id);
-        }
-      }
-    };
-    if (isOpen) loadFields();
-  }, [leftSchemaId, isOpen]);
+    let cancelled = false;
+    setLeftFields([]);
+    setLeftFieldId("");
+    if (!isOpen || !leftSchemaId) { setLoadingLeft(false); return; }
+    setLoadingLeft(true);
+    void catalogApi.listReportFields(leftSchemaId).then(result => {
+      if (cancelled) return;
+      if (isErr(result)) { setErrorMsg("Não foi possível consultar os campos da tabela esquerda. Selecione a tabela novamente para tentar."); return; }
+      setLeftFields(result.value);
+      const table = schemas.find(item => item.id === leftSchemaId);
+      if (table?.internalSchemaName === templateToEdit?.leftInternalSchemaName && table?.internalObjectName === templateToEdit?.leftInternalObjectName)
+        setLeftFieldId(result.value.find(field => field.internalFieldName === templateToEdit?.leftInternalFieldName)?.id || "");
+    }).catch(() => { if (!cancelled) setErrorMsg("Falha ao consultar campos da tabela esquerda."); })
+      .finally(() => { if (!cancelled) setLoadingLeft(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, leftSchemaId, schemas, templateToEdit]);
 
-  const [hasLoadedRightInitial, setHasLoadedRightInitial] = useState(false);
   useEffect(() => {
-    if (rightSchemaId) {
-      if (hasLoadedRightInitial || !templateToEdit) {
-        setRightFieldId("");
-      }
-      setHasLoadedRightInitial(true);
-    }
-    const loadFields = async () => {
-      if (!rightSchemaId) {
-        setRightFields([]);
-        return;
-      }
-      setRightFields([]);
-      const res = await catalogApi.listReportFields(rightSchemaId);
-      if (!isErr(res)) {
-        setRightFields(res.value);
-        if (templateToEdit && !hasLoadedRightInitial) {
-          const field = res.value.find(f => f.internalFieldName === templateToEdit.rightInternalFieldName);
-          if (field) setRightFieldId(field.id);
-        }
-      }
-    };
-    if (isOpen) loadFields();
-  }, [rightSchemaId, isOpen]);
+    let cancelled = false;
+    setRightFields([]);
+    setRightFieldId("");
+    if (!isOpen || !rightSchemaId) { setLoadingRight(false); return; }
+    setLoadingRight(true);
+    void catalogApi.listReportFields(rightSchemaId).then(result => {
+      if (cancelled) return;
+      if (isErr(result)) { setErrorMsg("Não foi possível consultar os campos da tabela direita. Selecione a tabela novamente para tentar."); return; }
+      setRightFields(result.value);
+      const table = schemas.find(item => item.id === rightSchemaId);
+      if (table?.internalSchemaName === templateToEdit?.rightInternalSchemaName && table?.internalObjectName === templateToEdit?.rightInternalObjectName)
+        setRightFieldId(result.value.find(field => field.internalFieldName === templateToEdit?.rightInternalFieldName)?.id || "");
+    }).catch(() => { if (!cancelled) setErrorMsg("Falha ao consultar campos da tabela direita."); })
+      .finally(() => { if (!cancelled) setLoadingRight(false); });
+    return () => { cancelled = true; };
+  }, [isOpen, rightSchemaId, schemas, templateToEdit]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(submitLock.current || loadingInitial)return;
+    if(submitLock.current || loadingInitial || loadingLeft || loadingRight)return;
     if (!name.trim() || !suggestedAlias.trim()) {
       setErrorMsg("Nome e Alias sugerido são obrigatórios.");
       return;
     }
-    if (!leftSchemaId || !leftFieldId || !rightSchemaId || !rightFieldId) {
+    if (!structureLocked && (!leftSchemaId || !leftFieldId || !rightSchemaId || !rightFieldId)) {
       setErrorMsg("Selecione os schemas e campos para os dois lados do Join.");
       return;
     }
@@ -204,26 +168,26 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
     const leftField = leftFields.find(f => f.id === leftFieldId);
     const rightField = rightFields.find(f => f.id === rightFieldId);
 
-    if (!leftSchema || !rightSchema || !leftField || !rightField) {
+    if (!structureLocked && (!leftSchema || !rightSchema || !leftField || !rightField)) {
       setErrorMsg("Seleção inválida.");
       return;
     }
 
-    if (leftSchema.id === rightSchema.id && leftField.id === rightField.id) {
+    if (!structureLocked && leftSchema?.id === rightSchema?.id && leftField?.id === rightField?.id) {
       setErrorMsg("Os lados do Join devem ser diferentes.");
       return;
     }
 
-    const payload: CreateReportJoinTemplateRequest = {
+    const payload: CreateReportJoinModelRequest = {
       name: name.trim(),
       suggestedAlias: suggestedAlias.trim().replace(/\s+/g, "_"),
       joinType,
-      leftInternalSchemaName: leftSchema.internalSchemaName,
-      leftInternalObjectName: leftSchema.internalObjectName,
-      leftInternalFieldName: leftField.internalFieldName,
-      rightInternalSchemaName: rightSchema.internalSchemaName,
-      rightInternalObjectName: rightSchema.internalObjectName,
-      rightInternalFieldName: rightField.internalFieldName,
+      leftInternalSchemaName: structureLocked ? templateToEdit!.leftInternalSchemaName : leftSchema!.internalSchemaName,
+      leftInternalObjectName: structureLocked ? templateToEdit!.leftInternalObjectName : leftSchema!.internalObjectName,
+      leftInternalFieldName: structureLocked ? templateToEdit!.leftInternalFieldName : leftField!.internalFieldName,
+      rightInternalSchemaName: structureLocked ? templateToEdit!.rightInternalSchemaName : rightSchema!.internalSchemaName,
+      rightInternalObjectName: structureLocked ? templateToEdit!.rightInternalObjectName : rightSchema!.internalObjectName,
+      rightInternalFieldName: structureLocked ? templateToEdit!.rightInternalFieldName : rightField!.internalFieldName,
       isEnabled,
     };
 
@@ -237,10 +201,10 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
 
   return (
     <div className="modal-backdrop">
-      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={templateToEdit ? "Editar modelo de relacionamento" : "Novo modelo de relacionamento"} className="modal-container join-template-dialog" style={{ maxWidth: "600px", display: "flex", flexDirection: "column", overflow: "hidden", maxHeight: "90vh" }}>
+      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title || (templateToEdit ? "Editar modelo de junção" : "Novo modelo de junção")} className="modal-container join-template-dialog" style={{ maxWidth: "600px", display: "flex", flexDirection: "column", overflow: "hidden", maxHeight: "90vh" }}>
         <div className="modal-header" style={{ flexShrink: 0 }}>
           <h2 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 700 }}>
-            {templateToEdit ? "Editar modelo de relacionamento" : "Novo modelo de relacionamento"}
+            {title || (templateToEdit ? "Editar modelo de junção" : "Novo modelo de junção")}
           </h2>
           <button onClick={onClose} aria-label="Fechar" disabled={submitting} className="btn-icon">
             <X size={20} />
@@ -254,7 +218,8 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
             </div>
           )}
 
-          {loadingInitial&&<NeutralLoader compact message="Consultando tabelas e campos da fonte de referência…"/>}
+          {(loadingInitial || loadingLeft || loadingRight)&&<NeutralLoader compact message="Consultando tabelas e campos da fonte de referência…"/>}
+          {structureLocked&&<p className="source-notice">Este modelo é utilizado por relatórios. Você pode alterar o nome e alias sugerido; a estrutura e habilitação estão protegidas. Duplique para criar uma alternativa.</p>}
           <form id="join-template-form" onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
             {/* Reference DataSource */}
             <div style={{ background: "rgba(99, 102, 241, 0.05)", padding: "1rem", borderRadius: "8px", border: "1px solid rgba(99, 102, 241, 0.2)" }}>
@@ -270,7 +235,7 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                 }}
                 className="form-input"
                 aria-label="Fonte de referência"
-                disabled={loadingInitial || Boolean(sourceId)}
+                disabled={loadingInitial || structureLocked}
               >
                 <option value="">Selecione um DataSource...</option>
                 {dataSources.map((ds) => (
@@ -278,7 +243,7 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                 ))}
               </select>
               <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                O Join Template salvará apenas os nomes internos das tabelas, tornando-se agnóstico e aplicável a qualquer DataSource que possua essas mesmas tabelas.
+                O modelo pertence à organização e guarda os nomes internos das tabelas e campos. A fonte de referência apenas ajuda no cadastro; o modelo poderá ser usado nas fontes compatíveis desta organização.
               </p>
             </div>
 
@@ -288,6 +253,7 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                 <input
                   type="text"
                   required
+                  aria-label="Nome"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="form-input"
@@ -299,6 +265,7 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                 <input
                   type="text"
                   required
+                  aria-label="Alias sugerido"
                   value={suggestedAlias}
                   onChange={(e) => setSuggestedAlias(e.target.value.replace(/\s+/g, "_"))}
                   className="form-input"
@@ -311,6 +278,8 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
               <div>
                 <label className="form-label">Tipo de Join</label>
                 <select
+                  aria-label="Tipo de junção"
+                  disabled={structureLocked}
                   value={joinType}
                   onChange={(e) => setJoinType(e.target.value as JoinType)}
                   className="form-input"
@@ -323,6 +292,7 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                 <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer", fontSize: "0.9rem", fontWeight: 500 }}>
                   <input
                     type="checkbox"
+                    disabled={structureLocked}
                     checked={isEnabled}
                     onChange={(e) => setIsEnabled(e.target.checked)}
                     style={{ cursor: "pointer" }}
@@ -339,10 +309,11 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                   <label className="form-label">Schema</label>
                   <select
                     required
+                    aria-label="Tabela esquerda"
                     value={leftSchemaId}
                     onChange={(e) => setLeftSchemaId(e.target.value)}
                     className="form-input"
-                    disabled={loadingInitial || !referenceDataSourceId}
+                    disabled={structureLocked || loadingInitial || !referenceDataSourceId}
                   >
                     <option value="">Selecione um schema...</option>
                     {filteredSchemas.map((s) => (
@@ -354,10 +325,11 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                   <label className="form-label">Campo</label>
                   <select
                     required
+                    aria-label="Campo esquerdo"
                     value={leftFieldId}
                     onChange={(e) => setLeftFieldId(e.target.value)}
                     className="form-input"
-                    disabled={!leftSchemaId || leftFields.length === 0}
+                    disabled={structureLocked || !leftSchemaId || leftFields.length === 0}
                   >
                     <option value="">Selecione um campo...</option>
                     {leftFields.map((f) => (
@@ -375,10 +347,11 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                   <label className="form-label">Schema</label>
                   <select
                     required
+                    aria-label="Tabela direita"
                     value={rightSchemaId}
                     onChange={(e) => setRightSchemaId(e.target.value)}
                     className="form-input"
-                    disabled={loadingInitial || !referenceDataSourceId}
+                    disabled={structureLocked || loadingInitial || !referenceDataSourceId}
                   >
                     <option value="">Selecione um schema...</option>
                     {filteredSchemas.map((s) => (
@@ -390,10 +363,11 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
                   <label className="form-label">Campo</label>
                   <select
                     required
+                    aria-label="Campo direito"
                     value={rightFieldId}
                     onChange={(e) => setRightFieldId(e.target.value)}
                     className="form-input"
-                    disabled={!rightSchemaId || rightFields.length === 0}
+                    disabled={structureLocked || !rightSchemaId || rightFields.length === 0}
                   >
                     <option value="">Selecione um campo...</option>
                     {rightFields.map((f) => (
@@ -419,11 +393,11 @@ export const JoinTemplateModal: React.FC<JoinTemplateModalProps> = ({
             type="submit"
             form="join-template-form"
             className="btn btn-primary"
-            disabled={submitting || loadingInitial}
+            disabled={submitting || loadingInitial || loadingLeft || loadingRight}
             style={{ minWidth: "120px", justifyContent: "center" }}
           >
             {submitting && <Loader2 size={16} className="animate-spin" />}
-            {templateToEdit ? "Atualizar" : "Criar"}
+            {title?.startsWith("Duplicar")?"Criar cópia":templateToEdit ? "Atualizar" : "Criar"}
           </button>
         </div>
       </div>

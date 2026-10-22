@@ -131,3 +131,7 @@
 .catalog-schema-picker__bulk p { margin: 0; color: var(--text-secondary); font-size: .8rem; }
 
 .catalog-templates-page__header h3{margin:0;font-size:1.2rem;}.catalog-template-card h4{margin:0;font-size:1.15rem;}
+
+.join-library {display:grid;gap:1rem;min-width:0;}
+.join-library .source-model-tabs {flex-wrap:wrap;}
+.join-library .catalog-template-card p {overflow-wrap:anywhere;}
