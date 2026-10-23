@@ -86,7 +86,7 @@ function UserExportNotifications() {
           {error && <><Alert type="error" message={error}/><button className="btn btn-secondary" onClick={refresh}>Tentar novamente</button></>}
           {loading ? <NeutralLoader message="Consultando exportações e notificações…"/> : error && jobs.length === 0 && notices.length === 0 ? null : <>
             <section aria-label="Arquivos exportados"><h3>Arquivos</h3>{jobs.length === 0 && <p>Nenhuma exportação solicitada.</p>}
-              {jobs.map(job => <article key={job.id} className="export-notice"><strong>{job.title}</strong><span>{job.format.toUpperCase()} · {labels[job.status]}</span>
+              {jobs.map(job => <article key={job.id} className="export-notice"><strong>{job.title}</strong><small>Organização: {job.organizationName?.trim() || "Organização indisponível"}</small><span>{job.format.toUpperCase()} · {labels[job.status]}</span>
                 <time dateTime={job.createdAt}>Solicitada em {new Date(job.createdAt).toLocaleString("pt-BR")}</time>
                 {(job.status === "queued" || job.status === "running") && (job.serviceStatus === "unavailable" ? <Alert type="warning" message="O serviço de geração está indisponível. Seu pedido permanece registrado. Avise o administrador; não é necessário solicitar novamente."/> : <NeutralLoader compact message={job.status === "queued" ? "Aguardando processamento. Você pode continuar usando o sistema." : "Gerando o arquivo. O download aparecerá aqui quando terminar."}/>)}
                 {job.expiresAt && <small>Disponível até {new Date(job.expiresAt).toLocaleString("pt-BR")}</small>}

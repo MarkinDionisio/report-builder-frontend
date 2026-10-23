@@ -14,7 +14,7 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
   let completed = false;
   let posted: unknown;
   const expiresAt = new Date(Date.now() + 86400000).toISOString();
-  const job = () => ({ id: "job", reportId: "report", title, format: "csv", status: completed ? "ready" : "queued", serviceStatus: completed ? "available" : "unavailable", createdAt: new Date(Date.now() - 40 * 60_000).toISOString(), expiresAt });
+  const job = () => ({ id: "job", reportId: "report", organizationId: "org", organizationName: "Empresa com nome extenso para identificação da organização de origem", title, format: "csv", status: completed ? "ready" : "queued", serviceStatus: completed ? "available" : "unavailable", createdAt: new Date(Date.now() - 40 * 60_000).toISOString(), expiresAt });
   await page.route("**/api/v1/reports/report/exports", route => { posted = route.request().postDataJSON(); ready = true; return route.fulfill({ ...json({ id: "job", status: "queued" }), status: 202 }); });
   await page.route("**/api/v1/report-exports?**", route => route.fulfill(json({ data: ready ? [job()] : [], totalCount: ready ? 1 : 0 })));
   await page.route("**/api/v1/report-exports/job", route => route.fulfill(json(job())));
@@ -34,6 +34,7 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
   await page.getByRole("button", { name: "Acompanhar exportações" }).click();
   const dialog = page.getByRole("dialog", { name: "Exportações e notificações" });
   await expect(dialog.getByText("CSV · Disponível")).toBeVisible();
+  await expect(dialog.getByText("Organização: Empresa com nome extenso para identificação da organização de origem")).toBeVisible();
   await expect(dialog.getByText(/Disponível até/)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath(`exports-${width}.png`), fullPage: true });

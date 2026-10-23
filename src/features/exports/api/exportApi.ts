@@ -6,6 +6,7 @@ import type { RuntimeFilter } from "../../creator/types/creatorTypes";
 
 export type ExportFormat = "xlsx" | "csv";
 export interface ExportJob {
+  organizationId?: string; organizationName?: string | null;
   id: string; reportId: string; title: string; format: ExportFormat;
   status: "queued" | "running" | "ready" | "failed" | "expired";
   createdAt: string; expiresAt: string | null; error: string | null; errorCode?: string;

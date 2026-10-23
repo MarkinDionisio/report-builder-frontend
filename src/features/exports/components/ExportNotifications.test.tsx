@@ -76,3 +76,20 @@ it("keeps historical export failures localized without rewriting notification da
   expect(await screen.findByText("Não foi possível gerar o arquivo. Revise os parâmetros e tente novamente.")).toBeVisible();
   expect(screen.queryByText("The source field is unavailable.")).not.toBeInTheDocument();
 });
+
+it("identifies same-title exports from different organizations and handles unavailable names", async () => {
+  const base = { reportId: "report", title: "Vendas", format: "csv" as const, status: "ready" as const, createdAt: "2026-10-23T12:00:00Z", expiresAt: null, error: null };
+  vi.mocked(exportApi.list).mockResolvedValue(ok({ data: [
+    { ...base, id: "one", organizationId: "org-one", organizationName: "Empresa Norte" },
+    { ...base, id: "two", organizationId: "org-two", organizationName: "Empresa Sul" },
+    { ...base, id: "three", organizationId: "private-id", organizationName: null },
+  ], totalCount: 3, page: 1, pageSize: 20 }));
+  render(<MemoryRouter><ExportNotifications/></MemoryRouter>);
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: /Exportações e notificações/ }));
+  expect(await screen.findByText("Organização: Empresa Norte")).toBeVisible();
+  expect(screen.getByText("Organização: Empresa Sul")).toBeVisible();
+  expect(screen.getByText("Organização: Organização indisponível")).toBeVisible();
+  expect(screen.getAllByText("Vendas")).toHaveLength(3);
+  expect(screen.queryByText("private-id")).not.toBeInTheDocument();
+});
