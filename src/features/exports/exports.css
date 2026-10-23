@@ -1,0 +1,17 @@
+.report-export-action { margin: 1rem 0; }
+.report-export-action > div:first-child { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.report-export-action p { color: var(--text-secondary); font-size: .875rem; margin: .5rem 0; }
+.export-bell { position: relative; margin-left: auto; margin-right: .75rem; flex-shrink: 0; }
+.export-bell__count { background: var(--primary-500); color: white; border-radius: 1rem; padding: .125rem .4rem; font-size: .75rem; }
+.export-notifications-backdrop { position: fixed; inset: 0; z-index: 1200; background: #0008; display: flex; justify-content: flex-end; padding: 24px; }
+.export-notifications { width: 580px; max-width: 100%; min-width: 0; background: var(--bg-card); color: var(--text-primary); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 48px #0004; }
+.export-notifications > header { display: flex; gap: 1rem; align-items: center; justify-content: space-between; padding: 24px; border-bottom: 1px solid var(--border-color); }
+.export-notifications h2 { font-size: 1.125rem; margin: 0; }
+.export-notifications__body { overflow-y: auto; min-height: 0; padding: 24px; }
+.export-notifications__body section + section { margin-top: 24px; }
+.export-notice { display: flex; flex-direction: column; align-items: flex-start; gap: .5rem; border-bottom: 1px solid var(--border-color); padding: 1rem 0; overflow-wrap: anywhere; }
+.export-notice p { margin: 0; }
+.export-notice time, .export-notice small { color: var(--text-secondary); font-size: .8rem; }
+.export-notifications > footer { padding: 16px 24px; border-top: 1px solid var(--border-color); font-size: .8rem; color: var(--text-secondary); }
+.export-notifications__pages { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: 1rem; }
+@media(max-width:720px) { .export-notifications-backdrop { padding: 16px; } .export-notifications > header, .export-notifications__body, .export-notifications > footer { padding: 16px; } .export-bell { margin-right: .5rem; } }

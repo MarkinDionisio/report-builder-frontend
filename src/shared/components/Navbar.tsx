@@ -4,6 +4,7 @@ import { useAuth } from "../../features/auth/context/AuthContext";
 import { LogOut, LayoutDashboard, Building2, Menu, X, PenTool, PanelLeftClose, PanelLeftOpen, ChevronDown } from "lucide-react";
 import { getUserCapabilities } from "../utils/capabilities";
 import { getGlobalRoleLabel } from "../utils/roles";
+import { ExportNotifications } from "../../features/exports/components/ExportNotifications";
 
 export const Navbar: React.FC = () => {
   const { state, logout } = useAuth();
@@ -54,6 +55,7 @@ export const Navbar: React.FC = () => {
           {isOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
         <span className="app-topbar__context">{links.find((item) => item.active)?.label || "Report Builder"}</span>
+        <ExportNotifications/>
         <div className="app-user-menu">
           <button className="app-user-menu__trigger" onClick={() => setUserMenuOpen((value) => !value)} aria-expanded={userMenuOpen}>
             <span className="app-avatar">{user.name.slice(0, 1).toUpperCase()}</span>

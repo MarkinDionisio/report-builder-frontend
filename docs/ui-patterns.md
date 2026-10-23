@@ -95,3 +95,9 @@ Novos padrões explicitamente aprovados pelo usuário devem ser incorporados aqu
 - Quando uma API anterior omitir o nome da empresa nas etiquetas, resolver o nome pelos relatórios acessíveis filtrados por organização, uma consulta por empresa. Não exibir UUID como nome; se a organização não estiver mais disponível, informar “Empresa indisponível”.
 
 - Na área de criação, Abrir é a ação principal visível; Editar relatório e Excluir relatório ficam no menu Opções. Reutilizar SourceActionMenu e ConfirmDeleteModal, identificar o relatório, informar o impacto no acesso compartilhado e preservar dados da fonte. Após excluir, atualizar lista e contagem e voltar à página anterior quando a última linha da página for removida; manter filtros da URL. Falhas permanecem no modal.
+
+## Exportações e notificações
+
+- Na execução de relatórios salvos com dados, Exportar dados oferece Excel e CSV para todas as linhas. Informar que será feita nova consulta com os parâmetros informados na última execução; períodos automáticos são calculados no servidor ao solicitar. Congelar esses valores durante a espera na fila. Alterar parâmetros exige executar novamente antes de solicitar. Confirmar a entrada na fila sem manter a tela bloqueada durante a geração.
+- O sino da navegação reúne avisos persistidos e arquivos do usuário, com contador de não lidos, estados Na fila, Gerando, Disponível, Falhou e Expirada. Disponibilizar download explícito, validade de 24 horas e acesso ao relatório para nova solicitação. Não iniciar download automaticamente.
+- Atualizar exportações e avisos a cada 15 segundos com sessão autenticada e aba visível, e ao retornar à aba. Preservar os dados em falhas de atualização, permitir nova tentativa e limpar o contexto ao trocar usuário. O painel deve funcionar em desktop e celular, com fechamento por Escape, foco contido e devolvido ao sino.

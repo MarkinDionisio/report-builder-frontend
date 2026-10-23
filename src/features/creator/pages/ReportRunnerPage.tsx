@@ -1,4 +1,5 @@
 import { ReportMetadata } from "../components/ReportMetadata";
+import { ReportExportAction } from "../../exports/components/ReportExportAction";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Clock3, Play, SlidersHorizontal } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
@@ -20,9 +21,11 @@ export function ReportRunnerPage() {
 
 function ReportRunnerContent() {
   const executionLock = useRef(false);
+  const parameterVersion = useRef(0);
   const { reportId } = useParams<{ reportId: string }>();
   const [report, setReport] = useState<ReportDetail | null>(null);
   const [parameters, setParameters] = useState<Record<string, unknown>>({});
+  const [lastExecutionParameters, setLastExecutionParameters] = useState<Record<string, unknown>>({});
   const [result, setResult] = useState<ExecuteResponse | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
@@ -35,9 +38,11 @@ function ReportRunnerContent() {
   const runExecution = useCallback(async (targetPage: number, targetPageSize: number, detail: ReportDetail, targetParameters: Record<string, unknown>) => {
     if (executionLock.current || !reportId || !detail || detail.canExecute === false || requiredParametersMissing(detail.content.parameters || [], targetParameters)) return;
     executionLock.current = true;
+    const inputVersion = parameterVersion.current;
     setExecuting(true); setError(null);
     try {
       const response = await creatorApi.executeReport(reportId, { parameters: targetParameters, filters: [], page: targetPage, pageSize: targetPageSize });
+      if (inputVersion !== parameterVersion.current) return;
       setExecuting(false);
       if (isErr(response)) {
         setError(response.error.detail || "Não foi possível executar o relatório.");
@@ -45,7 +50,7 @@ function ReportRunnerContent() {
           setReport(current => current ? { ...current, canExecute: false, executionBlockCode: response.error.code! } : current);
         }
       }
-      else { setResult(response.value); setPage(targetPage); setLastExecutedAt(new Date()); setParametersExpanded((detail.content.parameters?.length ?? 0) > 0); }
+      else { setResult(response.value); setLastExecutionParameters(structuredClone(targetParameters)); setPage(targetPage); setLastExecutedAt(new Date()); setParametersExpanded((detail.content.parameters?.length ?? 0) > 0); }
     } catch { setError("Falha de comunicação ao executar relatório. Tente novamente."); }
     finally { executionLock.current = false; setExecuting(false); }
   }, [reportId]);
@@ -79,9 +84,10 @@ function ReportRunnerContent() {
       {report.canExecute === false && report.executionBlockCode !== "report_execution.global_template_requires_import" && <ReportAccessBlockPanel blockedSchemas={report.blockedSchemas} title="Execução bloqueada" description="Você pode consultar este relatório, mas ainda não possui acesso para executá-lo. Solicite ao administrador da organização as permissões indicadas abaixo."/>}
       <section className={`report-parameters${parametersExpanded ? " report-parameters--expanded" : ""}`}>
         <button type="button" className="report-parameters__toggle" aria-expanded={parametersExpanded} onClick={() => setParametersExpanded((current) => !current)}><span><SlidersHorizontal size={18}/><span><strong>Parâmetros</strong><small>{missingRequired ? "Preencha os campos obrigatórios" : lastExecutedAt ? "Valores usados na execução" : "Revise antes de executar"}</small></span></span>{parametersExpanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</button>
-        {parametersExpanded && <div className="report-parameters__content"><ExecutionParameterForm parameters={report.content.parameters || []} where={report.content.dataset.where} resolvedParameters={result?.resolvedParameters} values={parameters} onChange={(values) => { setParameters(values); setResult(null); setPage(1); setLastExecutedAt(null); setParametersExpanded(true); }}/>{missingRequired && <p className="report-parameters__required">Preencha os campos obrigatórios para executar.</p>}<div className="report-parameters__actions">{report.executionBlockCode !== "report_execution.global_template_requires_import" && <button className="btn btn-primary" disabled={executing || missingRequired || report.canExecute === false} onClick={() => void execute(1)}><Play size={16}/>{executing ? "Executando…" : "Executar relatório"}</button>}</div></div>}
+        {parametersExpanded && <div className="report-parameters__content"><ExecutionParameterForm parameters={report.content.parameters || []} where={report.content.dataset.where} resolvedParameters={result?.resolvedParameters} values={parameters} onChange={(values) => { parameterVersion.current++; setParameters(values); setResult(null); setPage(1); setLastExecutedAt(null); setParametersExpanded(true); }}/>{missingRequired && <p className="report-parameters__required">Preencha os campos obrigatórios para executar.</p>}<div className="report-parameters__actions">{report.executionBlockCode !== "report_execution.global_template_requires_import" && <button className="btn btn-primary" disabled={executing || missingRequired || report.canExecute === false} onClick={() => void execute(1)}><Play size={16}/>{executing ? "Executando…" : "Executar relatório"}</button>}</div></div>}
       </section>
       {result?.warnings?.length ? <div className="report-runner__warnings">{result.warnings.map((warning) => <Alert key={`${warning.itemIndex}-${warning.fieldId}`} type="warning" message={warning.message}/>)}</div> : null}
+      {result && result.rows.length > 0 && reportId && <ReportExportAction key={`${reportId}-${lastExecutedAt?.getTime()}`} reportId={reportId} parameters={lastExecutionParameters} disabled={executing || report.canExecute === false}/>}
       <ReportPresentationRenderer presentation={report.content.presentation} select={report.content.dataset.select} result={result} loading={executing} page={page} pageSize={pageSize} onPageChange={(targetPage) => void execute(targetPage)} onPageSizeChange={changePageSize}/>
     </>}
   </main></div>;

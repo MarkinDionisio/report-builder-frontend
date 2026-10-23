@@ -383,7 +383,7 @@ option {
   border-bottom: 1px solid var(--border-color); backdrop-filter: blur(16px);
   transition: left var(--transition-normal);
 }
-.app-topbar__context { font-weight: 650; letter-spacing: -.01em; }
+.app-topbar__context { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 650; letter-spacing: -.01em; }
 .app-sidebar {
   position: fixed; z-index: 90; inset: 0 auto 0 0; width: var(--sidebar-width); display: flex;
   flex-direction: column; padding: 1rem .75rem; background: #0b101a; border-right: 1px solid var(--border-color);
@@ -434,14 +434,14 @@ option {
 .card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
 
 @media (max-width: 860px) {
-  .app-topbar, .has-collapsed-sidebar .app-topbar { left: 0; }
+  .app-topbar, .has-collapsed-sidebar .app-topbar { left: 0; transition: none; gap: .5rem; }
   .app-sidebar, .app-sidebar.is-collapsed { width: min(86vw, 290px); transform: translateX(-102%); box-shadow: var(--shadow-lg); }
   .app-sidebar.is-open { transform: translateX(0); }
   .app-sidebar.is-collapsed .app-brand-copy, .app-sidebar.is-collapsed .app-nav-link span, .app-sidebar.is-collapsed .app-nav-group__label { opacity: 1; }
   .app-sidebar__collapse { display: none; }
   .mobile-hamburger-btn { display: grid; place-items: center; }
   .app-sidebar-backdrop { display: block; position: fixed; z-index: 85; inset: 0; border: 0; background: rgba(0,0,0,.58); }
-  .has-app-shell, .has-app-shell.has-collapsed-sidebar { padding-left: 0; }
+  .has-app-shell, .has-app-shell.has-collapsed-sidebar { padding-left: 0; transition: none; }
   .app-user-menu__trigger > span:nth-child(2) { display: none; }
   .creator-workspace-header { padding-top: calc(var(--topbar-height) + 1.25rem) !important; }
 }
