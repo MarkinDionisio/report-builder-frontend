@@ -315,5 +315,5 @@ export interface ReportImportIssue { code: string; path: string; referenceId: st
 export interface ReportImportCheck { canImport: boolean; issues: ReportImportIssue[]; joinModels?: Array<{name:string;action:"create"|"reuse";modelId:string|null}>; }
 export interface ReportImportDataSource { id: string; name: string; }
 
-export interface ReportTag { id: string; organizationId: string; name: string; }
+export interface ReportTag { id: string; organizationId: string; organizationName?: string | null; name: string; }
 export interface ReportListFilters { organizationId?: string; search?: string; matchCase?: boolean; exactMatch?: boolean; tagIds?: string[]; untagged?: boolean; }

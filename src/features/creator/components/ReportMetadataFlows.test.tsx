@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
@@ -66,4 +67,39 @@ it("requires deletion confirmation, preserves labels on failure and supports ret
   fireEvent.click(screen.getByRole("button",{name:"Confirmar Exclusão"}));
   await waitFor(()=>expect(screen.queryByRole("button",{name:"Excluir Vendas"})).not.toBeInTheDocument());
   expect(creatorApi.deleteReportTag).toHaveBeenCalledTimes(2);
+});
+
+it("removes selected chips, clears selection and closes options with Escape", () => {
+  function Picker() { const [selected,setSelected]=useState(["sales","finance"]); return <TagChoices tags={tags} selected={selected} onChange={setSelected}/>; }
+  render(<Picker/>);
+  fireEvent.click(screen.getByRole("button",{name:"Remover etiqueta Vendas"}));
+  expect(screen.queryByRole("button",{name:"Remover etiqueta Vendas"})).not.toBeInTheDocument();
+  fireEvent.focus(screen.getByRole("textbox",{name:"Buscar etiquetas"}));
+  expect(screen.getByRole("checkbox",{name:"Financeiro"})).toBeChecked();
+  fireEvent.keyDown(screen.getByRole("textbox",{name:"Buscar etiquetas"}),{key:"Escape"});
+  expect(screen.queryByRole("group",{name:"Opções de etiquetas"})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button",{name:"Limpar etiquetas selecionadas"}));
+  expect(screen.queryByRole("button",{name:"Remover etiqueta Financeiro"})).not.toBeInTheDocument();
+});
+it("distinguishes same-name dashboard tags by organization and searches organization names", async () => {
+  vi.mocked(creatorApi.listReportTags).mockResolvedValue({ok:true,value:[
+    {id:"sales-a",organizationId:"a",organizationName:"Fabrica Sistemas",name:"Vendas"},
+    {id:"sales-b",organizationId:"b",organizationName:"Outra empresa",name:"Vendas"},
+  ]});
+  render(<MemoryRouter initialEntries={["/?tagIds=sales-a"]}><ReportBrowser/></MemoryRouter>);
+  await screen.findByRole("button",{name:"Remover etiqueta Vendas · Fabrica Sistemas"});
+  fireEvent.focus(screen.getByRole("textbox",{name:"Buscar etiquetas"}));
+  expect(screen.getByRole("checkbox",{name:"Vendas · Fabrica Sistemas"})).toBeChecked();
+  expect(screen.getByRole("checkbox",{name:"Vendas · Outra empresa"})).not.toBeChecked();
+  fireEvent.change(screen.getByRole("textbox",{name:"Buscar etiquetas"}),{target:{value:"Outra empresa"}});
+  expect(screen.queryByRole("checkbox",{name:"Vendas · Fabrica Sistemas"})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("checkbox",{name:"Vendas · Outra empresa"}));
+  await waitFor(()=>expect(creatorApi.listReports).toHaveBeenLastCalledWith(1,20,expect.objectContaining({tagIds:["sales-a","sales-b"]})));
+});
+
+it("keeps organization-scoped tag labels short", () => {
+  render(<TagChoices tags={[{id:"sales",organizationId:"org",organizationName:"Fabrica Sistemas",name:"Vendas"}]} selected={["sales"]} onChange={vi.fn()}/>);
+  expect(screen.getByRole("button",{name:"Remover etiqueta Vendas"})).toBeVisible();
+  fireEvent.focus(screen.getByRole("textbox",{name:"Buscar etiquetas"}));
+  expect(screen.getByRole("checkbox",{name:"Vendas"})).toBeVisible();
 });

@@ -50,7 +50,22 @@ function handleVoidResponse(
 
 export const creatorApi = {
   async listReportTags(organizationId?: string): Promise<Result<ReportTag[], ApiProblemDetails>> {
-    return parseJsonResponse(await apiFetch(organizationId ? `/api/v1/organizations/${organizationId}/report-tags` : "/api/v1/reports/tags"));
+    const result = await parseJsonResponse<ReportTag[]>(await apiFetch(organizationId ? `/api/v1/organizations/${organizationId}/report-tags` : "/api/v1/reports/tags"));
+    if (isErr(result) || organizationId) return result;
+    // Older APIs lack organizationName. Resolve it through authorized report discovery,
+    // which also works for shared reports without organization membership.
+    const missing = [...new Set(result.value.filter(tag => !tag.organizationName?.trim()).map(tag => tag.organizationId))];
+    const names = await Promise.all(missing.map(async id => {
+      const reports = await creatorApi.listReports(1, 1, { organizationId: id });
+      return { id, reports };
+    }));
+    const organizationNames = new Map<string, string>();
+    for (const { id, reports } of names) {
+      if (isErr(reports)) return err(reports.error);
+      const report = reports.value.data.find(report => report.organizationId === id);
+      if (report?.organizationName?.trim()) organizationNames.set(id, report.organizationName);
+    }
+    return ok(result.value.map(tag => ({ ...tag, organizationName: tag.organizationName?.trim() || organizationNames.get(tag.organizationId) || null })));
   },
   async saveReportTag(organizationId: string, name: string, id?: string): Promise<Result<ReportTag, ApiProblemDetails>> {
     return parseJsonResponse(await apiFetch(`/api/v1/organizations/${organizationId}/report-tags${id ? "/"+id : ""}`, { method: id ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }));
