@@ -119,3 +119,5 @@ For saved reports with data, Exportar dados offers Excel/CSV for all rows. Expla
 The navigation bell combines persisted notices/files with unread count and Portuguese statuses Na fila, Gerando, Disponível, Falhou, Expirada. Downloads are explicit, files last 24 hours, and new requests require report access. Never start downloads automatically.
 
 Refresh every fifteen seconds while authenticated/visible and on tab return. Retain data on update failure, allow retries, and clear context on user changes. Support desktop/mobile, Escape closing, contained focus, and restoring focus to the bell. Persisted notification messages are Portuguese presentation; raw export errors use localized fallbacks, including historical records.
+
+Unread export notices use a subtle tinted background, a thin accent edge, and a small dot with the Portuguese label Não lida. Derive the highlight from persisted readAt and remove it after confirmed reading; opening the panel alone does not mark notices read.

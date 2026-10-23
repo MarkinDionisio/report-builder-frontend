@@ -10,6 +10,7 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
   const title = "Relatório de vendas e movimentações com nome extenso para validar o painel";
   await page.route("**/api/v1/reports/report", route => route.fulfill(json({ id: "report", title, organizationName: "Empresa", canExecute: true, content: { version: 1, parameters: [{ name: "store", label: "Filial", type: "string", source: "input", required: false }], dataset: { select: [{ fieldId: "amount", alias: "Total" }] } } })));
   await page.route("**/api/v1/reports/report/execute", route => route.fulfill(json({ columns: [{ alias: "Total", type: "number" }], rows: [{ Total: 10 }], rowCount: 1, page: 1, pageSize: 50, durationMs: 10, resolvedParameters: { store: "one" } })));
+  let noticeRead = false;
   let ready = false;
   let completed = false;
   let posted: unknown;
@@ -18,13 +19,14 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
   await page.route("**/api/v1/reports/report/exports", route => { posted = route.request().postDataJSON(); ready = true; return route.fulfill({ ...json({ id: "job", status: "queued" }), status: 202 }); });
   await page.route("**/api/v1/report-exports?**", route => route.fulfill(json({ data: ready ? [job()] : [], totalCount: ready ? 1 : 0 })));
   await page.route("**/api/v1/report-exports/job", route => route.fulfill(json(job())));
-  await page.route("**/api/v1/notifications?**", route => route.fulfill(json({ data: ready ? [{ id: "notice", jobId: "job", message: "Exportação disponível", createdAt: new Date().toISOString(), readAt: null }] : [], totalCount: ready ? 1 : 0, unreadCount: ready ? 1 : 0 })));
+  await page.route("**/api/v1/notifications?**", route => route.fulfill(json({ data: ready ? [{ id: "notice", jobId: "job", message: "Exportação disponível", createdAt: new Date().toISOString(), readAt: noticeRead ? new Date().toISOString() : null }, { id: "read-notice", jobId: "older-job", message: "Aviso anterior já lido", createdAt: new Date().toISOString(), readAt: new Date().toISOString() }] : [], totalCount: ready ? 2 : 0, unreadCount: ready && !noticeRead ? 1 : 0 })));
   await page.route("**/api/v1/report-exports/job/download", route => route.fulfill({ status: 200, contentType: "text/csv", headers: { "Content-Disposition": "attachment; filename=relatorio.csv" }, body: "Total\r\n10\r\n" }));
   let denyExport = true;
   await page.route("**/api/v1/reports/report/exports", async route => {
     if (denyExport) return route.fulfill({ ...json({ code: "export.global_template", status: 403 }), status: 403 });
     return route.fallback();
   });
+  await page.route("**/api/v1/notifications/notice/read", route => { noticeRead = true; return route.fulfill({ status: 204 }); });
   await page.goto("/reports/report/run");
   await page.getByLabel("Filial", { exact: true }).fill("one");
   await page.getByRole("button", { name: "Executar relatório", exact: true }).click();
@@ -54,6 +56,11 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
   await expect(dialog.getByText(/Disponível até/)).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath(`exports-${width}.png`), fullPage: true });
+  await expect(dialog.getByText("Não lida", { exact: true })).toHaveCount(1);
+  await expect(dialog.getByText("Aviso anterior já lido")).toBeVisible();
+  await dialog.getByRole("button", { name: "Marcar como lida" }).click();
+  await expect(dialog.getByText("Não lida", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByText("Exportação disponível", { exact: true })).toBeVisible();
   const downloadEvent = page.waitForEvent("download");
   await dialog.getByRole("button", { name: "Baixar arquivo" }).click();
   expect((await downloadEvent).suggestedFilename()).toBe("relatorio.csv");
