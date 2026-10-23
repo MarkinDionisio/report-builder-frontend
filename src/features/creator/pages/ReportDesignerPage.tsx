@@ -1,5 +1,7 @@
+import { useModalFocus } from "../../../shared/hooks/useModalFocus";
+import { ReportTagPicker } from "../components/ReportTagPicker";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert, KNOWN_ERROR_CODES } from "../../../shared/components/Alert";
@@ -233,9 +235,15 @@ export const ReportDesignerPage: React.FC = () => {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showConfirmChangeBase, setShowConfirmChangeBase] = useState(false);
   const [reportTitle, setReportTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [tagIds, setTagIds] = useState<string[]>([]);
+  const [tagsReady, setTagsReady] = useState(false);
+  const [availableFilters, setAvailableFilters] = useState<ReportDetail["allowedFilters"]>([]);
   const [visibilityScope, setVisibilityScope] = useState<"private" | "organization" | "global">("private");
   const [isSaving, setIsSaving] = useState(false);
+  const savePending = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const saveDialogRef = useModalFocus(showSaveModal, () => setShowSaveModal(false), isSaving);
   const [showDevJson, setShowDevJson] = useState(false);
 
   // Step 3 UI state
@@ -290,6 +298,8 @@ export const ReportDesignerPage: React.FC = () => {
       if (existingReport) {
         const r = existingReport;
         setReportTitle(r.title);
+        setAvailableFilters(r.allowedFilters || []);
+        setDescription(r.description || ""); setTagIds((r.tags || []).map(tag => tag.id));
         setVisibilityScope(r.visibilityScope as any);
         setReportContent(r.content);
         
@@ -481,7 +491,7 @@ export const ReportDesignerPage: React.FC = () => {
   };
 
   const handleSaveReport = async () => {
-    if (!organizationId || !reportContent || !reportTitle.trim()) return;
+    if (savePending.current || !tagsReady || !organizationId || !reportContent || !reportTitle.trim()) return;
     const parameterErrors = validateParameters(reportContent.parameters || []);
     const aliasErrors = validateColumnAliases(reportContent.dataset.select || []);
     if (aliasErrors.size > 0) parameterErrors.push("Corrija os títulos das colunas antes de salvar.");
@@ -492,6 +502,7 @@ export const ReportDesignerPage: React.FC = () => {
     const unknownReferences = [...collectParameterNames(reportContent.dataset.where)].filter((name) => !declaredNames.has(name));
     if (unknownReferences.length > 0) parameterErrors.push(`Parâmetros não declarados: ${unknownReferences.join(", ")}`);
     if (parameterErrors.length > 0) { setSaveError(parameterErrors.join(" • ")); return; }
+    savePending.current = true;
     setIsSaving(true);
     setSaveError(null);
     
@@ -511,6 +522,9 @@ export const ReportDesignerPage: React.FC = () => {
     
     const req = {
       title: reportTitle.trim(),
+      description: description.trim() || null,
+      tagIds,
+      availableFilters,
       visibilityScope,
       organizationId,
       content: {
@@ -522,22 +536,15 @@ export const ReportDesignerPage: React.FC = () => {
       }
     };
     
-    let res;
-    if (reportId) {
-      res = await creatorApi.updateReport(reportId, req);
-    } else {
-      res = await creatorApi.createReport(req);
-    }
-    
-    setIsSaving(false);
-    
-    if (isErr(res)) {
-      const knownError = res.error.code ? KNOWN_ERROR_CODES[res.error.code] : null;
-      setSaveError(knownError?.message || res.error.detail || "Erro ao salvar relatório.");
-    } else {
-      setShowSaveModal(false);
-      navigate(`/organizations/${organizationId}/creator`);
-    }
+    try {
+      const res = reportId ? await creatorApi.updateReport(reportId, req) : await creatorApi.createReport(req);
+      if (isErr(res)) {
+        const knownError = res.error.code ? KNOWN_ERROR_CODES[res.error.code] : null;
+        setSaveError(knownError?.message || res.error.detail || "Erro ao salvar relatório.");
+      } else { setShowSaveModal(false); navigate(`/organizations/${organizationId}/creator`); }
+    } catch { setSaveError("Falha de comunicação. Os dados foram preservados; tente novamente."); }
+    finally { savePending.current = false; setIsSaving(false); }
+
   };
 
   // UI: DataSource Selection Screen
@@ -1551,8 +1558,8 @@ export const ReportDesignerPage: React.FC = () => {
 
       {showSaveModal && (
         <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "1rem" }}>
-          <div style={{ background: "var(--bg-primary)", padding: "2rem", borderRadius: "12px", width: "100%", maxWidth: "450px", border: "1px solid var(--border-color)", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
-            <h3 style={{ marginBottom: "1rem", fontWeight: 600, fontSize: "1.25rem" }}>Salvar Relatório</h3>
+          <div ref={saveDialogRef} className="card report-save-dialog" role="dialog" aria-modal="true" aria-label="Salvar relatório" tabIndex={-1} style={{ maxHeight: "90dvh", overflow: "hidden", display: "flex", flexDirection: "column", background: "var(--bg-primary)",  borderRadius: "12px", width: "100%", maxWidth: "450px", border: "1px solid var(--border-color)", boxShadow: "0 10px 30px rgba(0,0,0,0.5)" }}>
+            <h3 style={{ marginBottom: "1rem", fontWeight: 600, fontSize: "1.25rem" }}>Salvar Relatório</h3><div className="report-save-dialog-body">
             <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem", fontSize: "0.9rem" }}>
               Dê um nome ao seu relatório para salvá-lo na área de criação.
             </p>
@@ -1564,30 +1571,32 @@ export const ReportDesignerPage: React.FC = () => {
             )}
             
             <div style={{ marginBottom: "1.5rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500, fontSize: "0.9rem" }}>Nome do Relatório</label>
+              <label htmlFor="report-name" style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500, fontSize: "0.9rem" }}>Nome do Relatório</label>
               <input 
                 type="text" 
                 className="form-input" 
                 style={{ width: "100%" }} 
-                value={reportTitle} 
+                disabled={isSaving} id="report-name" value={reportTitle}
                 onChange={e => setReportTitle(e.target.value)} 
                 placeholder="Ex: Análise de Vendas 2026" 
                 autoFocus
               />
             </div>
             
+            <div className="input-group"><label htmlFor="report-description">Descrição (opcional)</label><textarea id="report-description" className="form-input" rows={4} maxLength={2000} value={description} disabled={isSaving} onChange={event => setDescription(event.target.value)} placeholder="Explique o objetivo, o período e os indicadores do relatório."/><small>{description.length}/2000 caracteres</small></div>
+            <ReportTagPicker organizationId={organizationId || ""} selected={tagIds} onChange={setTagIds} onReady={setTagsReady} disabled={isSaving}/>
             <div style={{ marginBottom: "2rem" }}>
-              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500, fontSize: "0.9rem" }}>Visibilidade</label>
-              <select className="form-input" style={{ width: "100%" }} value={visibilityScope} onChange={e => setVisibilityScope(e.target.value as any)}>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: 500, fontSize: "0.9rem" }} htmlFor="report-visibility">Visibilidade</label>
+              <select id="report-visibility" disabled={isSaving} className="form-input" style={{ width: "100%" }} value={visibilityScope} onChange={e => setVisibilityScope(e.target.value as any)}>
                 <option value="private">Privado (Apenas Eu)</option>
                 <option value="organization">Organização (Compartilhado)</option>
                 {isRoot && <option value="global">Global (Todo o Sistema)</option>}
               </select>
             </div>
             
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem" }}>
+            </div><div className="report-save-actions">
               <button className="btn btn-secondary" onClick={() => setShowSaveModal(false)} disabled={isSaving}>Cancelar</button>
-              <button className="btn btn-primary" style={{ background: "var(--success-500)", border: "none" }} onClick={handleSaveReport} disabled={isSaving || !reportTitle.trim()}>
+              <button className="btn btn-primary" style={{ background: "var(--success-500)", border: "none" }} onClick={handleSaveReport} disabled={isSaving || !reportTitle.trim() || !tagsReady}>
                 {isSaving ? "Salvando..." : "Confirmar e Salvar"}
               </button>
             </div>

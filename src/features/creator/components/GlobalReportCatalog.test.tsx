@@ -4,7 +4,7 @@ import { creatorApi } from "../api/creatorApi";
 import { GlobalReportCatalog } from "./GlobalReportCatalog";
 import type { ReportDetail } from "../types/creatorTypes";
 
-vi.mock("../api/creatorApi", () => ({ creatorApi: { listGlobalTemplates: vi.fn(), getImportDataSources: vi.fn(), checkReportImport: vi.fn(), importReport: vi.fn() } }));
+vi.mock("../api/creatorApi", () => ({ creatorApi: { listReportTags: vi.fn(), listGlobalTemplates: vi.fn(), getImportDataSources: vi.fn(), checkReportImport: vi.fn(), importReport: vi.fn() } }));
 const onImported = vi.fn();
 const onClose = vi.fn();
 const templates = { page: 1, pageSize: 10, totalPages: 2, totalRecords: 11, data: [{ id: "global", title: "Vendas", updatedAt: "2026-10-20" }, { id: "other", title: "Compras", updatedAt: "2026-10-20" }] };
@@ -12,6 +12,7 @@ function show() { return render(<GlobalReportCatalog organizationId="target" onC
 async function select() {
   fireEvent.click(await screen.findByRole("button", { name: "Selecionar modelo Vendas" }));
   await screen.findByRole("option", { name: "Base local" });
+  await screen.findByText("0 selecionadas. A seleção é mantida ao buscar.");
   fireEvent.change(screen.getByLabelText("Data source de destino"), { target: { value: "source" } });
 }
 async function verify() {
@@ -20,6 +21,7 @@ async function verify() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(creatorApi.listReportTags).mockResolvedValue({ ok: true, value: [] });
   vi.mocked(creatorApi.listGlobalTemplates).mockResolvedValue({ ok: true, value: templates });
   vi.mocked(creatorApi.getImportDataSources).mockResolvedValue({ ok: true, value: [{ id: "source", name: "Base local" }, { id: "second", name: "Outra base" }] });
   vi.mocked(creatorApi.checkReportImport).mockResolvedValue({ ok: true, value: { canImport: true, issues: [] } });
@@ -59,7 +61,7 @@ describe("GlobalReportCatalog steps", () => {
     expect(screen.queryByRole("button", { name: "Importar relatório" })).not.toBeInTheDocument();
     await verify();
     expect(screen.queryByRole("button", { name: "Verificar compatibilidade" })).not.toBeInTheDocument();
-    expect(creatorApi.checkReportImport).toHaveBeenCalledWith("global", { organizationId: "target", dataSourceId: "source", title: "Vendas" });
+    expect(creatorApi.checkReportImport).toHaveBeenCalledWith("global", { organizationId: "target", dataSourceId: "source", title: "Vendas", tagIds: [] });
     fireEvent.click(screen.getByRole("button", { name: "Importar relatório" }));
     await waitFor(() => expect(onImported).toHaveBeenCalledWith(report));
   });
@@ -78,7 +80,7 @@ describe("GlobalReportCatalog steps", () => {
     fireEvent.click(screen.getByRole("button", { name: "Configurar importação" }));
     expect(screen.getByLabelText("Título da cópia")).toHaveValue("Vendas da filial");
     expect(screen.getByLabelText("Data source de destino")).toHaveValue("source");
-    expect(screen.getByRole("button", { name: "Importar relatório" })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Importar relatório" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Trocar relatório" }));
     fireEvent.click(screen.getByRole("button", { name: "Selecionar modelo Vendas" }));
     expect(screen.getByLabelText("Título da cópia")).toHaveValue("Vendas da filial");
@@ -92,7 +94,7 @@ describe("GlobalReportCatalog steps", () => {
     fireEvent.click(screen.getByRole("button", { name: "Selecionar modelo Compras" }));
     expect(screen.getByLabelText("Título da cópia")).toHaveValue("Compras");
     expect(screen.queryByText(/Modelo compatível/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Verificar compatibilidade" })).toBeEnabled();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Verificar compatibilidade" })).toBeEnabled());
   });
   it("mostra incompatibilidades junto ao formulário e não oferece importação", async () => {
     vi.mocked(creatorApi.checkReportImport).mockResolvedValue({ ok: true, value: { canImport: false, issues: [{ code: "field_incompatible", path: "dataset.select[0]", referenceId: "field", message: "Campo incompatível no destino." }] } });

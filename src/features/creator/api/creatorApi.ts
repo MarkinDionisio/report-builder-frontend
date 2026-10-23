@@ -1,3 +1,4 @@
+import type { ReportTag, ReportListFilters } from "../types/creatorTypes";
 import { apiFetch } from "../../../shared/api/client";
 import { err, isErr, ok } from "../../../shared/result/result";
 import type { Result } from "../../../shared/result/result";
@@ -48,6 +49,15 @@ function handleVoidResponse(
 }
 
 export const creatorApi = {
+  async listReportTags(organizationId?: string): Promise<Result<ReportTag[], ApiProblemDetails>> {
+    return parseJsonResponse(await apiFetch(organizationId ? `/api/v1/organizations/${organizationId}/report-tags` : "/api/v1/reports/tags"));
+  },
+  async saveReportTag(organizationId: string, name: string, id?: string): Promise<Result<ReportTag, ApiProblemDetails>> {
+    return parseJsonResponse(await apiFetch(`/api/v1/organizations/${organizationId}/report-tags${id ? "/"+id : ""}`, { method: id ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) }));
+  },
+  async deleteReportTag(organizationId: string, id: string): Promise<Result<void, ApiProblemDetails>> {
+    return handleVoidResponse(await apiFetch(`/api/v1/organizations/${organizationId}/report-tags/${id}`, {method:"DELETE"}));
+  },
   async listGlobalTemplates(page = 1, search = ""): Promise<Result<PagedResult<GlobalReportTemplate>, ApiProblemDetails>> {
     return parseJsonResponse(await apiFetch(`/api/v1/reports/global-templates?page=${page}&pageSize=10&search=${encodeURIComponent(search)}`));
   },
@@ -87,9 +97,17 @@ export const creatorApi = {
   // --- Reports CRUD ---
   async listReports(
     page: number = 1,
-    pageSize: number = 20
+    pageSize: number = 20,
+    filters: ReportListFilters = {}
   ): Promise<Result<PagedResult<ReportListItem>, ApiProblemDetails>> {
-    const res = await apiFetch(`/api/v1/reports?page=${page}&pageSize=${pageSize}`);
+    const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
+    if (filters.organizationId) query.set("organizationId", filters.organizationId);
+    if (filters.search) query.set("search", filters.search);
+    if (filters.matchCase) query.set("matchCase", "true");
+    if (filters.exactMatch) query.set("exactMatch", "true");
+    if (filters.untagged) query.set("untagged", "true");
+    else filters.tagIds?.forEach(id => query.append("tagIds", id));
+    const res = await apiFetch(`/api/v1/reports?${query}`);
     return parseJsonResponse<PagedResult<ReportListItem>>(res);
   },
 

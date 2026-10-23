@@ -1,3 +1,4 @@
+import { ReportTagPicker } from "./ReportTagPicker";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { Fragment, useEffect, useRef, useState } from "react";
@@ -23,6 +24,8 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
   const [pages, setPages] = useState(0);
   const [dataSourceId, setDataSourceId] = useState("");
   const [title, setTitle] = useState("");
+  const [tagIds, setTagIds] = useState<string[]>([]);
+  const [tagsReady, setTagsReady] = useState(false);
   const [check, setCheck] = useState<ReportImportCheck | null>(null);
   const [problem, setProblem] = useState<ApiProblemDetails | null>(null);
   const [loadingSources, setLoadingSources] = useState(true);
@@ -77,11 +80,11 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
   }
 
   async function submit() {
-    if (pending.current || step !== 2 || !selectedTemplate || !dataSourceId || !title.trim()) return;
+    if (pending.current || step !== 2 || !selectedTemplate || !dataSourceId || !title.trim() || !tagsReady) return;
     const importing = check?.canImport === true;
     pending.current = true; setBusy(true); setProblem(null);
     try {
-      const request = { organizationId, dataSourceId, title: title.trim() };
+      const request = { organizationId, dataSourceId, title: title.trim(), tagIds };
       if (importing) {
         const result = await creatorApi.importReport(selectedTemplate.id, request);
         if (isErr(result)) { setProblem(result.error); setCheck(null); }
@@ -124,7 +127,7 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
             {templates.length === 0 ? <div className="global-report-catalog__empty"><FileBarChart size={32} aria-hidden="true"/><p>{search.trim() ? "Nenhum modelo encontrado para esta busca." : "Nenhum modelo global disponível."}</p>{search.trim() && <small>Tente outro título ou limpe a busca.</small>}</div> : <div className="global-report-catalog__grid">
               {templates.map(template => <button type="button" key={template.id} className="global-report-catalog__card" aria-label={`Selecionar modelo ${template.title}`} aria-pressed={selectedTemplate?.id === template.id} onClick={() => chooseTemplate(template)}>
                 <span className="global-report-catalog__icon"><FileBarChart size={22} aria-hidden="true"/></span>
-                <span className="global-report-catalog__details"><strong>{template.title}</strong><small>Atualizado em {new Date(template.updatedAt).toLocaleDateString("pt-BR")}</small></span>
+                <span className="global-report-catalog__details"><strong>{template.title}</strong>{template.description && <span className="report-description report-description--summary">{template.description}</span>}<small>Atualizado em {new Date(template.updatedAt).toLocaleDateString("pt-BR")}</small></span>
                 {selectedTemplate?.id === template.id ? <Check size={20} className="global-report-catalog__selected" aria-hidden="true"/> : <ChevronRight size={20} aria-hidden="true"/>}
               </button>)}
             </div>}
@@ -145,6 +148,8 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
             <label className="input-label" htmlFor="import-title">Título da cópia</label>
             <input className="form-input" id="import-title" value={title} disabled={busy} onChange={event => setTitle(event.target.value)}/>
           </div>
+          {selectedTemplate?.description && <p className="report-description">{selectedTemplate.description}</p>}
+          <ReportTagPicker organizationId={organizationId} selected={tagIds} onReady={setTagsReady} onChange={ids => { setTagIds(ids); setCheck(null); }} disabled={busy}/>
           {check && <div className="global-report-import__diagnostics" aria-live="polite">
             {check.joinModels && check.joinModels.length>0&&<section><h3>Junções da organização</h3><p>A importação reutiliza ou cria cópias locais, sem conceder permissões.</p><ul>{check.joinModels.map((model,index)=><li key={index}>{model.name} · {model.action==="create"?"Será criada uma cópia independente":"Modelo local será reutilizado"}</li>)}</ul></section>}
             {check.canImport ? <Alert type="success" message="Modelo compatível. A cópia será criada como privada."/> : <div role="alert"><p>Não é possível importar:</p><ul>{check.issues.map((issue, index) => <li key={index}>{issue.message} <small>({issue.path})</small></li>)}</ul></div>}
@@ -155,7 +160,7 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
     <footer className="global-report-import__footer">
       <button type="button" className="btn btn-secondary" disabled={busy} onClick={step === 1 ? onClose : () => setStep(1)}>{step === 1 ? "Voltar à organização" : "Voltar"}</button>
       {step === 1 ? selectedTemplate && <button className="btn btn-primary" onClick={() => setStep(2)}>Continuar</button> :
-        <button type="button" className="btn btn-primary" disabled={busy || loadingSources || !dataSourceId || !title.trim()} onClick={() => void submit()}>
+        <button type="button" className="btn btn-primary" disabled={busy || loadingSources || !dataSourceId || !title.trim() || !tagsReady} onClick={() => void submit()}>
           {busy ? (check?.canImport ? "Importando..." : "Verificando...") : check?.canImport ? "Importar relatório" : "Verificar compatibilidade"}
         </button>}
     </footer>

@@ -1,0 +1,68 @@
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { creatorApi } from "../api/creatorApi";
+import { isErr } from "../../../shared/result/result";
+import { Alert } from "../../../shared/components/Alert";
+import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
+import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
+import { getResourceRoleLabel } from "../../../shared/utils/roles";
+import type { ReportListItem, ReportTag } from "../types/creatorTypes";
+import { ReportMetadata } from "./ReportMetadata";
+import { TagChoices } from "./ReportTagPicker";
+
+export function ReportBrowser({ organizationId, onTotal, version = 0 }: { organizationId?: string; onTotal?: (count: number) => void; version?: number }) {
+  const [params, setParams] = useSearchParams();
+  const search = params.get("search") || "";
+  const matchCase = params.get("matchCase") === "true", exactMatch = params.get("exactMatch") === "true";
+  const rawPage = Number(params.get("page"));
+  const page = Number.isSafeInteger(rawPage) && rawPage > 0 ? rawPage : 1;
+  const untagged = params.get("untagged") === "true";
+  const selected = params.getAll("tagIds");
+  const queryKey = params.toString();
+  const [reports, setReports] = useState<ReportListItem[]>([]);
+  const [tags, setTags] = useState<ReportTag[]>([]);
+  const [pages, setPages] = useState(0), [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true), [error, setError] = useState("");
+  const [tagError, setTagError] = useState("");
+  const [retry, setRetry] = useState(0);
+  const [filtersExpanded, setFiltersExpanded] = useState(selected.length > 0 || untagged);
+  function change(key: string, value: string | string[]) {
+    const next = new URLSearchParams(params); next.delete(key); next.delete("page");
+    for (const item of Array.isArray(value) ? value : [value]) if (item) next.append(key, item);
+    setParams(next);
+  }
+  useEffect(() => {
+    let active = true; setTagError("");
+    void creatorApi.listReportTags(organizationId).then(result => {
+      if (!active) return;
+      if (isErr(result)) setTagError(result.error.detail || "Não foi possível consultar etiquetas.");
+      else setTags(result.value);
+    }).catch(() => { if (active) setTagError("Falha de comunicação ao consultar etiquetas."); });
+    return () => { active = false; };
+  }, [organizationId, retry, version]);
+  useEffect(() => {
+    let active = true; setLoading(true); setError("");
+    const timer = window.setTimeout(() => {
+      void creatorApi.listReports(page, 20, { organizationId, search, matchCase, exactMatch, tagIds: selected, untagged }).then(result => {
+        if (!active) return;
+        if (isErr(result)) setError(result.error.detail || "Não foi possível consultar os relatórios.");
+        else { setReports(result.value.data); setPages(result.value.totalPages); setTotal(result.value.totalRecords); onTotal?.(result.value.totalRecords); }
+      }).catch(() => { if (active) setError("Falha de comunicação ao consultar relatórios."); }).finally(() => { if (active) setLoading(false); });
+    }, search ? 250 : 0);
+    return () => { active = false; window.clearTimeout(timer); };
+  // The complete URL determines filters, including browser back/forward.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryKey, organizationId, retry, version, onTotal]);
+  return <div className="report-browser">
+    <div className="report-search"><div className="search-input-clear"><input className="form-input" aria-label="Buscar relatórios" placeholder="Buscar título ou descrição" value={search} onChange={event => change("search", event.target.value)}/><ClearSearchButton value={search} onClear={() => change("search", "")}/></div><SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={value => change("matchCase", value ? "true" : "")} onExactMatchChange={value => change("exactMatch", value ? "true" : "")}/></div>
+    <button type="button" className="btn btn-secondary" aria-expanded={filtersExpanded} onClick={() => setFiltersExpanded(value => !value)}>Filtrar por etiquetas ({selected.length})</button>
+    {filtersExpanded && <div>{tagError ? <div><Alert type="error" message={tagError}/><button type="button" className="btn btn-secondary" onClick={() => setRetry(value => value + 1)}>Consultar etiquetas novamente</button></div> : <TagChoices tags={tags} selected={selected} disabled={untagged} onChange={ids => change("tagIds", ids)}/>}
+      <label><input type="checkbox" checked={untagged} onChange={event => change("untagged", event.target.checked ? "true" : "")}/> Sem etiquetas</label><p>Ao selecionar várias etiquetas, são encontrados relatórios com qualquer uma delas.</p></div>}
+    {loading ? <NeutralLoader message="Consultando relatórios com os filtros selecionados…"/> : error ? <div><Alert type="error" message={error}/><button type="button" className="btn btn-secondary" onClick={() => setRetry(value => value + 1)}>Consultar relatórios novamente</button></div> : <>
+      <p role="status">{total} relatórios encontrados</p>
+      {reports.length === 0 ? <div className="empty-state"><strong>{!search && selected.length === 0 && !untagged && page === 1 ? "Nenhum relatório disponível" : "Nenhum relatório encontrado"}</strong><p>Altere os filtros ou volte à primeira página. Relatórios compartilhados com você aparecerão aqui.</p></div> : <div className="report-browser-list">{reports.map(report => <article key={report.id} className="report-browser-row"><div><strong>{report.title}</strong><small>{report.organizationName} · {report.visibilityScope === "private" ? "Privado" : report.visibilityScope === "global" ? "Global" : "Organização"} · {getResourceRoleLabel(report.myRole)}</small><ReportMetadata description={report.description} tags={report.tags}/></div><div className="report-browser-actions"><Link className="btn btn-primary" to={'/reports/'+report.id+'/run'} aria-label={'Executar relatório '+report.title}>Abrir</Link>{organizationId && ["root", "administrator", "creator", "owner"].includes(report.myRole) && <Link className="btn btn-secondary" to={'/organizations/'+organizationId+'/creator/reports/'+report.id} aria-label={'Editar relatório '+report.title}>Editar</Link>}</div></article>)}</div>}
+      {(pages > 1 || page > 1) && <nav className="report-pagination" aria-label="Páginas dos relatórios"><button className="btn btn-secondary" disabled={page <= 1} onClick={() => { const next = new URLSearchParams(params); next.set("page",String(page-1)); setParams(next); }}>Anterior</button><span>Página {page} de {pages || 1}</span><button className="btn btn-secondary" disabled={page >= pages} onClick={() => { const next = new URLSearchParams(params); next.set("page",String(page+1)); setParams(next); }}>Próxima</button></nav>}
+    </>}
+  </div>;
+}

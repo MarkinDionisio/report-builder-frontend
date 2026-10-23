@@ -134,6 +134,8 @@ export interface ReportContentV1 {
 }
 
 export interface ReportListItem {
+  description?: string | null;
+  tags?: ReportTag[];
   id: string;
   title: string;
   organizationId: string;
@@ -144,6 +146,8 @@ export interface ReportListItem {
 }
 
 export interface ReportDetail {
+  description?: string | null;
+  tags?: ReportTag[];
   id: string;
   title: string;
   organizationId: string;
@@ -175,6 +179,8 @@ export interface BlockedReportSchema {
 }
 
 export interface UpsertReportRequest {
+  description?: string | null;
+  tagIds?: string[];
   title: string;
   visibilityScope: VisibilityScope;
   organizationId?: string; // obrigatório apenas na criação
@@ -303,8 +309,11 @@ export interface PreviewRequest {
   pageSize: number;
 }
 
-export interface GlobalReportTemplate { id: string; title: string; updatedAt: string; }
-export interface ReportImportRequest { organizationId: string; dataSourceId: string; title?: string; }
+export interface GlobalReportTemplate { description?: string | null; id: string; title: string; updatedAt: string; }
+export interface ReportImportRequest { organizationId: string; dataSourceId: string; title?: string; tagIds?: string[]; }
 export interface ReportImportIssue { code: string; path: string; referenceId: string | null; message: string; }
 export interface ReportImportCheck { canImport: boolean; issues: ReportImportIssue[]; joinModels?: Array<{name:string;action:"create"|"reuse";modelId:string|null}>; }
 export interface ReportImportDataSource { id: string; name: string; }
+
+export interface ReportTag { id: string; organizationId: string; name: string; }
+export interface ReportListFilters { organizationId?: string; search?: string; matchCase?: boolean; exactMatch?: boolean; tagIds?: string[]; untagged?: boolean; }

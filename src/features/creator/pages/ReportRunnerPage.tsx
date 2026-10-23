@@ -1,3 +1,4 @@
+import { ReportMetadata } from "../components/ReportMetadata";
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, Clock3, Play, SlidersHorizontal } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
@@ -59,7 +60,7 @@ export function ReportRunnerPage() {
 
   return <div className="report-runner"><Navbar/><main className="report-runner__main">
     {loading ? <div className="report-runner__page-state"><NeutralLoader message="Consultando configuração e parâmetros do relatório…" minHeight="auto"/></div> : !report ? <div className="report-runner__page-state">{error && <Alert type="error" message={error}/>}<Link className="btn btn-secondary" to="/dashboard">Voltar ao início</Link></div> : <>
-      <header className="report-runner__header"><div><span className="report-runner__eyebrow">Relatório · {report.organizationName}</span><h1>{report.title}</h1><div className="report-runner__status"><Clock3 size={14}/>{executing ? "Executando agora..." : lastExecutedAt ? `Executado às ${lastExecutedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "Ainda não executado"}</div></div><Link className="btn btn-secondary" to="/dashboard">Voltar</Link></header>
+      <header className="report-runner__header"><div><span className="report-runner__eyebrow">Relatório · {report.organizationName}</span><h1>{report.title}</h1><ReportMetadata description={report.description} tags={report.tags} full/><div className="report-runner__status"><Clock3 size={14}/>{executing ? "Executando agora..." : lastExecutedAt ? `Executado às ${lastExecutedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : "Ainda não executado"}</div></div><Link className="btn btn-secondary" to="/dashboard">Voltar</Link></header>
       {error && <Alert type="error" message={error}/>}
       {report.executionBlockCode === "report_execution.global_template_requires_import" && <Alert type="info" message="Este relatório é um modelo global. Na área de criação da sua organização, acesse Catálogo de relatórios globais para criar e executar uma cópia com os seus dados."/>}
       {report.canExecute === false && report.executionBlockCode !== "report_execution.global_template_requires_import" && <ReportAccessBlockPanel blockedSchemas={report.blockedSchemas} title="Execução bloqueada" description="Você pode consultar este relatório, mas ainda não possui acesso para executá-lo. Solicite ao administrador da organização as permissões indicadas abaixo."/>}

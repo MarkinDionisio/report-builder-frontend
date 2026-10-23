@@ -16,14 +16,15 @@ test(`importa em etapas no ${viewport.name} e abre a cópia no editor`, async ({
     const data = [{ id: "global", title: "Vendas", updatedAt: "2026-10-20T00:00:00Z" }, ...Array.from({ length: 9 }, (_, index) => ({ id: String(index), title: "Modelo " + (index + 2), updatedAt: "2026-10-20T00:00:00Z" }))].filter(template => template.title.toLowerCase().includes(search.toLowerCase()));
     return route.fulfill(json({ page: 1, pageSize: 10, totalPages: 1, totalRecords: data.length, data }));
   });
+  await page.route("**/api/v1/organizations/target/report-tags", route => route.fulfill(json([])));
   await page.route("**/api/v1/organizations/target/report-import-data-sources", route => route.fulfill(json([{ id: "source", name: "Base local" }])));
   await page.route("**/api/v1/reports/global/import-check", async route => {
     expect(route.request().headers()["content-type"]).toBe("application/json");
-    expect(route.request().postDataJSON()).toEqual({ organizationId: "target", dataSourceId: "source", title: "Vendas locais" });
+    expect(route.request().postDataJSON()).toEqual({ organizationId: "target", dataSourceId: "source", title: "Vendas locais", tagIds: [] });
     await route.fulfill(json({ canImport: true, issues: [] }));
   });
   await page.route("**/api/v1/reports/global/import", async route => {
-    expect(route.request().postDataJSON()).toEqual({ organizationId: "target", dataSourceId: "source", title: "Vendas locais" });
+    expect(route.request().postDataJSON()).toEqual({ organizationId: "target", dataSourceId: "source", title: "Vendas locais", tagIds: [] });
     await route.fulfill({ ...json(copy), status: 201 });
   });
   await page.route("**/api/v1/reports/copy", route => route.fulfill(json(copy)));
@@ -56,9 +57,15 @@ test(`importa em etapas no ${viewport.name} e abre a cópia no editor`, async ({
   expect(secondCard!.x).toBe(firstCard!.x);
   await content.evaluate(element => { element.scrollTop = element.scrollHeight; });
   await expect(page.getByRole("button", { name: "Voltar à organização" })).toBeInViewport();
-  const lastCard = await page.getByRole("button", { name: "Selecionar modelo Modelo 10" }).boundingBox();
-  const footer = await page.locator(".global-report-import__footer").boundingBox();
-  expect(lastCard!.y + lastCard!.height).toBeLessThanOrEqual(footer!.y);
+  // Re-scroll after layout settles; compare both rectangles in the same frame.
+  await expect.poll(async () => {
+    await content.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    return page.evaluate(() => {
+      const card = document.querySelector('[aria-label="Selecionar modelo Modelo 10"]')!.getBoundingClientRect();
+      const footer = document.querySelector('.global-report-import__footer')!.getBoundingClientRect();
+      return card.bottom <= footer.top;
+    });
+  }).toBe(true);
   await content.evaluate(element => { element.scrollTop = 0; });
   await page.screenshot({ path: testInfo.outputPath("catalogo.png"), fullPage: true });
   await page.getByRole("textbox", { name: "Buscar relatórios globais" }).fill("Vendas");

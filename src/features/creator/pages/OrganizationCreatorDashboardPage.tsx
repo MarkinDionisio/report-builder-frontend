@@ -1,3 +1,6 @@
+import { ReportBrowser } from "../components/ReportBrowser";
+import { ReportTagManager } from "../components/ReportTagManager";
+import { canManageOrganization } from "../../../shared/utils/roles";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { OrganizationContextHeader } from "../../organizations/components/OrganizationContextHeader";
 import React, { useEffect, useState } from "react";
@@ -6,11 +9,11 @@ import { creatorApi } from "../../creator/api/creatorApi";
 import { isErr } from "../../../shared/result/result";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
-import { Plus, FileBarChart, LayoutDashboard, Settings, Play } from "lucide-react";
+import { Plus, FileBarChart, LayoutDashboard, Settings } from "lucide-react";
 import { useAuth } from "../../auth/context/AuthContext";
 import { canOpenCreatorWorkspace } from "../../auth/utils/authUtils";
-import type { ReportListItem, DashboardListItem } from "../../creator/types/creatorTypes";
-import { getResourceRoleLabel } from "../../../shared/utils/roles";
+import type { DashboardListItem } from "../../creator/types/creatorTypes";
+
 
 export const OrganizationCreatorDashboardPage: React.FC = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
@@ -21,7 +24,8 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
   const setActiveTab=(tab:string)=>{const next=new URLSearchParams(params);next.set("tab",tab);setParams(next);};
   const [version,setVersion]=useState(0);
   
-  const [reports, setReports] = useState<ReportListItem[]>([]);
+  const [reportCount, setReportCount] = useState(0);
+  const [showTags, setShowTags] = useState(false);
   const [dashboards, setDashboards] = useState<DashboardListItem[]>([]);
   
   const [loading, setLoading] = useState(true);
@@ -37,18 +41,6 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
       setLoading(true);
       setErrorMsg(null);
       try {
-        // Fetch Reports
-        const reportsRes = await creatorApi.listReports(1, 100);
-        if(!active)return;
-        if (isErr(reportsRes)) {
-          setErrorMsg(reportsRes.error.detail || "Erro ao carregar relatórios.");
-        } else {
-          // Temporarily filter by org locally since listReports doesn't take orgId in query
-          // In a real scenario we'd pass orgId to the API if it's supported, but the guide
-          // says list endpoints return paginated results, we filter by organizationId.
-          setReports(reportsRes.value.data.filter(r => r.organizationId === organizationId));
-        }
-
         // Fetch Dashboards
         const dashRes = await creatorApi.listDashboards(1, 100);
         if(!active)return;
@@ -93,6 +85,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
               <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "0.9rem" }}>Gerencie relatórios e dashboards desta organização</p>
             </div>
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+              {activeTab === "reports" && state.user && canManageOrganization(state.user, organizationId || "") && <button className="btn btn-secondary" onClick={() => setShowTags(true)}>Gerenciar etiquetas</button>}
               {activeTab === "reports" && isAllowed && <Link className="btn btn-secondary" to={`/organizations/${organizationId}/creator/global-reports`}>Catálogo de relatórios globais</Link>}
               {activeTab === "reports" ? (
                 <Link
@@ -119,7 +112,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
               className={`btn ${activeTab === "reports" ? "btn-primary" : "btn-secondary"}`}
               style={{ borderRadius: "8px 8px 0 0", borderBottom: "none", padding: "0.75rem 1.25rem" }}
             >
-              <FileBarChart size={18} /> Relatórios ({reports.length})
+              <FileBarChart size={18} /> Relatórios ({reportCount})
             </button>
             <button
               onClick={() => setActiveTab("dashboards")}
@@ -139,60 +132,11 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
           </div>
         )}
 
-        {loading ? (
+        {activeTab === "reports" ? (
+          <ReportBrowser organizationId={organizationId} onTotal={setReportCount} version={version}/>
+        ) : loading ? (
           <NeutralLoader message="Consultando relatórios e dashboards desta organização…"/>
-        ) : activeTab === "reports" ? (
-          <div className="card admin-table-scroll" style={{ padding: 0 }}>
-            {reports.length === 0 ? (
-              <div style={{ padding: "4rem 2rem", textAlign: "center", color: "var(--text-secondary)" }}>
-                <FileBarChart size={48} style={{ opacity: 0.2, margin: "0 auto 1rem auto" }} />
-                <p>Nenhum relatório encontrado nesta organização.</p>
-              </div>
-            ) : (
-              <table className="table" style={{ width: "100%", margin: 0 }}>
-                <thead>
-                  <tr>
-                    <th>Título</th>
-                    <th>Visibilidade</th>
-                    <th>Meu Papel</th>
-                    <th>Criação</th>
-                    <th style={{ textAlign: "right" }}>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reports.map((report) => (
-                    <tr key={report.id}>
-                      <td><strong>{report.title}</strong></td>
-                      <td>
-                        <span className="badge badge-info">
-                          {report.visibilityScope === "private" ? "Privado" : report.visibilityScope === "organization" ? "Organização" : report.visibilityScope === "global" ? "Global" : report.visibilityScope}
-                        </span>
-                      </td>
-                      <td style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                        {getResourceRoleLabel(report.myRole)}
-                      </td>
-                      <td style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                        {new Date(report.createdAt).toLocaleDateString()}
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        <div className="action-buttons">
-                          <Link to={`/reports/${report.id}/run`} className="btn-icon btn-icon-primary" aria-label={`Executar relatório ${report.title}`} title="Executar Relatório"><Play size={16}/></Link>
-                          <Link
-                            to={`/organizations/${organizationId}/creator/reports/${report.id}`}
-                            className="btn-icon"
-                            aria-label={`Editar relatório ${report.title}`}
-                            title="Editar Relatório"
-                          >
-                            <Settings size={16} />
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+
         ) : (
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
             {dashboards.length === 0 ? (
@@ -238,6 +182,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
           </div>
         )}
       </main>
+      {showTags && organizationId && <ReportTagManager organizationId={organizationId} onClose={() => setShowTags(false)} onChanged={() => setVersion(value => value + 1)}/>}
     </div>
   );
 };

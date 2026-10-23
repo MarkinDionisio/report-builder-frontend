@@ -81,3 +81,9 @@ Novos padrões explicitamente aprovados pelo usuário devem ser incorporados aqu
 ## Período móvel de vendas
 
 - O filtro “Últimos 12 meses (mês atual parcial)” inclui o mês atual e os 11 anteriores. A API recalcula os limites no fuso da organização em cada execução e prévia. Use esse rótulo para explicitar que o mês atual está em andamento.
+
+## Etiquetas e descrições de relatórios
+
+- Relatórios podem ter várias etiquetas da própria organização; etiquetas organizam a lista, sem conceder acesso. Root e administradores gerenciam nomes e exclusões; editores associam etiquetas existentes. Excluir uma etiqueta exige confirmação e preserva os relatórios.
+- As listas do painel inicial e da organização mostram título curto, descrição resumida e etiquetas. Busca e filtros ficam na URL e são aplicados pela API antes da paginação. Várias etiquetas significam qualquer uma delas; “Sem etiquetas” tem prioridade, preservando a seleção para quando for desmarcado.
+- A descrição é texto simples opcional de até 2.000 caracteres, exibido integralmente na execução. Parâmetros automáticos bloqueados continuam ocultos. Na importação global, copiar a descrição e selecionar etiquetas locais; não copiar nem criar etiquetas da origem automaticamente.
