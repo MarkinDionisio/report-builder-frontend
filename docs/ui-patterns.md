@@ -93,3 +93,5 @@ Novos padrões explicitamente aprovados pelo usuário devem ser incorporados aqu
 - No painel inicial, o seletor de etiquetas identifica a empresa em cada opção e chip selecionado (`Etiqueta · Empresa`) e permite buscar por ambos. Na área de criação, edição e importação com organização definida, mostrar apenas o nome da etiqueta. IDs continuam sendo a identidade da seleção, mesmo quando nomes coincidem entre empresas.
 
 - Quando uma API anterior omitir o nome da empresa nas etiquetas, resolver o nome pelos relatórios acessíveis filtrados por organização, uma consulta por empresa. Não exibir UUID como nome; se a organização não estiver mais disponível, informar “Empresa indisponível”.
+
+- Na área de criação, Abrir é a ação principal visível; Editar relatório e Excluir relatório ficam no menu Opções. Reutilizar SourceActionMenu e ConfirmDeleteModal, identificar o relatório, informar o impacto no acesso compartilhado e preservar dados da fonte. Após excluir, atualizar lista e contagem e voltar à página anterior quando a última linha da página for removida; manter filtros da URL. Falhas permanecem no modal.

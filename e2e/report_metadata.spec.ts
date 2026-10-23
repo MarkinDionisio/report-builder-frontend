@@ -8,7 +8,7 @@ for (const width of [1280, 390]) test('etiquetas, descrições, filtros e ediç�
   let report={id:"report",title:"Comparativo mensal",description,tags:tags.slice(0,2),organizationId:"org",organizationName:"Fábrica Sistemas",visibilityScope:"private",myRole:"root",canExecute:true,canEdit:true,executionBlockCode:null,blockedSchemas:[],allowedFilters:[{field:"status",type:"select",options:["paid"]}],content:{version:1,parameters:[{name:"start",type:"datetime",source:"system",variable:"startOfLast12Months",allowOverride:false}],dataset:{dataSourceId:"source",schemaId:"schema",select:[{fieldId:"total",alias:"Total"}]}}};
   const me={id:"user",name:"Root",email:"root@example.com",globalRole:"root",profileIds:[],organizations:[{id:"org",name:"Fábrica Sistemas",organizationRole:"administrator"}]};
   const session={accessToken:"token",refreshToken:"refresh",tokenType:"Bearer",expiresAt:new Date(Date.now()+3600000).toISOString(),userId:"user",email:me.email,globalRole:"root"};
-  let saved=false;
+  let saved=false, deleted=false;
   await page.route("**/api/v1/**",async route=>{
     const url=new URL(route.request().url()),path=url.pathname,method=route.request().method();
     if(path.endsWith('/auth/refresh'))return route.fulfill(json(session));
@@ -20,9 +20,9 @@ for (const width of [1280, 390]) test('etiquetas, descrições, filtros e ediç�
       return route.fulfill(json(tags));
     }
     if(path.includes('/report-tags/')){const id=path.split('/').at(-1)!;if(method==='DELETE'){tags=tags.filter(tag=>tag.id!==id);report={...report,tags:report.tags.filter(tag=>tag.id!==id)};return route.fulfill({status:204});}const {name}=route.request().postDataJSON();tags=tags.map(tag=>tag.id===id?{...tag,name}:tag);return route.fulfill(json(tags.find(tag=>tag.id===id)));}
-    if(path.endsWith('/reports'))return route.fulfill(json({page:Number(url.searchParams.get('page')||1),pageSize:20,totalRecords:1,totalPages:1,data:[report]}));
+    if(path.endsWith('/reports'))return route.fulfill(json({page:Number(url.searchParams.get('page')||1),pageSize:20,totalRecords:deleted?0:1,totalPages:deleted?0:1,data:deleted?[]:[report]}));
     if(path.endsWith('/dashboards'))return route.fulfill(json({page:1,pageSize:20,totalRecords:0,totalPages:0,data:[]}));
-    if(path.endsWith('/reports/report')){if(method==='PATCH'){const body=route.request().postDataJSON();expect(body.availableFilters).toEqual(report.allowedFilters);expect(body.tagIds).toEqual(['sales','finance']);report={...report,...body};saved=true;}return route.fulfill(json(report));}
+    if(path.endsWith('/reports/report')){if(method==='DELETE'){deleted=true;return route.fulfill({status:204});}if(method==='PATCH'){const body=route.request().postDataJSON();expect(body.availableFilters).toEqual(report.allowedFilters);expect(body.tagIds).toEqual(['sales','finance']);report={...report,...body};saved=true;}return route.fulfill(json(report));}
     if(path.endsWith('/data-sources'))return route.fulfill(json([{id:'source',name:'Base local',provider:'postgresql',readOnlyVerificationStatus:'verified'}]));
     if(path.endsWith('/catalog'))return route.fulfill(json({schemas:[{id:'schema',dataSourceId:'source',name:'Pedidos',fields:[{id:'total',name:'Total',type:'number',selectable:true,filterable:true,sortable:true,groupable:false,aggregatable:true,allowedOperators:['eq'],allowedAggregations:['sum']}]}],joins:[]}));
     return route.fulfill(json({page:1,pageSize:20,totalRecords:0,totalPages:0,data:[]}));
@@ -55,6 +55,7 @@ for (const width of [1280, 390]) test('etiquetas, descrições, filtros e ediç�
   await expect(page.locator('.report-browser-row')).toHaveCount(1);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
   await page.screenshot({path:testInfo.outputPath('lista-etiquetas.png'),fullPage:true});
+  await page.getByRole('button',{name:'Opções',exact:true}).click();
   await page.getByRole('link',{name:'Editar relatório Comparativo mensal'}).click();
   await page.getByRole('button',{name:'Próximo: Escolher Colunas'}).click();
   await page.getByRole('button',{name:'Próximo: Filtros & Ordenação'}).click();
@@ -81,4 +82,19 @@ for (const width of [1280, 390]) test('etiquetas, descrições, filtros e ediç�
   await expect(page).toHaveURL(/tagIds=other-sales/);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
   await page.screenshot({path:testInfo.outputPath('painel-etiquetas-empresas.png'),fullPage:true});
+  await page.goto('/organizations/org/creator');
+  await page.getByRole('button',{name:'Opções',exact:true}).click();
+  await page.getByRole('button',{name:'Excluir relatório Comparativo',exact:true}).click();
+  const deletion=page.getByRole('dialog',{name:'Excluir relatório',exact:true});
+  await expect(deletion.getByRole('button',{name:'Confirmar Exclusão'})).toBeInViewport();
+  await deletion.getByRole('button',{name:'Cancelar',exact:true}).click();
+  expect(deleted).toBeFalsy();
+  await page.getByRole('button',{name:'Opções',exact:true}).click();
+  await page.getByRole('button',{name:'Excluir relatório Comparativo',exact:true}).click();
+  await page.screenshot({path:testInfo.outputPath('excluir-relatorio.png'),fullPage:true,animations:'disabled'});
+  await deletion.getByRole('button',{name:'Confirmar Exclusão'}).click();
+  await expect(deletion).not.toBeVisible();
+  await expect(page.locator('.report-browser-row')).toHaveCount(0);
+  await expect(page.getByText('0 relatórios encontrados',{exact:true})).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
 });

@@ -106,3 +106,8 @@
 .report-tag-picker:disabled .report-tag-select-field { opacity: .55; }
 .report-tag-picker:disabled button { cursor: not-allowed; }
 .report-tag-selected-chip button:focus-visible, .report-tag-select-actions button:focus-visible { outline: 2px solid var(--primary-500); outline-offset: 2px; }
+
+@media(max-width:720px) {
+  .report-browser-actions:has(.source-action-menu__trigger) { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .report-browser-actions .source-action-menu__trigger { min-width: 0; padding-inline: .5rem; font-size: .8rem; }
+}

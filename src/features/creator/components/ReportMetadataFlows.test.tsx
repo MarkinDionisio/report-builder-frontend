@@ -7,7 +7,7 @@ import { ReportBrowser } from "./ReportBrowser";
 import { ReportTagManager } from "./ReportTagManager";
 import { TagChoices } from "./ReportTagPicker";
 
-vi.mock("../api/creatorApi", () => ({ creatorApi: { listReportTags: vi.fn(), listReports: vi.fn(), saveReportTag: vi.fn(), deleteReportTag: vi.fn() } }));
+vi.mock("../api/creatorApi", () => ({ creatorApi: { listReportTags: vi.fn(), listReports: vi.fn(), saveReportTag: vi.fn(), deleteReport: vi.fn(), deleteReportTag: vi.fn() } }));
 const tags = [{id:"sales",organizationId:"org",name:"Vendas"},{id:"finance",organizationId:"org",name:"Financeiro"}];
 const item = {id:"report",title:"Comparativo mensal",description:"Últimos 12 meses, mês atual parcial.",tags,organizationId:"org",organizationName:"Fábrica",visibilityScope:"private" as const,myRole:"root" as const,createdAt:"2026-10-23"};
 beforeEach(() => {
@@ -102,4 +102,48 @@ it("keeps organization-scoped tag labels short", () => {
   expect(screen.getByRole("button",{name:"Remover etiqueta Vendas"})).toBeVisible();
   fireEvent.focus(screen.getByRole("textbox",{name:"Buscar etiquetas"}));
   expect(screen.getByRole("checkbox",{name:"Vendas"})).toBeVisible();
+});
+
+
+it("confirms report deletion, keeps the dialog on failure and refreshes after retry", async () => {
+  const onTotal=vi.fn();
+  vi.mocked(creatorApi.listReports).mockResolvedValue({ok:true,value:{page:1,pageSize:20,totalRecords:1,totalPages:1,data:[item]}});
+  vi.mocked(creatorApi.deleteReport).mockResolvedValueOnce({ok:false,error:{type:"about:blank",title:"Erro",status:403,detail:"Sem permissão",instance:""}}).mockResolvedValueOnce({ok:true,value:undefined});
+  render(<MemoryRouter><ReportBrowser organizationId="org" onTotal={onTotal}/></MemoryRouter>);
+  await screen.findByText(item.title);
+  fireEvent.click(screen.getByRole("button",{name:"Opções"}));
+  fireEvent.click(screen.getByRole("button",{name:"Excluir relatório "+item.title}));
+  expect(creatorApi.deleteReport).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button",{name:"Cancelar"}));
+  expect(creatorApi.deleteReport).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button",{name:"Opções"}));
+  fireEvent.click(screen.getByRole("button",{name:"Excluir relatório "+item.title}));
+  fireEvent.click(screen.getByRole("button",{name:"Confirmar Exclusão"}));
+  await screen.findByText("Sem permissão");
+  expect(screen.getByRole("dialog",{name:"Excluir relatório"})).toBeVisible();
+  vi.mocked(creatorApi.listReports).mockResolvedValue({ok:true,value:{page:1,pageSize:20,totalRecords:0,totalPages:0,data:[]}});
+  fireEvent.click(screen.getByRole("button",{name:"Confirmar Exclusão"}));
+  await waitFor(()=>expect(screen.queryByRole("dialog",{name:"Excluir relatório"})).not.toBeInTheDocument());
+  await waitFor(()=>expect(onTotal).toHaveBeenLastCalledWith(0));
+  expect(creatorApi.deleteReport).toHaveBeenCalledTimes(2);
+});
+
+it("does not expose report deletion to viewers", async () => {
+  vi.mocked(creatorApi.listReports).mockResolvedValue({ok:true,value:{page:1,pageSize:20,totalRecords:1,totalPages:1,data:[{...item,myRole:"viewer"}]}});
+  render(<MemoryRouter><ReportBrowser organizationId="org"/></MemoryRouter>);
+  await screen.findByText(item.title);
+  expect(screen.queryByRole("button",{name:"Opções"})).not.toBeInTheDocument();
+});
+
+it("returns to the previous page after deleting its final report and preserves filters", async () => {
+  vi.mocked(creatorApi.listReports).mockResolvedValue({ok:true,value:{page:2,pageSize:20,totalRecords:21,totalPages:2,data:[item]}});
+  vi.mocked(creatorApi.deleteReport).mockResolvedValue({ok:true,value:undefined});
+  render(<MemoryRouter initialEntries={["/?page=2&tagIds=sales"]}><ReportBrowser organizationId="org"/><Location/></MemoryRouter>);
+  await screen.findByText(item.title);
+  fireEvent.click(screen.getByRole("button",{name:"Opções"}));
+  fireEvent.click(screen.getByRole("button",{name:"Excluir relatório "+item.title}));
+  fireEvent.click(screen.getByRole("button",{name:"Confirmar Exclusão"}));
+  await waitFor(()=>expect(creatorApi.listReports).toHaveBeenLastCalledWith(1,20,expect.objectContaining({organizationId:"org",tagIds:["sales"]})));
+  expect(screen.getByLabelText("URL")).toHaveTextContent("tagIds=sales");
+  expect(screen.getByLabelText("URL")).toHaveTextContent("page=1");
 });
