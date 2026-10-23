@@ -2,6 +2,8 @@ import { expect, test } from "@playwright/test";
 
 for (const width of [1280, 390]) test('contextual loading at ' + width, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 844 });
+  const pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
   const json = (body: unknown) => ({ contentType: "application/json", body: JSON.stringify(body) });
   const user = { id: "user", name: "Root", email: "root@example.com", globalRole: "root", profileIds: [], organizations: [] };
   let release!: () => void;
@@ -12,6 +14,8 @@ for (const width of [1280, 390]) test('contextual loading at ' + width, async ({
     if (path.endsWith('/auth/refresh')) return route.fulfill(json({ accessToken: "token", refreshToken: "refresh", tokenType: "Bearer", expiresAt: new Date(Date.now()+3600000).toISOString(), userId: "user", email: user.email, globalRole: "root" }));
     if (path.endsWith('/me')) return route.fulfill(json(user));
     if (path.endsWith('/reports/tags')) return route.fulfill(json([]));
+    if (path.endsWith('/report-exports')) return route.fulfill(json({ data: [], totalCount: 0, page: 1, pageSize: 20 }));
+    if (path.endsWith('/notifications')) return route.fulfill(json({ data: [], totalCount: 0, unreadCount: 0, page: 1, pageSize: 20 }));
     if (path.endsWith('/reports')) {
       await pending;
       if (fail) return route.fulfill({ status: 500, ...json({ detail: "Falha de consulta simulada" }) });
@@ -40,4 +44,5 @@ for (const width of [1280, 390]) test('contextual loading at ' + width, async ({
   fail = false;
   await page.getByRole('button', { name: 'Consultar relatórios novamente' }).click();
   await expect(page.locator('.report-browser-row')).toBeVisible();
+  expect(pageErrors).toEqual([]);
 });
