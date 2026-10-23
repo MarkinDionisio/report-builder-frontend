@@ -12,7 +12,7 @@ function show() { return render(<GlobalReportCatalog organizationId="target" onC
 async function select() {
   fireEvent.click(await screen.findByRole("button", { name: "Selecionar modelo Vendas" }));
   await screen.findByRole("option", { name: "Base local" });
-  await screen.findByText("0 selecionadas. A seleção é mantida ao buscar.");
+  await screen.findByRole("textbox", { name: "Buscar etiquetas" });
   fireEvent.change(screen.getByLabelText("Data source de destino"), { target: { value: "source" } });
 }
 async function verify() {
