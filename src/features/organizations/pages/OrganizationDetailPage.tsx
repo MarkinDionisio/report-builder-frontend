@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { OrganizationContextHeader } from "../components/OrganizationContextHeader";
 import { useEffect, useState } from "react";
@@ -27,7 +28,7 @@ export function OrganizationDetailPage() {
     setOrganization(null); setError("");
     if (allowed) void organizationsApi.list().then(result => {
       if (!active) return;
-      if (isErr(result)) setError(result.error.detail || "Não foi possível consultar a organização.");
+      if (isErr(result)) setError(problemMessage(result.error, "Não foi possível consultar a organização."));
       else {
         const found = result.value.find(item => item.id === organizationId);
         if (found) setOrganization(found);

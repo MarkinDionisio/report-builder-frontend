@@ -8,7 +8,7 @@ export type ExportFormat = "xlsx" | "csv";
 export interface ExportJob {
   id: string; reportId: string; title: string; format: ExportFormat;
   status: "queued" | "running" | "ready" | "failed" | "expired";
-  createdAt: string; expiresAt: string | null; error: string | null;
+  createdAt: string; expiresAt: string | null; error: string | null; errorCode?: string;
 }
 export interface ExportNotice { id: string; jobId: string; message: string; createdAt: string; readAt: string | null }
 export interface ExportPage<T> { data: T[]; totalCount: number; page: number; pageSize: number }
@@ -16,7 +16,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<Result<T, ApiP
   const response = await apiFetch(path, init);
   if (isErr(response)) return response;
   try { return ok(await response.value.json() as T); }
-  catch { return err({ title: "Resposta inválida", status: response.value.status, detail: "Não foi possível consultar as exportações.", type: "about:blank", instance: path }); }
+  catch { return err({ title: "Invalid response", status: response.value.status, detail: "Could not process the server response.", type: "about:blank", instance: path }); }
 }
 export const exportApi = {
   request: (reportId: string, format: ExportFormat, parameters: Record<string, unknown>, filters: RuntimeFilter[] = []) =>
@@ -43,7 +43,7 @@ export const exportApi = {
       anchor.href = url; anchor.download = Array.from(name, c => c === "/" || c === "\\" || c.charCodeAt(0) < 32 ? "_" : c).join("");
       document.body.appendChild(anchor); anchor.click();
       return ok(undefined);
-    } catch { return err({ title: "Falha no download", status: 0, detail: "Não foi possível baixar o arquivo. Tente novamente.", type: "about:blank", instance: "/api/v1/report-exports" }); }
+    } catch { return err({ title: "Download failed", status: 0, detail: "Could not process the server response.", type: "about:blank", instance: "/api/v1/report-exports" }); }
     finally { anchor.remove(); if (url) { const downloadedUrl = url; window.setTimeout(() => URL.revokeObjectURL(downloadedUrl), 1000); } }
   },
 };

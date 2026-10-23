@@ -183,7 +183,7 @@ export interface UpsertReportRequest {
   tagIds?: string[];
   title: string;
   visibilityScope: VisibilityScope;
-  organizationId?: string; // obrigatório apenas na criação
+  organizationId?: string; // Required only when creating a report.
   content: ReportContentV1;
   availableFilters?: Array<{ field: string; type: string; options: string[] }>;
 }

@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
@@ -40,9 +41,9 @@ function UserExportNotifications() {
       try {
         const [exports, notifications] = await Promise.all([exportApi.list(page, abort.signal), exportApi.notifications(noticePage, abort.signal)]);
         if (!active) return;
-        if (isErr(exports)) setError(exports.error.detail || "Não foi possível consultar as exportações.");
+        if (isErr(exports)) setError(problemMessage(exports.error, "Não foi possível consultar as exportações."));
         else { setJobs(exports.value.data); setTotal(exports.value.totalCount); }
-        if (isErr(notifications)) setError(notifications.error.detail || "Não foi possível consultar os avisos.");
+        if (isErr(notifications)) setError(problemMessage(notifications.error, "Não foi possível consultar os avisos."));
         else { setNotices(notifications.value.data); setUnread(notifications.value.unreadCount); setNoticeTotal(notifications.value.totalCount); }
         if (!isErr(exports) && !isErr(notifications)) setError(null);
       } catch { if (active) setError("Falha de comunicação ao consultar exportações. Tente novamente."); }
@@ -60,13 +61,13 @@ function UserExportNotifications() {
   async function download(job: ExportJob) {
     if (actionLock.current) return;
     actionLock.current = true; setBusyId(job.id); setError(null);
-    try { const result = await exportApi.download(job); if (isErr(result)) setError(result.error.detail || "Não foi possível baixar o arquivo."); }
+    try { const result = await exportApi.download(job); if (isErr(result)) setError(problemMessage(result.error, "Não foi possível baixar o arquivo.")); }
     finally { actionLock.current = false; setBusyId(null); }
   }
   async function read(id: string) {
     if (actionLock.current) return;
     actionLock.current = true; setBusyId(id); setError(null);
-    try { const result = await exportApi.read(id); if (isErr(result)) setError(result.error.detail || "Não foi possível marcar o aviso como lido."); else refresh(); }
+    try { const result = await exportApi.read(id); if (isErr(result)) setError(problemMessage(result.error, "Não foi possível marcar o aviso como lido.")); else refresh(); }
     finally { actionLock.current = false; setBusyId(null); }
   }
   return <>
@@ -85,7 +86,7 @@ function UserExportNotifications() {
             <section aria-label="Arquivos exportados"><h3>Arquivos</h3>{jobs.length === 0 && <p>Nenhuma exportação solicitada.</p>}
               {jobs.map(job => <article key={job.id} className="export-notice"><strong>{job.title}</strong><span>{job.format.toUpperCase()} · {labels[job.status]}</span>
                 {job.expiresAt && <small>Disponível até {new Date(job.expiresAt).toLocaleString("pt-BR")}</small>}
-                {job.error && <p>{job.error}</p>}
+                {job.error && <p>{problemMessage({ code: job.errorCode }, "Não foi possível gerar o arquivo. Revise os parâmetros e tente novamente.")}</p>}
                 {job.status === "ready" && <button type="button" className="btn btn-secondary" disabled={busyId !== null} onClick={() => void download(job)}>{busyId === job.id ? "Baixando…" : "Baixar arquivo"}</button>}
                 {(job.status === "failed" || job.status === "expired") && <Link className="btn btn-secondary" to={`/reports/${job.reportId}/run`} onClick={() => setOpen(false)}>Abrir relatório para exportar novamente</Link>}
               </article>)}

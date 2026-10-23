@@ -28,7 +28,7 @@ beforeEach(() => {
 });
 
 describe("GlobalReportCatalog steps", () => {
-  it("mostra modelos locais reutilizados e cópias planejadas sem conceder acesso", async () => {
+  it("shows reused local models and planned copies without granting access", async () => {
     vi.mocked(creatorApi.checkReportImport).mockResolvedValue({ ok: true, value: { canImport: true, issues: [], joinModels: [
       { name: "Cliente local", action: "reuse", modelId: "local" },
       { name: "Filial (2)", action: "create", modelId: null },
@@ -40,7 +40,7 @@ describe("GlobalReportCatalog steps", () => {
     fireEvent.change(screen.getByLabelText("Data source de destino"), { target: { value: "second" } });
     expect(screen.queryByText(/Filial \(2\)/)).not.toBeInTheDocument();
   });
-  it("bloqueia a segunda etapa sem modelo e move o foco ao avançar e voltar", async () => {
+  it("blocks step two without a template and manages focus when navigating steps", async () => {
     show();
     expect(screen.getByRole("button", { name: "Configurar importação" })).toBeDisabled();
     expect(screen.queryByLabelText("Data source de destino")).not.toBeInTheDocument();
@@ -53,7 +53,7 @@ describe("GlobalReportCatalog steps", () => {
     expect(screen.getByRole("heading", { name: "Escolher relatório" })).toHaveFocus();
     expect(screen.getByRole("button", { name: "Selecionar modelo Vendas" })).toHaveAttribute("aria-pressed", "true");
   });
-  it("verifica antes de importar, exibe uma ação principal e fixa a organização atual", async () => {
+  it("checks before importing with one primary action and fixed current organization", async () => {
     const report = { id: "copy" } as ReportDetail;
     vi.mocked(creatorApi.importReport).mockResolvedValue({ ok: true, value: report });
     show(); await select();
@@ -65,7 +65,7 @@ describe("GlobalReportCatalog steps", () => {
     fireEvent.click(screen.getByRole("button", { name: "Importar relatório" }));
     await waitFor(() => expect(onImported).toHaveBeenCalledWith(report));
   });
-  it("preserva busca, página, título, destino e compatibilidade ao voltar", async () => {
+  it("preserves search, page, title, destination, and compatibility when going back", async () => {
     show(); await screen.findByRole("button", { name: "Próxima" });
     fireEvent.change(screen.getByRole("textbox", { name: "Buscar relatórios globais" }), { target: { value: "Vendas" } });
     await waitFor(() => expect(creatorApi.listGlobalTemplates).toHaveBeenCalledWith(1, "Vendas"));
@@ -85,7 +85,7 @@ describe("GlobalReportCatalog steps", () => {
     fireEvent.click(screen.getByRole("button", { name: "Selecionar modelo Vendas" }));
     expect(screen.getByLabelText("Título da cópia")).toHaveValue("Vendas da filial");
   });
-  it("invalida a verificação ao trocar destino ou modelo", async () => {
+  it("invalidates checks after changing destination or template", async () => {
     show(); await select(); await verify();
     fireEvent.change(screen.getByLabelText("Data source de destino"), { target: { value: "second" } });
     expect(screen.queryByRole("button", { name: "Importar relatório" })).not.toBeInTheDocument();
@@ -96,14 +96,14 @@ describe("GlobalReportCatalog steps", () => {
     expect(screen.queryByText(/Modelo compatível/)).not.toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole("button", { name: "Verificar compatibilidade" })).toBeEnabled());
   });
-  it("mostra incompatibilidades junto ao formulário e não oferece importação", async () => {
-    vi.mocked(creatorApi.checkReportImport).mockResolvedValue({ ok: true, value: { canImport: false, issues: [{ code: "field_incompatible", path: "dataset.select[0]", referenceId: "field", message: "Campo incompatível no destino." }] } });
+  it("shows incompatibilities beside the form without offering import", async () => {
+    vi.mocked(creatorApi.checkReportImport).mockResolvedValue({ ok: true, value: { canImport: false, issues: [{ code: "field_incompatible", path: "dataset.select[0]", referenceId: "field", message: "The target field is incompatible." }] } });
     show(); await select(); fireEvent.click(screen.getByRole("button", { name: "Verificar compatibilidade" }));
-    await screen.findByText("Campo incompatível no destino.");
+    await screen.findByText("Campo ausente, ambíguo ou com tipo incompatível no destino.");
     expect(screen.queryByRole("button", { name: "Importar relatório" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Verificar compatibilidade" })).toBeEnabled();
   });
-  it("exige nova checagem se o catálogo mudar antes da importação", async () => {
+  it("requires another check when the catalog changes before import", async () => {
     vi.mocked(creatorApi.importReport).mockResolvedValue({ ok: false, error: { type: "about:blank", instance: "", status: 409, title: "Conflict", code: "report_import.incompatible", detail: "Verifique a compatibilidade novamente." } });
     show(); await select(); await verify();
     fireEvent.click(screen.getByRole("button", { name: "Importar relatório" }));
@@ -112,14 +112,14 @@ describe("GlobalReportCatalog steps", () => {
     expect(screen.queryByRole("button", { name: "Importar relatório" })).not.toBeInTheDocument();
     expect(onImported).not.toHaveBeenCalled();
   });
-  it("mostra listas vazias e erros de permissão sem liberar a configuração", async () => {
+  it("shows empty lists and permission errors without enabling configuration", async () => {
     vi.mocked(creatorApi.listGlobalTemplates).mockResolvedValue({ ok: true, value: { ...templates, data: [], totalPages: 0 } });
     vi.mocked(creatorApi.getImportDataSources).mockResolvedValue({ ok: false, error: { type: "about:blank", instance: "", status: 403, title: "Forbidden", code: "report_import.forbidden", detail: "Sem permissão para importar." } });
     show(); await screen.findByText("Nenhum modelo global disponível.");
     await screen.findByText(/É necessário acesso de creator/);
     expect(screen.getByRole("button", { name: "Configurar importação" })).toBeDisabled();
   });
-  it("desabilita navegação e campos durante requisições e impede submissões duplicadas", async () => {
+  it("disables navigation and fields during requests and prevents duplicate submission", async () => {
     vi.mocked(creatorApi.checkReportImport).mockImplementation(() => new Promise(() => {}));
     show(); await select(); const button = screen.getByRole("button", { name: "Verificar compatibilidade" });
     fireEvent.click(button); fireEvent.click(button);
@@ -128,7 +128,7 @@ describe("GlobalReportCatalog steps", () => {
     expect(screen.getByLabelText("Data source de destino")).toBeDisabled();
     expect(screen.getByLabelText("Título da cópia")).toBeDisabled();
   });
-  it("busca em todo o catálogo e reinicia a paginação", async () => {
+  it("searches the entire catalog and resets pagination", async () => {
     show(); await screen.findByRole("button", { name: "Próxima" });
     fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
     await waitFor(() => expect(creatorApi.listGlobalTemplates).toHaveBeenCalledWith(2, ""));

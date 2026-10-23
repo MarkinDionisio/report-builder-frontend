@@ -32,14 +32,14 @@ describe("ProblemAlert Error Filtering Component", () => {
       detail: "Validation failed",
       instance: "/api/v1/organizations",
       errors: {
-        name: ["O nome é obrigatório"],
+        name: ["The name field is required."],
       },
     };
 
     render(<ProblemAlert problem={validationProblem} />);
 
-    expect(screen.getByText("name:")).toBeInTheDocument();
-    expect(screen.getByText("O nome é obrigatório")).toBeInTheDocument();
+    expect(screen.getByText("Nome:")).toBeInTheDocument();
+    expect(screen.getByText("Verifique o valor informado.")).toBeInTheDocument();
   });
 
   it("should SUPPRESS raw internal technical messages for unexpected 500 errors", () => {

@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import React, { useState, useEffect } from "react";
@@ -59,7 +60,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
       const res = await catalogApi.listIntrospectionObjects(dataSourceId);
       setLoadingObjects(false);
       if (isErr(res)) {
-        setErrorMsg(res.error.detail || "Erro ao consultar objetos do banco de dados.");
+        setErrorMsg(problemMessage(res.error, "Erro ao consultar objetos do banco de dados."));
       } else {
         setObjects(res.value);
       }
@@ -78,7 +79,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
     const res = await catalogApi.listIntrospectionFields(dataSourceId, obj.schemaName, obj.objectName);
     setLoadingFields(false);
     if (isErr(res)) {
-      setErrorMsg(res.error.detail || "Erro ao listar campos do objeto.");
+      setErrorMsg(problemMessage(res.error, "Erro ao listar campos do objeto."));
     } else {
       setFields(res.value);
     }
@@ -107,7 +108,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
     const res = await catalogApi.previewImportSchema(req);
     setLoadingPreview(false);
     if (isErr(res)) {
-      setErrorMsg(res.error.detail || "Erro ao gerar prévia da importação.");
+      setErrorMsg(problemMessage(res.error, "Erro ao gerar prévia da importação."));
     } else {
       setPreview(res.value);
       setSelectedFields(new Set(res.value.fields.map((f) => f.internalFieldName)));
@@ -172,7 +173,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
       };
       const resSchema = await catalogApi.createReportSchema(reqSchema);
       if (isErr(resSchema)) {
-        setErrorMsg(resSchema.error.detail || "Erro ao criar schema.");
+        setErrorMsg(problemMessage(resSchema.error, "Erro ao criar schema."));
         setImporting(false);
         return;
       }
@@ -202,7 +203,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
       if (field.alreadyExists && field.existingFieldId) {
         const resField = await catalogApi.updateReportField(field.existingFieldId, reqField);
         if (isErr(resField)) {
-          setErrorMsg(`Erro ao atualizar campo ${field.internalFieldName}: ${resField.error.detail}`);
+          setErrorMsg(`Erro ao atualizar campo ${field.internalFieldName}: ${problemMessage(resField.error, "Verifique os dados e tente novamente.")}`);
           setImporting(false);
           return;
         }
@@ -210,7 +211,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
       } else {
         const resField = await catalogApi.createReportField(schemaId, reqField);
         if (isErr(resField)) {
-          setErrorMsg(`Erro ao criar campo ${field.internalFieldName}: ${resField.error.detail}`);
+          setErrorMsg(`Erro ao criar campo ${field.internalFieldName}: ${problemMessage(resField.error, "Verifique os dados e tente novamente.")}`);
           setImporting(false);
           return;
         }

@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { Database, ChevronRight } from "lucide-react";
@@ -29,7 +30,7 @@ export function OrganizationDataSources({ organizationId, isRoot }: {
                 if (!active)
                     return;
                 if (isErr(r)) {
-                    setError(r.error.detail || "Não foi possível consultar as fontes.");
+                    setError(problemMessage(r.error, "Não foi possível consultar as fontes."));
                     return;
                 }
                 setSources(r.value);
@@ -75,7 +76,7 @@ export function OrganizationDataSources({ organizationId, isRoot }: {
  <footer className="organization-source-card__footer"><p>{pending.length?<><strong>Pendente: </strong>{pending.join(" · ")}</>:counts[source.id]===undefined?"Consulte o catálogo para verificar as tabelas.":"Revise os campos e as permissões desta fonte."}</p><Link className="btn btn-secondary" to={"/organizations/"+organizationId+"/data-sources/"+encodeURIComponent(source.id)}>{isRoot?"Configurar fonte":"Consultar fonte"}<ChevronRight size={16} aria-hidden="true"/></Link></footer>
  </article>;})}</div>}
  {creating && <DataSourceModal organizationId={organizationId} onClose={() => setCreating(false)} onSubmitUpdate={async () => false} onSubmitCreate={async (data) => { const r = await catalogApi.createDataSource(data); if (isErr(r)) {
-        setError(r.error.detail || "Não foi possível salvar a conexão.");
+        setError(problemMessage(r.error, "Não foi possível salvar a conexão."));
         return false;
     } setCreating(false); navigate("/organizations/" + organizationId + "/data-sources/" + encodeURIComponent(r.value.id) + "?step=tables"); return true; }}/>}</section>;
 }

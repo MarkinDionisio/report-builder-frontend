@@ -68,7 +68,7 @@ describe("ReportRunnerPage parameters", () => {
   });
 });
 
-it("orienta a importar modelos globais e oculta a execução", async () => {
+it("guides global template imports and hides execution", async () => {
   vi.mocked(creatorApi.getReport).mockResolvedValue({ ok: true, value: {
     id: "global", title: "Modelo", organizationId: "org", organizationName: "Origem", visibilityScope: "global", myRole: "viewer", canExecute: false, canEdit: false, executionBlockCode: "report_execution.global_template_requires_import", blockedSchemas: [], allowedFilters: [],
     content: { version: 1, dataset: { schemaId: "schema", select: [] } },

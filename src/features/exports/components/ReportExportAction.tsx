@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { useRef, useState } from "react";
 import { SourceActionMenu } from "../../catalog/components/SourceActionMenu";
 import { Alert } from "../../../shared/components/Alert";
@@ -14,7 +15,7 @@ export function ReportExportAction({ reportId, parameters, disabled }: { reportI
     lock.current = true; setBusy(true); setError(null); setRequested(false);
     try {
       const result = await exportApi.request(reportId, format, parameters);
-      if (isErr(result)) setError(result.error.detail || "Não foi possível solicitar a exportação.");
+      if (isErr(result)) setError(problemMessage(result.error, "Não foi possível solicitar a exportação."));
       else { setRequested(true); window.dispatchEvent(new Event("report-export-requested")); }
     } catch { setError("Falha de comunicação ao solicitar a exportação. Tente novamente."); }
     finally { lock.current = false; setBusy(false); }

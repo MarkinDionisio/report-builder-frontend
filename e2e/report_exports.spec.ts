@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-for (const width of [1440, 390]) test(`exportações e notificações em ${width}px`, async ({ page }, testInfo) => {
+for (const width of [1440, 390]) test(`exports and notifications at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 });
   const json = (value: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(value) });
   await page.addInitScript(() => localStorage.setItem("report-builder.session.v1", JSON.stringify({ refreshToken: "refresh" })));

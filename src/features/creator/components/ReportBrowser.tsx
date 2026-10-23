@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { SourceActionMenu } from "../../catalog/components/SourceActionMenu";
 import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
@@ -51,7 +52,7 @@ export function ReportBrowser({ organizationId, onTotal, version = 0 }: { organi
     setDeleteError("");
     try {
       const result = await creatorApi.deleteReport(deleting.id);
-      if (isErr(result)) { setDeleteError(result.error.detail || "Não foi possível excluir o relatório."); return false; }
+      if (isErr(result)) { setDeleteError(problemMessage(result.error, "Não foi possível excluir o relatório.")); return false; }
       setReports(current => current.filter(report => report.id !== deleting.id));
       setNotice(`Relatório “${deleting.title}” excluído.`);
       if (reports.length === 1 && page > 1) {
@@ -67,7 +68,7 @@ export function ReportBrowser({ organizationId, onTotal, version = 0 }: { organi
     let active = true; setTagError(""); setTags([]);
     void creatorApi.listReportTags(organizationId).then(result => {
       if (!active) return;
-      if (isErr(result)) setTagError(result.error.detail || "Não foi possível consultar etiquetas.");
+      if (isErr(result)) setTagError(problemMessage(result.error, "Não foi possível consultar etiquetas."));
       else setTags(result.value);
     }).catch(() => { if (active) setTagError("Falha de comunicação ao consultar etiquetas."); });
     return () => { active = false; };
@@ -77,7 +78,7 @@ export function ReportBrowser({ organizationId, onTotal, version = 0 }: { organi
     const timer = window.setTimeout(() => {
       void creatorApi.listReports(page, 20, { organizationId, search, matchCase, exactMatch, tagIds: selected, untagged }).then(result => {
         if (!active) return;
-        if (isErr(result)) setError(result.error.detail || "Não foi possível consultar os relatórios.");
+        if (isErr(result)) setError(problemMessage(result.error, "Não foi possível consultar os relatórios."));
         else { setLoadedOrganization(contextKey); setLoadedPage(page); setReports(result.value.data); setPages(result.value.totalPages); setTotal(result.value.totalRecords); onTotal?.(result.value.totalRecords); }
       }).catch(() => { if (active) setError("Falha de comunicação ao consultar relatórios."); }).finally(() => { if (active) setLoading(false); });
     }, search ? 250 : 0);

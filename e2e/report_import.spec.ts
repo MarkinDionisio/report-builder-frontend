@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-for (const viewport of [{ name: "desktop", width: 1280, height: 800 }, { name: "mobile", width: 390, height: 844 }, { name: "compacto", width: 320, height: 640 }]) {
-test(`importa em etapas no ${viewport.name} e abre a cópia no editor`, async ({ page }, testInfo) => {
+for (const viewport of [{ name: "desktop", width: 1280, height: 800 }, { name: "mobile", width: 390, height: 844 }, { name: "compact", width: 320, height: 640 }]) {
+test(`imports in steps on ${viewport.name} and opens the copy in the editor`, async ({ page }, testInfo) => {
   await page.setViewportSize(viewport);
   const json = (body: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   const session = { accessToken: "token", refreshToken: "refresh", tokenType: "Bearer", expiresAt: new Date(Date.now() + 3600000).toISOString(), userId: "user", email: "creator@example.com", globalRole: "creator" };
@@ -98,7 +98,7 @@ test(`importa em etapas no ${viewport.name} e abre a cópia no editor`, async ({
 });
 }
 
-test("viewer não recebe a opção de importar", async ({ page }) => {
+test("does not offer import to viewers", async ({ page }) => {
   const json = (body: unknown) => ({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   await page.route("**/api/v1/auth/refresh", route => route.fulfill(json({ accessToken: "token", refreshToken: "refresh", tokenType: "Bearer", expiresAt: new Date(Date.now() + 3600000).toISOString(), userId: "viewer", email: "viewer@example.com", globalRole: "viewer" })));
   await page.route("**/api/v1/me", route => route.fulfill(json({ id: "viewer", name: "Viewer", email: "viewer@example.com", globalRole: "viewer", profileIds: [], organizations: [{ id: "target", name: "Destino", organizationRole: "viewer" }] })));

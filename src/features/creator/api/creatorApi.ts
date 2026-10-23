@@ -33,9 +33,9 @@ async function parseJsonResponse<T>(
   } catch {
     return err({
       type: "about:blank",
-      title: "Erro ao processar resposta",
+      title: "Response processing error",
       status: result.value.status,
-      detail: "Falha ao ler o corpo JSON da resposta.",
+      detail: "Could not read the JSON response body.",
       instance: result.value.url,
     });
   }

@@ -1,29 +1,29 @@
-# Configurar fontes de dados
+# Configure data sources
 
-Acesse **Organizações → organização → Fontes de dados → Configurar fonte**. Fontes sem tabelas também aparecem na lista. O cabeçalho mantém a organização e a fonte visíveis.
+Open **Organizações → organização → Fontes de dados → Configurar fonte**. Include sources with no tables. The header retains organization/source identity.
 
-1. **Conectar o banco:** cadastre uma conexão na organização escolhida. Use Testar conexão antes de salvar. O teste não substitui a validação persistida: consulte o estado em Conectar o banco e use Validar somente leitura. A fonte salva ainda não disponibiliza tabelas nem concede acesso.
-2. **Escolher tabelas:** use Importar do banco para buscar tabelas/views, selecionar resultados e revisar a prévia. A importação cadastra tabelas e campos; não copia dados. Cada tabela possui resultado individual. Em falhas parciais, repita somente as falhas. Usar modelo de catálogo só funciona com catálogo vazio; fontes com catálogo existente podem acrescentar tabelas pela importação. O cadastro manual está em Opções avançadas.
-3. **Revisar os campos:** escolha uma tabela para editar nomes públicos, habilitação, sensibilidade, operações, operadores e agregações. A busca oferece Aa e expressão exata. Filtros ficam no botão Filtros; use Selecionar para exibir as caixas e ações em lote. No celular, use Opções da tabela → Trocar tabela para abrir a lista. A paginação e a seleção em lote facilitam catálogos grandes. Marcar resultados inclui todas as páginas do filtro atual; as ações em lote também abrangem seleções mantidas em outros filtros. Campos existentes não significam que houve revisão humana. Estas configurações limitam o que poderá ser concedido aos membros.
-4. **Definir acesso:** escolha ou crie um profile da organização e configure suas permissões com a fonte já selecionada. Os grants das demais fontes são preservados; nenhuma permissão é concedida automaticamente. Se a leitura dos grants falhar, o editor bloqueia alterações até uma nova consulta. Associe os membros ao profile. O resumo final mostra conexão, validação de leitura, tabelas, campos e estado das permissões. Use o acesso à criação de relatórios para continuar.
+1. **Conectar o banco:** create a connection in the selected organization. Test before saving; transient testing does not replace persisted read-only verification. Check status and use Validar somente leitura. Saving grants no access and exposes no tables by itself.
+2. **Escolher tabelas:** Importar do banco discovers tables/views, selection, and preview. Import registers metadata, not source data. Keep individual results and retry only failures. Initial catalog templates require an empty catalog; existing catalogs can add tables via import. Manual creation belongs under Opções avançadas.
+3. **Revisar os campos:** select a table and edit public names, enabled/sensitive states, operations, operators, aggregations. Search offers Aa/exact matching. Filtros groups filters; Selecionar shows bulk checkboxes. Mobile Opções da tabela → Trocar tabela opens tables. Pagination/bulk selection support large catalogs. Marcar resultados includes every filtered page; bulk actions include retained selections outside filters. Existing fields do not imply human review. Catalog settings limit what may be granted.
+4. **Definir acesso:** choose/create a profile and edit grants with source preselected. Preserve other source grants; access is never automatic. Read failures block edits. Associate members with profiles. Final summary shows connection, read-only verification, tables, fields, permissions, and entry to report creation.
 
-## Modelos reutilizáveis
+## Reusable models
 
-Na fonte, abra **Mais opções → Modelos reutilizáveis**. Modelos de catálogo continuam globais e guardam cópias independentes das configurações de tabelas e campos, sem credenciais ou permissões. Excluir um modelo não remove cópias já aplicadas. Salvar catálogo como modelo exige campos cadastrados. A aplicação faz introspecção e permite selecionar somente itens compatíveis. Um conflito exige nova prévia. Cancelar a aplicação mantém a conexão cadastrada.
+Open **Mais opções → Modelos reutilizáveis** inside the source. Catalog templates are global independent table/field snapshots without credentials/permissions. Deletion does not remove copies. Saving requires registered fields. Application introspects and selects only compatible items; conflicts require fresh preview. Cancelling preserves the source connection.
 
-Em **Modelos de junção**, duas áreas distinguem os escopos:
+**Modelos de junção** separates:
 
-- **Modelos de junção da organização:** usados pelos relatórios da organização em qualquer fonte compatível. A fonte atual é referência para preenchimento e compatibilidade. Root pode cadastrar, editar, duplicar, consultar dependências e salvar como template global. Modelos em uso permitem editar nome e alias sugerido; estrutura, tipo, habilitação e exclusão ficam protegidos. Duplique para criar uma alternativa.
-- **Templates globais de junção:** snapshots compartilhados entre organizações, consultáveis e aplicáveis com prévia para criar um modelo local independente. Para mudar o conteúdo, salve outro template. Excluir o template não altera os modelos já aplicados. Um conflito exige gerar nova prévia.
+- Organization models: used by organization reports in any compatible source. Current source supports autofill/compatibility. Root can create/edit/duplicate/inspect dependencies/save global templates. Models in use allow name/suggested alias edits; structure/type/enabling/deletion are protected. Duplicate for alternatives.
+- Global templates: shared independent snapshots applied with preview to create local models. Save a new template to change content. Deletion does not affect applied models. Conflicts require fresh preview.
 
-Junções são avançadas e opcionais, sem bloquear a configuração inicial da fonte. Modelos e templates não concedem permissões. Na importação de relatório global, a prévia mostra os modelos locais que serão reutilizados ou criados automaticamente. Essa exceção é permitida ao usuário autorizado a importar, sem liberar gerenciamento manual. Relatório e modelos necessários são gravados juntos; falhas desfazem toda a importação.
+Joins are advanced/optional and do not block initial setup. Models/templates grant no permissions. Global report import previews models to reuse/create automatically. This exception is available to authorized importers without manual management. Report/models save together and roll back together.
 
-## Acesso, retomada e compatibilidade
+## Access, resuming, and compatibility
 
-Somente root cadastra conexões, tabelas, campos e modelos. Administradores mantêm as permissões existentes para consultar fontes e gerenciar profiles e grants. A API continua sendo a autoridade de autorização. Uma fonte deve pertencer à organização da URL.
+Only root creates connections/tables/fields/models. Administrators retain authorized source/profile/grant access. API authorization is authoritative; source ownership must match URL organization.
 
-A rota é /organizations/:organizationId/data-sources/:dataSourceId. Os parâmetros step (connection, tables, fields, access), schemaId e profileId permitem retomar o contexto e usar voltar/avançar do navegador. Credenciais ficam apenas no formulário transitório.
+Route: /organizations/:organizationId/data-sources/:dataSourceId. step values connection/tables/fields/access, schemaId, profileId retain context and browser navigation. Credentials remain transient.
 
-Links antigos de fontes, catálogo e modelos encaminham ao novo contexto quando informam dataSourceId ou schemaId. Links sem contexto exibem a escolha de organização e fonte. A navegação não cria outro catálogo. A transição das junções preserva as antigas definições compartilhadas como templates globais, sem remapear relatórios antigos; relatórios com junções antigas precisam ser ajustados ou recriados.
+Legacy source/catalog/model links redirect when source/schema context exists; otherwise show organization/source selection. Navigation creates no second catalog. Join migration preserves old definitions as global templates without remapping reports; legacy joined reports require adjustment/recreation.
 
-A execução dos relatórios exige conexão habilitada e validada como somente leitura, além de catálogo e permissões adequados. Preparar o catálogo pode ocorrer antes da validação.
+Execution requires enabled/read-verified sources plus catalog/permissions. Catalog preparation can precede verification.

@@ -7,7 +7,7 @@ const user = (overrides: Partial<MeResponse> = {}): MeResponse => ({
 });
 
 describe("getUserCapabilities", () => {
-  it("não expõe recursos globais para usuário sem papel ou vínculo", () => {
+  it("does not expose global resources without a role or membership", () => {
     expect(getUserCapabilities(user())).toEqual({
       canViewOrganizations: false,
       canOpenCreatorWorkspace: false,
@@ -17,21 +17,21 @@ describe("getUserCapabilities", () => {
     });
   });
 
-  it("libera somente a área de criação para membership creator", () => {
+  it("allows only creator workspace for creator memberships", () => {
     const capabilities = getUserCapabilities(user({ organizations: [{ id: "org-1", name: "Operação", organizationRole: "creator" }] }));
     expect(capabilities.canViewOrganizations).toBe(true);
     expect(capabilities.canOpenCreatorWorkspace).toBe(true);
     expect(capabilities.canManageCatalog).toBe(false);
   });
 
-  it("libera administração de catálogo somente para root", () => {
+  it("allows catalog administration only for root", () => {
     expect(getUserCapabilities(user({ globalRole: "root" })).canManageCatalog).toBe(true);
     expect(getUserCapabilities(user({ globalRole: "administrator" })).canManageCatalog).toBe(false);
   });
 });
 
 describe("canCreateReport", () => {
-  it("respeita o papel dentro da organização", () => {
+  it("respects the role within the organization", () => {
     const member = user({ organizations: [{ id: "org-1", name: "Operação", organizationRole: "viewer" }, { id: "org-2", name: "Comercial", organizationRole: "creator" }] });
     expect(canCreateReport(member, "org-1")).toBe(false);
     expect(canCreateReport(member, "org-2")).toBe(true);

@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { useModalFocus } from "../../../shared/hooks/useModalFocus";
@@ -99,7 +100,7 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
         setAccessDenied(true);
         refreshUser();
       } else {
-        setErrorMsg(res.error.detail || "Erro ao carregar campos do schema.");
+        setErrorMsg(problemMessage(res.error, "Erro ao carregar campos do schema."));
       }
     } else {
       setFields(res.value);
@@ -197,7 +198,7 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
           setAccessDenied(true);
           refreshUser();
         }
-        setErrorMsg(res.error.detail || "Erro ao atualizar campo.");
+        setErrorMsg(problemMessage(res.error, "Erro ao atualizar campo."));
       } else {
         setIsModalOpen(false);
         setEditingField(null);
@@ -219,7 +220,7 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
           setAccessDenied(true);
           refreshUser();
         }
-        setErrorMsg(res.error.detail || "Erro ao criar campo.");
+        setErrorMsg(problemMessage(res.error, "Erro ao criar campo."));
       } else {
         setIsModalOpen(false);
         await loadFields();
@@ -242,7 +243,7 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
       if (res.error.status === 403) {
         void refreshUser();
       }
-      setDeleteError(res.error.detail || "Erro ao excluir campo.");
+      setDeleteError(problemMessage(res.error, "Erro ao excluir campo."));
       return false;
     } else {
       await loadFields();
@@ -443,19 +444,19 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
                     <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.5rem" }}>Capacidades Habilitadas</div>
                     <div className="responsive-grid-5col">
                       <label style={{ fontSize: "0.8rem", cursor: "pointer" }}>
-                        <input type="checkbox" checked={isSelectable} onChange={(e) => setIsSelectable(e.target.checked)} /> Select
+                        <input type="checkbox" checked={isSelectable} onChange={(e) => setIsSelectable(e.target.checked)} /> Selecionar
                       </label>
                       <label style={{ fontSize: "0.8rem", cursor: "pointer" }}>
-                        <input type="checkbox" checked={isFilterable} onChange={(e) => setIsFilterable(e.target.checked)} /> Filter
+                        <input type="checkbox" checked={isFilterable} onChange={(e) => setIsFilterable(e.target.checked)} /> Filtrar
                       </label>
                       <label style={{ fontSize: "0.8rem", cursor: "pointer" }}>
-                        <input type="checkbox" checked={isSortable} onChange={(e) => setIsSortable(e.target.checked)} /> Sort
+                        <input type="checkbox" checked={isSortable} onChange={(e) => setIsSortable(e.target.checked)} /> Ordenar
                       </label>
                       <label style={{ fontSize: "0.8rem", cursor: "pointer" }}>
-                        <input type="checkbox" checked={isGroupable} onChange={(e) => setIsGroupable(e.target.checked)} /> Group
+                        <input type="checkbox" checked={isGroupable} onChange={(e) => setIsGroupable(e.target.checked)} /> Agrupar
                       </label>
                       <label style={{ fontSize: "0.8rem", cursor: "pointer" }}>
-                        <input type="checkbox" checked={isAggregatable} onChange={(e) => setIsAggregatable(e.target.checked)} /> Aggregate
+                        <input type="checkbox" checked={isAggregatable} onChange={(e) => setIsAggregatable(e.target.checked)} /> Agregar
                       </label>
                     </div>
                   </div>

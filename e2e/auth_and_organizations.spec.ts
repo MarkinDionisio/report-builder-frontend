@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("E2E - Fluxo de Autenticação e Navegação", () => {
-  test("Redirecionamento de Rota Protegida para Login", async ({ page }) => {
+test.describe("E2E - Authentication and navigation", () => {
+  test("Redirects protected routes to login", async ({ page }) => {
     await page.goto("/dashboard");
     await page.waitForURL("/login");
 
@@ -11,7 +11,7 @@ test.describe("E2E - Fluxo de Autenticação e Navegação", () => {
     await expect(page.getByRole("button", { name: "Entrar" })).toBeVisible();
   });
 
-  test("Validação Local de Senha Curta na Tela de Cadastro", async ({ page }) => {
+  test("Validates short passwords locally on registration", async ({ page }) => {
     await page.goto("/register");
     await page.fill("#register-name", "Maria Silva");
     await page.fill("#register-email", "maria@exemplo.com");
@@ -22,8 +22,8 @@ test.describe("E2E - Fluxo de Autenticação e Navegação", () => {
     await expect(page.locator(".alert-danger")).toContainText("A senha deve conter no mínimo 8 caracteres.");
   });
 
-  test("Fluxo Completo de Autenticação e Navegação no Dashboard", async ({ page }) => {
-    // Mock da API para simular login e consulta /me com sucesso
+  test("Completes authentication and dashboard navigation", async ({ page }) => {
+    // Mock successful login and current-user requests.
     await page.route("**/api/v1/auth/login", async (route) => {
       await route.fulfill({
         status: 200,
@@ -66,7 +66,7 @@ test.describe("E2E - Fluxo de Autenticação e Navegação", () => {
     await page.fill("#login-password", "uma-senha-segura");
     await page.click("button[type='submit']");
 
-    // Deve redirecionar para o Dashboard e carregar os dados
+    // Redirect to the dashboard and load its data.
     await page.waitForURL("/dashboard");
     await expect(page.locator("h1")).toContainText("Bem-vindo ao Report Builder");
     await expect(page.getByText("Maria Silva")).toBeVisible();
@@ -75,9 +75,9 @@ test.describe("E2E - Fluxo de Autenticação e Navegação", () => {
   });
 });
 
-test.describe("E2E - Gestão de Organizações, Membros e Convites", () => {
+test.describe("E2E - Organizations, members, and invitations", () => {
   test.beforeEach(async ({ page }) => {
-    // Autenticar como root via mock
+    // Mock root authentication.
     await page.route("**/api/v1/auth/refresh", async (route) => {
       await route.fulfill({
         status: 200,
@@ -110,7 +110,7 @@ test.describe("E2E - Gestão de Organizações, Membros e Convites", () => {
     });
   });
 
-  test("Listagem e Ações na Página de Organizações", async ({ page }) => {
+  test("Lists organizations and exposes permitted actions", async ({ page }) => {
     await page.route("**/api/v1/organizations", async (route) => {
       if (route.request().method() === "GET") {
         await route.fulfill({
@@ -123,7 +123,7 @@ test.describe("E2E - Gestão de Organizações, Membros e Convites", () => {
       }
     });
 
-    // Simular que já existe um refreshToken no localStorage
+    // Seed an existing refresh token in localStorage.
     await page.addInitScript(() => {
       localStorage.setItem(
         "report-builder.session.v1",
@@ -137,7 +137,7 @@ test.describe("E2E - Gestão de Organizações, Membros e Convites", () => {
     await expect(page.getByRole("button", { name: "Nova Organização" })).toBeVisible();
   });
 
-  test("Fluxo de Geração de Convite Pendente e Modal de Sucesso com Token", async ({ page }) => {
+  test("Creates pending invitations and shows success with the token", async ({ page }) => {
     await page.route("**/api/v1/organizations/org-1/members", async (route) => {
       await route.fulfill({
         status: 200,
@@ -188,15 +188,15 @@ test.describe("E2E - Gestão de Organizações, Membros e Convites", () => {
     await page.goto("/organizations/org-1/members");
     await expect(page.getByRole("heading", {name:"Membros da Organização",level:2})).toBeVisible();
 
-    // Abrir modal de adição de membro
+    // Open the member creation modal.
     await page.click("button:has-text('Adicionar / Convidar Membro')");
     await expect(page.getByText("Adicionar ou Convidar Membro")).toBeVisible();
 
-    // Preencher e-mail e enviar
+    // Enter email and submit.
     await page.fill("#member-email", "novo.convidado@exemplo.com");
     await page.click("button[type='submit']");
 
-    // Deve abrir o Modal de Sucesso com o token de aceite
+    // Show the success modal with the acceptance token.
     await expect(page.getByText("Convite Pendente Gerado!")).toBeVisible();
     await expect(page.getByText("token-secreto-convite-999")).toBeVisible();
     await expect(page.getByRole("button", { name: "Copiar" })).toBeVisible();

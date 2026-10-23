@@ -67,3 +67,12 @@ it("clears notices and cancels polling when the session ends", async () => {
   expect(screen.queryByRole("button", { name: /Exportações e notificações/ })).not.toBeInTheDocument();
   expect(signal?.aborted).toBe(true);
 });
+
+it("keeps historical export failures localized without rewriting notification data", async () => {
+  vi.mocked(exportApi.list).mockResolvedValue(ok({ data: [{ id: "legacy", reportId: "report", title: "Vendas", format: "csv", status: "failed", createdAt: "2026-10-23T12:00:00Z", expiresAt: null, error: "The source field is unavailable." }], totalCount: 1, page: 1, pageSize: 20 }));
+  render(<MemoryRouter><ExportNotifications/></MemoryRouter>);
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: /Exportações e notificações/ }));
+  expect(await screen.findByText("Não foi possível gerar o arquivo. Revise os parâmetros e tente novamente.")).toBeVisible();
+  expect(screen.queryByText("The source field is unavailable.")).not.toBeInTheDocument();
+});

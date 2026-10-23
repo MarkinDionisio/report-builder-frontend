@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
@@ -25,7 +26,7 @@ export function CatalogTemplatesPage({ embedded = false }: { embedded?: boolean 
     setBusy(true); setError('');
     try {
       const result = await catalogApi.listCatalogTemplates();
-      if (isErr(result)) { setError(result.error.detail || 'Erro ao carregar templates.'); if (result.error.status === 403) void refreshUser(); }
+      if (isErr(result)) { setError(problemMessage(result.error, 'Erro ao carregar templates.')); if (result.error.status === 403) void refreshUser(); }
       else { setTemplates(result.value); setLoaded(true); }
     } catch {setError('Falha de comunicação ao consultar modelos de catálogo. Tente atualizar novamente.');}
     finally {setBusy(false);}
@@ -36,7 +37,7 @@ export function CatalogTemplatesPage({ embedded = false }: { embedded?: boolean 
     lock.current = true; setBusy(true);
     try {
       const result = await catalogApi.deleteCatalogTemplate(deleting.id);
-      if (isErr(result)) { setDeleteError(result.error.detail || 'Erro ao excluir template.'); if (result.error.status === 403) void refreshUser(); }
+      if (isErr(result)) { setDeleteError(problemMessage(result.error, 'Erro ao excluir template.')); if (result.error.status === 403) void refreshUser(); }
       else { setTemplates(current=>current.filter(template=>template.id!==deleting.id)); return true; }
       return false;
     } finally { lock.current = false; setBusy(false); }

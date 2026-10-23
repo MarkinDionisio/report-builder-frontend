@@ -44,9 +44,9 @@ export async function parseProblem(response: Response): Promise<ApiProblemDetail
       const data = await response.json();
       return {
         type: data.type || "about:blank",
-        title: data.title || "Erro na requisição",
+        title: data.title || "Request failed",
         status: data.status || response.status,
-        detail: data.detail || "Ocorreu um erro ao processar a requisição.",
+        detail: data.detail || "The request could not be processed.",
         instance: data.instance || new URL(response.url).pathname,
         code: data.code,
         traceId: data.traceId,
@@ -61,7 +61,7 @@ export async function parseProblem(response: Response): Promise<ApiProblemDetail
     type: "about:blank",
     title: "Request Failed",
     status: response.status,
-    detail: `A requisição falhou com status HTTP ${response.status}.`,
+    detail: `The request failed with HTTP status ${response.status}.`,
     instance: new URL(response.url).pathname,
   };
 }
@@ -74,9 +74,9 @@ export async function refreshSession(): Promise<void> {
     if (!persisted) {
       throw {
         type: "about:blank",
-        title: "Sessão Expirada",
+        title: "Session expired",
         status: 401,
-        detail: "Não há token de atualização disponível.",
+        detail: "No refresh token is available.",
         code: "auth.refresh_token_required",
         instance: "/api/v1/auth/refresh",
       } satisfies ApiProblemDetails;
@@ -154,9 +154,9 @@ export async function apiFetch(
   } catch (netErr) {
     return err({
       type: "about:blank",
-      title: "Erro de Conectividade",
+      title: "Connection failed",
       status: 0,
-      detail: netErr instanceof Error ? netErr.message : "Não foi possível conectar ao servidor.",
+      detail: netErr instanceof Error ? netErr.message : "Could not connect to the server.",
       instance: path,
     });
   }
@@ -187,9 +187,9 @@ export async function anonymousFetch(
   } catch (netErr) {
     return err({
       type: "about:blank",
-      title: "Erro de Conectividade",
+      title: "Connection failed",
       status: 0,
-      detail: netErr instanceof Error ? netErr.message : "Não foi possível conectar ao servidor.",
+      detail: netErr instanceof Error ? netErr.message : "Could not connect to the server.",
       instance: path,
     });
   }

@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, expect, it } from "vitest";
 import { CatalogTemplateSchemaPicker } from "./CatalogTemplateSchemaPicker";
 import type { CatalogTemplateSchema } from "../types/catalogTemplateTypes";
-const fields = Array.from({ length: 60 }, (_, index) => ({ id: `f${index}`, publicName: `Campo ${index + 1}`, internalFieldName: `field_${index}`, publicType: "string", isNullable: true, isSelectable: true, isFilterable: true, isSortable: true, isGroupable: true, isAggregatable: false, isSensitive: false, isEnabled: true, allowedOperators: ["eq"], allowedAggregations: [], compatible: index !== 59, reason: index === 59 ? "Campo ausente no destino" : null }));
+const fields = Array.from({ length: 60 }, (_, index) => ({ id: `f${index}`, publicName: `Campo ${index + 1}`, internalFieldName: `field_${index}`, publicType: "string", isNullable: true, isSelectable: true, isFilterable: true, isSortable: true, isGroupable: true, isAggregatable: false, isSensitive: false, isEnabled: true, allowedOperators: ["eq"], allowedAggregations: [], compatible: index !== 59, reason: index === 59 ? "The field is missing from the target." : null, reasonCode: index === 59 ? "catalog_template.field_missing" : undefined }));
 const schemas: CatalogTemplateSchema[] = [
   { id: "orders", publicName: "Pedidos", publicType: "object", internalSchemaName: "sales", internalObjectName: "orders", description: "Campos dos pedidos", isEnabled: true, compatible: true, reason: null, fields },
   { id: "customers", publicName: "Clientes", publicType: "object", internalSchemaName: "crm", internalObjectName: "customers", description: null, isEnabled: true, compatible: true, reason: null, fields: [{ ...fields[0], id: "name", publicName: "Nome", internalFieldName: "name" }] },
@@ -53,7 +53,7 @@ it("selects all eligible fields of a table even while searching, without selecti
   fireEvent.change(screen.getByRole("combobox", { name: "Mostrar campos" }), { target: { value: "incompatible" } });
   expect(screen.getByRole("checkbox", { name: /Campo 60 / })).toBeDisabled();
   expect(screen.getByRole("checkbox", { name: /Campo 60 / })).not.toBeChecked();
-  expect(screen.getByText("Campo ausente no destino")).toBeVisible();
+  expect(screen.getByText("Campo ausente no destino.")).toBeVisible();
 });
 it("shows an empty search without changing selection", () => {
   render(<Harness />);

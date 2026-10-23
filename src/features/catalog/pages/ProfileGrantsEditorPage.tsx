@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
 import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
@@ -88,7 +89,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
         setAccessDenied(true);
         refreshUser();
       } else {
-        setErrorMsg(profRes.error.detail || "Erro ao carregar perfil.");
+        setErrorMsg(problemMessage(profRes.error, "Erro ao carregar perfil."));
       }
       return;
     }
@@ -133,7 +134,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
         setAccessDenied(true);
         refreshUser();
       } else {
-        setErrorMsg(res.error.detail || "Erro ao carregar catálogo disponível do DataSource.");
+        setErrorMsg(problemMessage(res.error, "Erro ao carregar catálogo disponível do DataSource."));
       }
     } else {
       setAvailableCatalog(res.value.filter(s => s.dataSourceId === selectedDataSourceId));
@@ -181,7 +182,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
         setAccessDenied(true);
         refreshUser();
       } else {
-        setErrorMsg(res.error.detail || "Erro ao conceder todas as permissões do DataSource.");
+        setErrorMsg(problemMessage(res.error, "Erro ao conceder todas as permissões do DataSource."));
       }
     } else {
       setGrants(res.value);
@@ -211,7 +212,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
       if (res.error.status === 403) {
         void refreshUser();
       } else {
-        setRevokeError(res.error.detail || "Erro ao revogar permissões da fonte.");
+        setRevokeError(problemMessage(res.error, "Erro ao revogar permissões da fonte."));
       }
       return false;
     } else {
@@ -319,7 +320,7 @@ export const ProfileGrantsEditorPage: React.FC<{ embedded?: boolean; profileId?:
         setAccessDenied(true);
         refreshUser();
       } else {
-        setErrorMsg(res.error.detail || "Erro ao salvar permissões.");
+        setErrorMsg(problemMessage(res.error, "Erro ao salvar permissões."));
       }
     } else {
       setGrants(res.value);

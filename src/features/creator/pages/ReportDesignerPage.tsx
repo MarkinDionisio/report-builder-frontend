@@ -1,3 +1,5 @@
+import { diagnosticMessage } from "../../../shared/presentation/messages";
+import { problemMessage } from "../../../shared/presentation/messages";
 import { useModalFocus } from "../../../shared/hooks/useModalFocus";
 import { ReportTagPicker } from "../components/ReportTagPicker";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
@@ -275,7 +277,7 @@ export const ReportDesignerPage: React.FC = () => {
       if (reportId) {
         const reportRes = await creatorApi.getReport(reportId);
         if (isErr(reportRes)) {
-          setErrorMsg(reportRes.error.detail || "Erro ao carregar relatório.");
+          setErrorMsg(problemMessage(reportRes.error, "Erro ao carregar relatório."));
           setLoading(false);
           return;
         }
@@ -289,7 +291,7 @@ export const ReportDesignerPage: React.FC = () => {
 
       const dsRes = await creatorApi.getCreatorDataSources(organizationId);
       if (isErr(dsRes)) {
-        setErrorMsg(dsRes.error.detail || "Erro ao carregar fontes de dados.");
+        setErrorMsg(problemMessage(dsRes.error, "Erro ao carregar fontes de dados."));
         setLoading(false);
         return;
       }
@@ -373,7 +375,7 @@ export const ReportDesignerPage: React.FC = () => {
     setLoading(false);
 
     if (isErr(res)) {
-      setErrorMsg(res.error.detail || "Erro ao carregar o catálogo.");
+      setErrorMsg(problemMessage(res.error, "Erro ao carregar o catálogo."));
       setSelectedDataSourceId("");
     } else {
       setCatalog(res.value);
@@ -397,7 +399,7 @@ export const ReportDesignerPage: React.FC = () => {
     if (selectedSchemaIds.length === 0) return true;
     if (selectedSchemaIds.includes(schemaId)) return true;
     
-    // Só pode ver/selecionar as schemas que fazem join com a Base (primeira selecionada)
+    // Only show schemas that can join the base (first selected schema).
     const baseSchemaId = selectedSchemaIds[0];
     return catalog?.joins.some(j => j.fromSchemaId === baseSchemaId && j.toSchemaId === schemaId) || false;
   };
@@ -540,7 +542,7 @@ export const ReportDesignerPage: React.FC = () => {
       const res = reportId ? await creatorApi.updateReport(reportId, req) : await creatorApi.createReport(req);
       if (isErr(res)) {
         const knownError = res.error.code ? KNOWN_ERROR_CODES[res.error.code] : null;
-        setSaveError(knownError?.message || res.error.detail || "Erro ao salvar relatório.");
+        setSaveError(knownError?.message || problemMessage(res.error, "Erro ao salvar relatório."));
       } else { setShowSaveModal(false); navigate(`/organizations/${organizationId}/creator`); }
     } catch { setSaveError("Falha de comunicação. Os dados foram preservados; tente novamente."); }
     finally { savePending.current = false; setIsSaving(false); }
@@ -659,17 +661,17 @@ export const ReportDesignerPage: React.FC = () => {
         // Selecionadas sempre aparecem
         selectedGroup.push(s);
       } else if (!isBaseSelected) {
-        // Nada selecionado ainda: mostra todas disponíveis, respeitando o filtro
+        // No selection yet: show all available schemas matching the filter.
         if (!schemaSearch || matchStr(s.name, schemaSearch)) {
           availableGroup.push(s);
         }
       } else {
-        // Já tem base selecionada
+        // A base schema is already selected.
         if (canSelectSchema(s.id)) {
-          // Opções de Join aparecem independente do filtro (conforme pedido)
+          // Join options remain visible regardless of the filter.
           availableGroup.push(s);
         }
-        // Incompatíveis são ignorados (não aparecem)
+        // Hide incompatible schemas.
       }
     });
 
@@ -1375,7 +1377,7 @@ export const ReportDesignerPage: React.FC = () => {
                         index={index}
                         orderBy={o as any}
                         options={orderByFieldOptions}
-                        warning={backendWarning?.message || (!compat.compatible ? `Campo incompatível com a configuração atual (${compat.reason})` : undefined)}
+                        warning={(backendWarning ? diagnosticMessage(backendWarning.code) : undefined) || (!compat.compatible ? "Campo incompatível com a configuração atual da consulta." : undefined)}
                         onEdit={setOrderEditorIndex}
                         onRemove={handleRemoveOrderBy}
                         onDragStart={(i) => setOrderDragIdx(i)}
@@ -1433,7 +1435,7 @@ export const ReportDesignerPage: React.FC = () => {
       
       const res = await creatorApi.previewReport(req);
       if (isErr(res)) {
-        setPreviewError(res.error.detail || "Erro ao gerar preview.");
+        setPreviewError(problemMessage(res.error, "Erro ao gerar preview."));
       } else {
         setPreviewData(res.value);
         setPreviewPageSize(targetPageSize);
@@ -1503,7 +1505,7 @@ export const ReportDesignerPage: React.FC = () => {
             <div style={{ marginBottom: "1rem" }}>
               {previewData.warnings.map((w: any, idx: number) => (
                 <div key={idx} style={{ marginBottom: idx < previewData.warnings!.length - 1 ? "0.5rem" : 0 }}>
-                  <Alert type="warning" message={w.message} />
+                  <Alert type="warning" message={diagnosticMessage(w.code, "Um item da consulta requer revisão.")} />
                 </div>
               ))}
             </div>

@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -37,7 +38,7 @@ export const CreatorWorkspacePage: React.FC = () => {
         const res = await organizationsApi.list();
         if(!active)return;
         if (isErr(res)) {
-          setErrorMsg(res.error.detail || "Erro ao buscar organizações.");
+          setErrorMsg(problemMessage(res.error, "Erro ao buscar organizações."));
         } else {
           setAllowedOrgs(res.value.map(org => ({ ...org, roleLabel: getGlobalRoleLabel(user.globalRole) })));
         }

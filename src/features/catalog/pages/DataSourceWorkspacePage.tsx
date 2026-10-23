@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
@@ -87,7 +88,7 @@ export function DataSourceWorkspacePage() {
                     return;
                 if (isErr(o) || isErr(s)) {
                     const failure = isErr(o) ? o : isErr(s) ? s : null;
-                    setError(failure && isErr(failure) ? failure.error.detail || "Não foi possível consultar a fonte." : "Falha ao consultar a fonte.");
+                    setError(failure && isErr(failure) ? problemMessage(failure.error, "Não foi possível consultar a fonte.") : "Falha ao consultar a fonte.");
                     return;
                 }
                 const organization = o.value.find(v => v.id === organizationId);
@@ -102,7 +103,7 @@ export function DataSourceWorkspacePage() {
                 if (!active)
                     return;
                 if (!c.ok) {
-                    setError(c.error.detail || "Não foi possível consultar as tabelas desta fonte.");
+                    setError(problemMessage(c.error, "Não foi possível consultar as tabelas desta fonte."));
                     return;
                 }
                 const rows: RootReportSchema[] = root ? (c.value as RootReportSchema[]).filter(t => t.dataSourceId === dataSourceId) : (c.value as AvailableCatalogSchema[]).filter(t => t.dataSourceId === dataSourceId).map(t => ({ id: t.id, dataSourceId, publicName: t.name, publicType: t.type, internalSchemaName: "", internalObjectName: "", description: null, isEnabled: true }));
@@ -110,7 +111,7 @@ export function DataSourceWorkspacePage() {
                 if (!root)
                     setAvailable((c.value as AvailableCatalogSchema[]).filter(t => t.dataSourceId === dataSourceId));
                 if (isErr(p)) {
-                    setError(p.error.detail || "Não foi possível consultar os profiles; o estado das permissões é desconhecido.");
+                    setError(problemMessage(p.error, "Não foi possível consultar os profiles; o estado das permissões é desconhecido."));
                     return;
                 }
                 setProfiles(p.value);
@@ -161,7 +162,7 @@ export function DataSourceWorkspacePage() {
         return; actionLock.current = true; setBusy(true); setError(""); try {
         const r = await run();
         if (isErr(r)) {
-            setError(r.error.detail || "Não foi possível concluir a operação.");
+            setError(problemMessage(r.error, "Não foi possível concluir a operação."));
             if (r.error.status === 403)
                 void refreshUser();
         }
@@ -203,7 +204,7 @@ export function DataSourceWorkspacePage() {
  </section><footer className="source-workspace__footer"><span>Passo {stepIndex + 1} de 4 · {source.name}</span><div className="source-workspace__navigation">{stepIndex > 0 && <Link className="btn btn-secondary" to={href(steps[stepIndex - 1].id)}>Voltar</Link>}{stepIndex < 3 && <Link className="btn btn-primary" to={href(steps[stepIndex + 1].id)}>Continuar: {steps[stepIndex + 1].name}</Link>}</div></footer></>}
  {creatingProfile && <OrganizationProfilesPage embedded createOnly sourceId={source.id} onCancelCreate={() => setCreatingProfile(false)} onCreated={p => { setCreatingProfile(false); setParams(new URLSearchParams(href("access", { profileId: p.id }).slice(1))); refresh(); }}/>}
  {root && modal === "connection" && <DataSourceModal organizationId={organizationId} dataSource={source} onClose={() => setModal(null)} onSubmitCreate={async () => false} onSubmitUpdate={async (id, data) => { const r = await catalogApi.updateDataSource(id, data); if (isErr(r)) {
-                setError(r.error.detail || "Não foi possível salvar a conexão.");
+                setError(problemMessage(r.error, "Não foi possível salvar a conexão."));
                 return false;
             } setModal(null); refresh(); return true; }}/>}
  {root && modal === "import" && <ImportSourceTablesModal sourceId={source.id} sourceName={source.name} onClose={() => setModal(null)} onChanged={refresh} onReview={schemaId=>reviewCreatedTable({schemaId},"Tabelas importadas. Revise os campos da tabela selecionada.")}/>}

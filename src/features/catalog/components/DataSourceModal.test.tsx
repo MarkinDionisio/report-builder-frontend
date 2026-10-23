@@ -58,9 +58,9 @@ it("includes the optional certificate and invalidates the result after changing 
   expect(screen.queryByText("Conexão administrativa: conectada com sucesso.")).not.toBeInTheDocument();
 });
 it("shows API failure and allows retry without clearing credentials", async () => {
-  vi.mocked(catalogApi.testDataSourceConfiguration).mockResolvedValue(err({ type: "about:blank", title: "Unavailable", status: 503, detail: "Banco indisponível.", instance: "/api/v1/data-sources/test-configuration" }));
+  vi.mocked(catalogApi.testDataSourceConfiguration).mockResolvedValue(err({ type: "about:blank", title: "Unavailable", status: 503, detail: "Database unavailable.", instance: "/api/v1/data-sources/test-configuration" }));
   show(); fillConnections(); fireEvent.click(screen.getByRole("button", { name: "Testar conexão" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("Banco indisponível.");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível concluir o teste. Verifique as conexões e tente novamente.");
   expect(screen.getByRole("button", { name: "Testar conexão" })).toBeEnabled();
   expect(screen.getByLabelText(/Connection String de Execução/)).toHaveValue("Host=execution;Password=test-execution;");
 });

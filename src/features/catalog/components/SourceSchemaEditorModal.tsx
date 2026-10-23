@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { useRef, useState } from "react";
 import { catalogApi } from "../api/catalogApi";
 import { isErr } from "../../../shared/result/result";
@@ -26,7 +27,7 @@ export function SourceSchemaEditorModal({ sourceId, schema, onClose, onSaved }: 
             const settings = { publicName: name.trim(), publicType: schema?.publicType || "object", description: description.trim() || null, isEnabled: enabled };
             const result = schema ? await catalogApi.updateReportSchema(schema.id, settings) : await catalogApi.createReportSchema({ ...settings, dataSourceId: sourceId, internalSchemaName: internalSchema.trim(), internalObjectName: object.trim() });
             if (isErr(result))
-                setError(result.error.detail || "Não foi possível salvar a tabela.");
+                setError(problemMessage(result.error, "Não foi possível salvar a tabela."));
             else {
                 onSaved(result.value);
                 onClose();

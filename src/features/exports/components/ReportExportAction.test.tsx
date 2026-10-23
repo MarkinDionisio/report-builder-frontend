@@ -19,11 +19,11 @@ describe("ReportExportAction", () => {
     expect(await screen.findByText(/Exportação solicitada/)).toBeVisible();
   });
   it("preserves the action and allows retry after admission fails", async () => {
-    vi.mocked(exportApi.request).mockResolvedValueOnce(err({ type: "about:blank", title: "Fila cheia", status: 429, detail: "Tente novamente em instantes.", instance: "/exports" })).mockResolvedValueOnce(ok({ id: "job", status: "queued" }));
+    vi.mocked(exportApi.request).mockResolvedValueOnce(err({ type: "about:blank", title: "Fila cheia", status: 429, detail: "Queue limit reached.", code: "export.queue_limit", instance: "/exports" })).mockResolvedValueOnce(ok({ id: "job", status: "queued" }));
     render(<ReportExportAction reportId="report" parameters={{}} disabled={false}/>);
     fireEvent.click(screen.getByRole("button", { name: "Exportar dados" }));
     fireEvent.click(screen.getByRole("button", { name: "CSV (.csv)" }));
-    await screen.findByText("Tente novamente em instantes.");
+    await screen.findByText("O limite de exportações pendentes foi atingido. Tente novamente em instantes.");
     await waitFor(() => expect(screen.getByRole("button", { name: "Exportar dados" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Exportar dados" }));
     fireEvent.click(screen.getByRole("button", { name: "CSV (.csv)" }));

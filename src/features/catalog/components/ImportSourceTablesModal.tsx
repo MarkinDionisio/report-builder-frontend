@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { useEffect, useRef, useState } from "react";
@@ -25,7 +26,7 @@ export function ImportSourceTablesModal({ sourceId, sourceName, onClose, onChang
     let active = true;
     void catalogApi.listIntrospectionObjects(sourceId).then(result => {
       if (!active) return;
-      if (isErr(result)) setError(result.error.detail || "Não foi possível consultar as tabelas do banco.");
+      if (isErr(result)) setError(problemMessage(result.error, "Não foi possível consultar as tabelas do banco."));
       else setObjects(result.value);
       setBusy(false);
     }).catch(() => { if(active) { setError("Falha de comunicação ao consultar as tabelas do banco. Feche e tente novamente."); setBusy(false); } });
@@ -41,7 +42,7 @@ export function ImportSourceTablesModal({ sourceId, sourceName, onClose, onChang
       const results: Item[] = [];
       for (const object of objects.filter(object => selected.has(keyOf(object)))) {
         const result = await catalogApi.previewImportSchema(request(object));
-        results.push(isErr(result) ? { object, error: result.error.detail || "Falha ao gerar prévia." } : { object, preview: result.value });
+        results.push(isErr(result) ? { object, error: problemMessage(result.error, "Falha ao gerar prévia.") } : { object, preview: result.value });
       }
       setItems(results); setStage("preview");
     } catch { setError("Não foi possível gerar a prévia. Tente novamente."); }
@@ -59,9 +60,9 @@ export function ImportSourceTablesModal({ sourceId, sourceName, onClose, onChang
         let next: Item;
         let draft = item;
         try {
-          if(!item.preview) { const preview = await catalogApi.previewImportSchema(request(item.object)); if(isErr(preview)) { const index=updated.findIndex(v=>keyOf(v.object)===keyOf(item.object)); updated[index]={...item,error:preview.error.detail||"Falha ao gerar prévia."};setItems([...updated]);continue;} draft={...item,preview:preview.value}; }
+          if(!item.preview) { const preview = await catalogApi.previewImportSchema(request(item.object)); if(isErr(preview)) { const index=updated.findIndex(v=>keyOf(v.object)===keyOf(item.object)); updated[index]={...item,error:problemMessage(preview.error, "Falha ao gerar prévia.")};setItems([...updated]);continue;} draft={...item,preview:preview.value}; }
           const result = await catalogApi.importSchema(request(item.object));
-          next = isErr(result) ? { ...draft, error: result.error.detail || "Falha ao importar a tabela." } : { ...draft, imported: true, importedSchema: result.value.schema, error: undefined };
+          next = isErr(result) ? { ...draft, error: problemMessage(result.error, "Falha ao importar a tabela.") } : { ...draft, imported: true, importedSchema: result.value.schema, error: undefined };
         } catch { next = { ...item, error: "Falha de comunicação. Tente novamente esta tabela." }; }
         changed ||= Boolean(next.imported);
         updated[updated.findIndex(value => keyOf(value.object) === keyOf(item.object))] = next;

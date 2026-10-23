@@ -1,103 +1,119 @@
-# Padrões de interface e comportamento
+# Interface and behavior standards
 
-Referência central para todas as novas telas e alterações de interface do Report Builder. Estes padrões consolidam as decisões aprovadas durante a configuração de organizações e fontes de dados. Aplique-os à parte modificada de uma tela existente; a revisão de todas as telas não faz parte de cada implementação.
+Central reference for all new Report Builder screens and interface changes, consolidating approved organization/data-source patterns. Apply to modified parts of existing screens; a full screen review is not required for every task.
 
-## Layout e hierarquia
+## Language and presentation
 
-- Reutilize componentes, classes e estilos existentes antes de criar outra implementação. Mantenha alinhamento, espaçamento entre seções e hierarquia de títulos consistentes: título da página, título da seção e identificação do item.
-- Na administração, use contêiner com largura máxima de 1440 px, centralizado, com padding lateral de 24 px no desktop e 16 px no celular. O breakpoint administrativo atual é 720 px. Reserve o espaço da navegação superior e mantenha padding também nos estados de erro, carregamento e lista vazia.
-- Modais administrativos usam padding de 24 px no desktop e 16 px no celular, altura limitada à janela e rolagem interna. Em conteúdos longos, mantenha as ações finais visíveis em um rodapé fixo ou aderente, sem cobrir conteúdo ou foco.
-- Designer e execução de relatórios preservam suas estruturas próprias. Aplique os princípios de clareza e comportamento sem impor a esses fluxos o contêiner administrativo.
+- Technical content uses English: identifiers, comments, logs, test descriptions, API/MCP diagnostics, documentation, and instructions.
+- User presentation uses Brazilian Portuguese: labels, actions, loading/empty/error/success states, accessibility, dates, local validation, notifications, and backend login/consent pages. Browser language does not change this default.
+- Use the shared presentation catalog for known API error/diagnostic codes. Unknown/missing codes use contextual Portuguese messages. Never render raw English technical title/detail/errors, execution warning messages, compatibility reasons, or export errors as UI fallbacks.
+- Keep raw response objects available for diagnosis; translate at the presentation boundary. Preserve user data, public contract names, routes, codes, enums, IDs, physical names, and report content. This does not introduce a language selector or a full multilingual framework.
 
-## Contexto e navegação
+## Layout and hierarchy
 
-- Mostre organização, fonte e tabela quando aplicável, usando cabeçalho, caminho de navegação e identificação próxima do conteúdo. Campos devem permanecer associados visualmente à sua tabela.
-- Reutilize o contexto já escolhido; evite formulários duplicados e novas seleções de organização ou fonte sem necessidade.
-- Guarde na URL os identificadores e etapas necessários para acesso direto, retomada e voltar/avançar do navegador. Valide se o recurso pertence ao contexto da URL. Credenciais ficam apenas no estado transitório do formulário.
-- Explique brevemente o objetivo da etapa, o que será salvo e seu efeito no uso dos dados ou relatórios. Use indicadores derivados dos dados persistidos; campos existentes não comprovam revisão humana.
+Reuse existing components/classes/styles before adding implementations. Keep spacing, alignment, and page/section/item heading hierarchy consistent.
 
-## Ações, formulários e confirmações
+Administration uses centered max-width 1440 px, horizontal padding 24 px desktop/16 px mobile, current breakpoint 720 px. Reserve top navigation space and preserve containers in loading/error/empty states.
 
-- Destaque a ação principal; agrupe ações secundárias ou menos usadas em menus com nomes claros. Evite vários botões com o mesmo destaque e distribua as ações de modo legível no celular.
-- Confirmações destrutivas usam o modal padrão do sistema, atualmente ConfirmDeleteModal, com nome do item, consequências, Cancelar e Confirmar Exclusão. Não introduza window.confirm ou window.alert. Uma confirmação deve explicar quando só a configuração será removida e os dados de origem serão preservados.
-- Evite envios duplicados com bloqueio da operação, além do estado visual desabilitado. Mostre a operação em andamento e bloqueie ações incompatíveis enquanto ela não terminar.
-- Preserve os dados úteis após uma falha, apresente o erro no respectivo formulário ou modal e permita corrigir ou tentar novamente. Cancelar deve ter resultado previsível; informe quando uma etapa anterior já foi salva e continuará cadastrada.
-- Quando houver teste de conexão, permita realizá-lo antes de salvar. Diferencie o teste transitório da validação persistida de somente leitura necessária para executar relatórios.
+Administrative modals use 24 px desktop/16 px mobile padding, constrained viewport height, and internal scrolling. Long forms keep actions in a sticky/fixed footer without obscuring content/focus. Designer and runner retain their own workflow structures while following clarity/consistency principles.
 
-## Carregamento, erros e conclusão
+## Context and navigation
 
-- Use ContentSkeleton no carregamento inicial de listas, tabelas e cards com estrutura conhecida, preservando cabeçalhos e navegação. Placeholders ficam ocultos dos leitores de tela; uma única mensagem contextual anuncia o progresso. Use NeutralLoader para consultas sem estrutura previsível, verificações e execução inicial de relatórios, com painel suave e mensagem obrigatória. Nas atualizações da mesma consulta, preserve dados e use NeutralLoader compact com “Atualizando…”, aria-busy e bloqueio de ações incompatíveis. Ao mudar organização, fonte ou relatório, limpe o contexto anterior. Consultas usam “Consultando [dados]…”; operações descrevem a ação real. Botões mantêm indicador e rótulo curto. Respeite movimento reduzido, sem porcentagens, estimativas ou atrasos artificiais.
-- Carregamentos precisam ser evidentes, com mensagem específica sobre a operação e indicador visual. Prefira “Consultando conexão, tabelas, campos e permissões desta fonte…” a um “Carregando…” sem contexto; use título destacado quando o carregamento ocupar a página ou modal.
-- Trate carregamento, lista vazia, falha, acesso negado e nova tentativa. Preserve o contêiner e o contexto em todos esses estados. Não habilite gravações dependentes de dados cuja leitura falhou.
-- Após salvar, atualize o catálogo ou resumo afetado e encaminhe ao próximo passo correto. Use os IDs persistidos do destino: os IDs do snapshot de um template não identificam as tabelas recém-criadas.
-- Feche o modal ao navegar e mostre uma confirmação clara. Após aplicar modelo ou cadastrar tabela manualmente, abra Revisar os campos na tabela criada. Na importação, Revisar campos abre uma tabela importada com sucesso, sem manter a seleção anterior.
-- Falhas parciais mantêm resultados individuais e permitem repetir somente os itens que falharam. Não esconda esses resultados ao avançar automaticamente.
-- Invalide prévias quando mudar a entrada que determina sua compatibilidade. Após conflito de aplicação de modelo, exija uma nova prévia.
+Show organization/source/table context through headers, breadcrumbs, and nearby item identification. Fields stay visibly associated with tables. Reuse selected context instead of repeated forms/selections.
 
-## Listas extensas, busca e seleção
+Store IDs/steps needed for direct access, resume, back/forward in the URL. Check resource ownership against URL context. Credentials remain transient form state. Explain the step's purpose, what saves, and its effect on data access/report use. Derive status from persisted data; existing fields do not prove human review.
 
-- Agrupe campos por tabela e mantenha identificação pública e física acessível. Ofereça busca, filtros e paginação conforme o volume, sem exigir navegação por uma lista de campos soltos.
-- Todo campo de busca com texto oferece a ação acessível “Limpar busca”, usando ClearSearchButton sempre dentro da caixa de texto, à direita, em um contêiner posicionado e com padding no input para não sobrepor o texto. As opções Aa e expressão exata ficam fora da caixa. Limpar remove apenas o texto, mantém os outros filtros e opções, reinicia a paginação quando ela depende da busca e devolve o foco ao campo. Não dependa do botão nativo do navegador.
-- Buscas textuais desse tipo oferecem diferenciação de maiúsculas/minúsculas (Aa) e expressão exata, reutilizando SearchMatchOptions e matchesTextSearch. “Expressão exata” não significa expressão regular.
-- Ofereça marcar/desmarcar todos quando houver seleção em lote. Explicite se a ação abrange página, resultados filtrados ou toda a lista e informe seleções mantidas em outras páginas ou filtros. Não use rótulos ambíguos.
-- Na configuração de campos, exiba controles de seleção quando solicitados e mantenha filtros e ações secundárias agrupados. Itens incompatíveis ficam bloqueados com o motivo visível; não permita aplicar sem campos selecionados nem criar schemas vazios.
+## Actions, forms, and confirmation
 
-## Permissões, responsividade e acessibilidade
+Emphasize the main action; group secondary/less frequent actions in clearly named menus. Avoid equally prominent competing buttons; keep mobile controls legible.
 
-- Preserve as permissões atuais e as configurações fora do contexto editado. Editar grants de uma fonte não pode apagar grants das demais fontes do profile. Não conceda acesso automaticamente.
-- A API continua sendo a autoridade de autorização; a interface deve respeitar as mesmas restrições, inclusive em acesso direto. Diferencie catálogo configurado, conexão validada e acesso concedido.
-- Valide desktop e celular com nomes longos, muitas tabelas e muitos campos. A página não deve ter rolagem horizontal; regiões de dados podem ter rolagem própria quando necessária e acessível.
-- Use nomes acessíveis nos controles, labels nos formulários, identificação de diálogos, role=status para progresso e role=alert para erros. Garanta teclado, foco visível e gestão de foco ao abrir e fechar modais ou menus.
+Destructive actions use ConfirmDeleteModal with item name, consequences, Cancelar, and Confirmar Exclusão. Do not use window.confirm/window.alert. Explain when only configuration is removed and source data remains.
 
-## Verificação e manutenção
+Block duplicate operations in addition to disabling buttons. Show progress and block incompatible actions until completion. Preserve useful form values after failure, show errors in the relevant form/modal, and permit correction/retry. Cancellation must be predictable; explain when earlier steps remain saved.
 
-Antes de concluir uma alteração de interface, verifique:
+Where supported, test connections before saving. Distinguish transient tests from persisted read-only verification needed for execution.
 
-- Contexto: organização, fonte, tabela e etapa corretos, incluindo URL, acesso direto e voltar/avançar.
-- Layout: padding, alinhamento, títulos, ação principal e menus consistentes.
-- Estados: carregamento específico e evidente, vazio, erro, acesso negado e nova tentativa.
-- Fluxo: cancelamento previsível, prevenção de envio duplicado, atualização dos dados, modal fechado e destino correto após sucesso.
-- Volume: busca, filtros, seleção e alcance das ações em lote claros; ações finais acessíveis em conteúdo longo.
-- Permissões: isolamento entre organizações e preservação de configurações de outros contextos.
-- Celular e acessibilidade: sem rolagem horizontal da página, controles legíveis, teclado e foco utilizáveis.
+## Loading, errors, and completion
 
-Execute build, lint e testes pertinentes para alterações de código, com verificações proporcionais à mudança. Para mudanças de layout ou fluxo, valide no navegador em desktop e celular, incluindo conteúdo extenso. Use testes de comportamento para navegação, erros, cancelamento, conflitos ou permissões quando afetados; não crie testes que apenas repitam estilos ou implementação. Para documentação isolada, confira links e consistência, sem exigir build da aplicação.
+Use ContentSkeleton for initial structured lists/tables/cards while retaining headers/navigation. Hide placeholders from screen readers and announce one contextual progress message. Use NeutralLoader for unpredictable queries, verification, and initial execution, with a soft panel and required operation message. For same-query updates, retain data and use compact NeutralLoader with “Atualizando…”, aria-busy, and incompatible-action blocking. Clear prior context when switching organization/source/report. Queries say “Consultando [dados]…”; operations describe their real action. Buttons retain a spinner and short label. Respect reduced motion; avoid percentages, estimates, and artificial delays.
 
-Novos padrões explicitamente aprovados pelo usuário devem ser incorporados aqui. Particularidades das organizações ficam no [guia administrativo](organization-layout.md); o fluxo de fontes fica no [guia de configuração](data-source-configuration.md). Uma inconsistência legada não constitui um novo padrão. Registre verificações executadas e limitações na entrega. Commit, push e publicação dependem da instrução do usuário; este guia não os autoriza automaticamente.
+Make loading evident and specific: prefer “Consultando conexão, tabelas, campos e permissões desta fonte…” over generic “Carregando…”. Use prominent titles when loading occupies a page/modal.
 
-## Referências de implementação
+Handle loading/empty/failure/denied/retry states with context/containers intact. Do not enable writes depending on failed reads.
 
-- ContentSkeleton, NeutralLoader e Alert centralizam carregamento estrutural, mensagens de operação e a identificação acessível de progresso e erro. Informe sempre a operação concreta ao usar o carregamento.
-- ConfirmDeleteModal centraliza confirmações de exclusão e revogação, bloqueio de repetição, erro no modal e comportamento de teclado. useModalFocus mantém o foco nos formulários abertos e o devolve ao controle de origem ao fechar.
-- SourceActionMenu agrupa ações secundárias; OrganizationContextHeader mantém a identidade da organização. A área de criação também preserva a aba pela URL.
-- A classe admin-page aplica largura e padding administrativos; admin-form-dialog mantém cabeçalho e ações dos formulários longos acessíveis. Designer e execução mantêm os próprios contêineres.
+After saving, update the affected catalog/summary and navigate to the correct next step. Use destination persisted IDs rather than snapshot IDs. Close modals on navigation and show clear confirmation. After template application/manual table creation, open Revisar os campos for the created table. After import, review a successfully imported table rather than retaining prior selection.
 
-## Escopos de junção e importação
+Preserve individual partial-failure results and retry only failures; do not hide them by automatically advancing. Invalidate previews when compatibility inputs change; application conflicts require fresh previews.
 
-- Distinguir modelos de junção da organização e templates globais de junção na biblioteca da fonte. A fonte é referência de compatibilidade e preenchimento, sem limitar o modelo local a ela. Templates são snapshots independentes; excluir a origem ou o template não altera cópias.
-- Somente root gerencia modelos e templates manualmente. A importação autorizada de relatórios globais pode criar modelos locais automaticamente para creators e administradores, sem conceder permissões nem liberar gerenciamento manual. A prévia deve indicar modelos reutilizados e criados; o servidor grava relatório e modelos na mesma transação.
-- Modelos em uso mostram dependências e restrições de estrutura, tipo, habilitação e exclusão; nome e alias sugerido podem mudar. Oferecer Duplicar modelo como alternativa independente. Confirmações e erros permanecem no modal; conflito de aplicação invalida a prévia.
+## Long lists, search, and selection
 
-## Período móvel de vendas
+Group fields by table and keep public/physical identification accessible. Provide search/filter/pagination for large catalogs.
 
-- O filtro “Últimos 12 meses (mês atual parcial)” inclui o mês atual e os 11 anteriores. A API recalcula os limites no fuso da organização em cada execução e prévia. Use esse rótulo para explicitar que o mês atual está em andamento.
+Every textual search provides accessible “Limpar busca” through ClearSearchButton inside the right side of the search box with sufficient input padding. Aa/exact-match controls remain outside the input. Clearing removes text only, retains options/filters, resets dependent pagination, and restores input focus. Do not rely on native browser clear controls.
 
-## Etiquetas e descrições de relatórios
+Offer case-sensitive Aa and exact matching with SearchMatchOptions/matchesTextSearch. Exact does not mean regex.
 
-- Relatórios podem ter várias etiquetas da própria organização; etiquetas organizam a lista, sem conceder acesso. Root e administradores gerenciam nomes e exclusões; editores associam etiquetas existentes. Excluir uma etiqueta exige confirmação e preserva os relatórios.
-- As listas do painel inicial e da organização mostram título curto, descrição resumida e etiquetas. Busca e filtros ficam na URL e são aplicados pela API antes da paginação. Várias etiquetas significam qualquer uma delas; “Sem etiquetas” tem prioridade, preservando a seleção para quando for desmarcado.
-- A descrição é texto simples opcional de até 2.000 caracteres, exibido integralmente na execução. Parâmetros automáticos bloqueados continuam ocultos. Na importação global, copiar a descrição e selecionar etiquetas locais; não copiar nem criar etiquetas da origem automaticamente.
+Bulk selection offers select/deselect all with explicit scope (page, filtered results, entire list) and explains retained selections outside current results/pages. Avoid ambiguous labels. Field settings show requested selection controls and grouped filters/secondary actions. Disable incompatible items with explanations; disallow empty field selections/schemas.
 
-- Na seleção de etiquetas, usar um select múltiplo com chips removíveis dentro do campo e lista suspensa de opções com checkbox. A busca fica no próprio campo; oferecer remoção individual e limpeza da seleção, preservar itens escolhidos fora da busca e permitir alternar opções por teclado. Escape fecha a lista sem fechar o modal; clique fora também fecha. Aplicar padding ao conteúdo abaixo das abas e aos painéis do dashboard.
+## Permissions, responsiveness, and accessibility
 
-- No painel inicial, o seletor de etiquetas identifica a empresa em cada opção e chip selecionado (`Etiqueta · Empresa`) e permite buscar por ambos. Na área de criação, edição e importação com organização definida, mostrar apenas o nome da etiqueta. IDs continuam sendo a identidade da seleção, mesmo quando nomes coincidem entre empresas.
+Preserve permissions and settings outside the edited context. Source grant edits must not erase other source grants. Never grant access automatically.
 
-- Quando uma API anterior omitir o nome da empresa nas etiquetas, resolver o nome pelos relatórios acessíveis filtrados por organização, uma consulta por empresa. Não exibir UUID como nome; se a organização não estiver mais disponível, informar “Empresa indisponível”.
+The API is the authorization authority, including direct URL access. Distinguish configured catalog, verified connection, and granted access. Test desktop/mobile with long names and many tables/fields. No page-level horizontal scrolling; data regions may scroll accessibly.
 
-- Na área de criação, Abrir é a ação principal visível; Editar relatório e Excluir relatório ficam no menu Opções. Reutilizar SourceActionMenu e ConfirmDeleteModal, identificar o relatório, informar o impacto no acesso compartilhado e preservar dados da fonte. Após excluir, atualizar lista e contagem e voltar à página anterior quando a última linha da página for removida; manter filtros da URL. Falhas permanecem no modal.
+Use accessible control names, form labels, dialog identification, role=status for progress, role=alert for errors, keyboard access, visible focus, and modal/menu focus management.
 
-## Exportações e notificações
+## Verification and maintenance
 
-- Na execução de relatórios salvos com dados, Exportar dados oferece Excel e CSV para todas as linhas. Informar que será feita nova consulta com os parâmetros informados na última execução; períodos automáticos são calculados no servidor ao solicitar. Congelar esses valores durante a espera na fila. Alterar parâmetros exige executar novamente antes de solicitar. Confirmar a entrada na fila sem manter a tela bloqueada durante a geração.
-- O sino da navegação reúne avisos persistidos e arquivos do usuário, com contador de não lidos, estados Na fila, Gerando, Disponível, Falhou e Expirada. Disponibilizar download explícito, validade de 24 horas e acesso ao relatório para nova solicitação. Não iniciar download automaticamente.
-- Atualizar exportações e avisos a cada 15 segundos com sessão autenticada e aba visível, e ao retornar à aba. Preservar os dados em falhas de atualização, permitir nova tentativa e limpar o contexto ao trocar usuário. O painel deve funcionar em desktop e celular, com fechamento por Escape, foco contido e devolvido ao sino.
+Before concluding interface changes, verify:
+
+- Correct organization/source/table/step context, URLs, direct access, back/forward.
+- Consistent padding/alignment/headings/primary actions/menus.
+- Specific visible loading plus empty/error/denied/retry states.
+- Predictable cancellation, duplicate prevention, refreshed data, closed modal, correct success destination.
+- Search/filter/selection scope clarity and accessible long-form actions.
+- Organization isolation and preserved out-of-context settings.
+- Mobile without horizontal page overflow; readable controls, keyboard, focus.
+- Portuguese presentation for known/unknown errors, validation, diagnostics, warnings, notifications, and exports.
+
+Run build/lint/relevant behavior tests proportional to code changes. Layout/flow changes require desktop/mobile browser checks with extensive content. Behavior tests cover navigation/errors/cancellation/conflicts/permissions; do not merely mirror styles/implementation. Documentation-only changes require link/consistency checks, not application builds.
+
+Record explicitly approved standards here. Organization specifics live in [the administration guide](organization-layout.md); source flow in [source configuration](data-source-configuration.md). Legacy inconsistencies are not new standards. Report verification/limitations. Commit/push/publish require user instructions and are not automatically authorized by this guide.
+
+## Implementation references
+
+ContentSkeleton, NeutralLoader, and Alert centralize structural loading, operation messages, and accessible progress/errors. Always name the actual operation. ConfirmDeleteModal centralizes deletion/revocation confirmation, duplicate blocking, modal errors, and keyboard behavior. useModalFocus maintains/restores focus.
+
+SourceActionMenu groups secondary actions. OrganizationContextHeader retains organization identity. Creator tabs persist in URL. admin-page applies administrative width/padding; admin-form-dialog keeps long form headers/actions accessible. Designer/runner keep their containers.
+
+## Join scope and import
+
+Distinguish organization models/global templates in the source library. Sources provide compatibility/autofill references without restricting reuse. Templates are independent snapshots; source/template deletion does not affect copies.
+
+Root alone manually manages models/templates. Authorized global import may create models for creators/administrators without grants or management. Preview shows reused/created models; server saves report/models transactionally.
+
+Models in use show dependencies and structural/type/enabled/delete restrictions; name/suggested alias may change. Offer Duplicar modelo for an independent alternative. Confirmation/errors stay in modals; application conflicts invalidate previews.
+
+## Rolling sales period
+
+“Últimos 12 meses (mês atual parcial)” includes the current month and previous eleven. API recalculates bounds in organization timezone per execution/preview. This label makes the partial month explicit.
+
+## Report tags and descriptions
+
+Reports support multiple organization tags for organization, without access grants. Root/administrators manage names/deletion; editors associate existing tags. Confirm tag deletion and retain reports.
+
+Home/organization lists show short title, summarized description, and tags. Search/filters persist in URL and apply server-side before pagination. Multiple tags mean any tag; Sem etiquetas takes priority but retains selected tags for later. Description is optional plain text up to 2000 characters, fully shown during execution. Locked automatic parameters remain hidden. Global import copies descriptions and accepts local tags, without automatically copying/creating source tags.
+
+Tag selection uses a multi-select with removable chips inside the field and dropdown checkbox options. Search stays in the field; support individual removal/clear, selected options outside results, and keyboard toggles. Escape closes the list without closing the modal; outside clicks close it. Apply padding below tabs/dashboard panels.
+
+Home tag options/chips identify companies as Etiqueta · Empresa and search both. Creator/edit/import screens with fixed organization show tag names only. IDs remain identity across companies. If older APIs omit company names, resolve through accessible reports filtered by organization, one query per company. Never show UUID as a name; unavailable organizations display “Empresa indisponível”.
+
+In creator lists, Abrir is the visible primary action; Editar relatório/Excluir relatório live in Opções. Reuse SourceActionMenu/ConfirmDeleteModal, name the report, explain share impact, and preserve source data. On deletion update list/count and go back a page if its last row disappears, retaining URL filters. Errors remain in the modal.
+
+## Exports and notifications
+
+For saved reports with data, Exportar dados offers Excel/CSV for all rows. Explain that it queries again using parameters from the last execution, while automatic periods resolve server-side at request time and freeze during queueing. Changed parameters require execution before requesting export. Confirm queue admission without blocking the screen during generation.
+
+The navigation bell combines persisted notices/files with unread count and Portuguese statuses Na fila, Gerando, Disponível, Falhou, Expirada. Downloads are explicit, files last 24 hours, and new requests require report access. Never start downloads automatically.
+
+Refresh every fifteen seconds while authenticated/visible and on tab return. Retain data on update failure, allow retries, and clear context on user changes. Support desktop/mobile, Escape closing, contained focus, and restoring focus to the bell. Persisted notification messages are Portuguese presentation; raw export errors use localized fallbacks, including historical records.

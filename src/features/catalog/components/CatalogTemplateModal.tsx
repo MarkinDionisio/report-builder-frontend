@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { CatalogTemplateSchemaPicker } from "./CatalogTemplateSchemaPicker";
 import { Loader2 } from "lucide-react";
@@ -31,18 +32,18 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
       if (mode === 'apply') {
         const result = await catalogApi.listCatalogTemplates();
         if (!active) return;
-        if (isErr(result)) { setError(result.error.detail || 'Erro ao carregar templates.'); if (result.error.status === 403) void refreshUser(); }
+        if (isErr(result)) { setError(problemMessage(result.error, 'Erro ao carregar templates.')); if (result.error.status === 403) void refreshUser(); }
         else setTemplates(result.value);
       } else {
         const result = await catalogApi.listReportSchemas();
         if (!active) return;
-        if (isErr(result)) { setError(result.error.detail || 'Erro ao carregar catálogo.'); if (result.error.status === 403) void refreshUser(); setEmptySource(true); }
+        if (isErr(result)) { setError(problemMessage(result.error, 'Erro ao carregar catálogo.')); if (result.error.status === 403) void refreshUser(); setEmptySource(true); }
         else {
           const sourceSchemas = result.value.filter(s => s.dataSourceId === dataSourceId);
           const fields = await Promise.all(sourceSchemas.map(s => catalogApi.listReportFields(s.id)));
           if (!active) return;
           const failed = fields.find(isErr);
-          if (failed && isErr(failed)) { setError(failed.error.detail || 'Erro ao carregar campos.'); if (failed.error.status === 403) void refreshUser(); }
+          if (failed && isErr(failed)) { setError(problemMessage(failed.error, 'Erro ao carregar campos.')); if (failed.error.status === 403) void refreshUser(); }
           setEmptySource(Boolean(failed) || !fields.some(r => !isErr(r) && r.value.length > 0));
         }
       }
@@ -60,7 +61,7 @@ export function CatalogTemplateModal({ dataSourceId, dataSourceName, mode, onClo
         : action === 'preview' ? await catalogApi.previewCatalogTemplate(dataSourceId, templateId)
         : await catalogApi.applyCatalogTemplate(dataSourceId, templateId, schemas);
       if (isErr(result)) {
-        setError(result.error.detail || 'Não foi possível concluir a operação.');
+        setError(problemMessage(result.error, 'Não foi possível concluir a operação.'));
         if (result.error.status === 403) void refreshUser();
         if (action === 'apply' && result.error.status === 409) { setPreview(null); setSelected(new Set()); }
       } else if (action === 'preview') {

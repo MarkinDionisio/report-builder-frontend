@@ -36,9 +36,9 @@ describe('Catalog template copy', () => {
     expect(screen.getByRole('button', { name: 'Gerar prévia' })).toBeDisabled();
   });
   it('refreshes authorization after access is denied', async () => {
-    vi.mocked(catalogApi.listCatalogTemplates).mockResolvedValue(err({ type: 'about:blank', title: 'Forbidden', status: 403, detail: 'Acesso negado.', instance: '/api/v1/catalog-templates' }));
+    vi.mocked(catalogApi.listCatalogTemplates).mockResolvedValue(err({ type: 'about:blank', title: 'Forbidden', status: 403, detail: 'Access denied.', instance: '/api/v1/catalog-templates' }));
     show();
-    expect(await screen.findByRole('alert')).toHaveTextContent('Acesso negado.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Você não possui permissão para realizar esta ação.');
     expect(refreshUser).toHaveBeenCalledTimes(1);
   });
   it('selects compatible fields only and prevents duplicate submissions', async () => {
@@ -85,10 +85,10 @@ describe('Catalog template copy', () => {
     expect(catalogApi.createCatalogTemplate).toHaveBeenCalledWith('target', 'ERP', '');
   });
   it('shows introspection failure states', async () => {
-    vi.mocked(catalogApi.previewCatalogTemplate).mockResolvedValue(err({ type: 'about:blank', title: 'Unavailable', status: 400, detail: 'Banco indisponível.', instance: '/api/v1/data-sources/target/catalog-template/preview' }));
+    vi.mocked(catalogApi.previewCatalogTemplate).mockResolvedValue(err({ type: 'about:blank', title: 'Unavailable', status: 400, detail: 'Database unavailable.', instance: '/api/v1/data-sources/target/catalog-template/preview' }));
     show(); await screen.findByRole('option', { name: 'ERP' });
     fireEvent.change(screen.getByLabelText('Template'), { target: { value: 't1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Gerar prévia' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Banco indisponível.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível concluir a operação.');
   });
 });

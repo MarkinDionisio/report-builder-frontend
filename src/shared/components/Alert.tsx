@@ -5,180 +5,8 @@ import type { ApiProblemDetails } from "../api/types";
 /**
  * Mapping of known/expected business and validation error codes to user-friendly messages.
  */
-export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string }> = {
-  "report_import.incompatible": { title: "Modelo incompatível", message: "O modelo ou catálogo mudou. Verifique a compatibilidade novamente." },
-  "report_import.forbidden": { title: "Importação não permitida", message: "É necessário acesso de creator à organização para importar relatórios." },
-  "report_import.template_not_found": { title: "Modelo indisponível", message: "Este modelo global não está mais disponível. Escolha outro modelo." },
-  "report_import.data_source_not_found": { title: "Data source indisponível", message: "O data source não está mais disponível nesta organização." },
-  "report_import.organization_not_found": { title: "Organização indisponível", message: "A organização de destino não está mais disponível." },
-  "report_import.connection_failed": { title: "Erro de conexão", message: "Não foi possível concluir. Tente novamente." },
-  "report_execution.global_template_requires_import": { title: "Importação necessária", message: "Importe este modelo global para sua organização antes de executar." },
-  "reports.edit_access_blocked": {
-    title: "Edição bloqueada",
-    message: "O acesso aos schemas ou campos deste relatório mudou. Recarregue a página ou solicite as permissões necessárias a um administrador.",
-  },
-  // Auth
-  "auth.invalid_credentials": {
-    title: "Credenciais Inválidas",
-    message: "E-mail ou senha incorretos. Verifique os dados informados.",
-  },
-  "auth.email_exists": {
-    title: "E-mail Já Cadastrado",
-    message: "Este endereço de e-mail já está em uso na plataforma.",
-  },
-  "auth.password_invalid": {
-    title: "Senha Inválida",
-    message: "A senha deve conter no mínimo 8 caracteres.",
-  },
-  "auth.refresh_token_required": {
-    title: "Sessão Expirada",
-    message: "Sua sessão expirou. Por favor, faça login novamente.",
-  },
-  "auth.refresh_token_invalid": {
-    title: "Sessão Expirada",
-    message: "Sua sessão expirou. Por favor, faça login novamente.",
-  },
-  "auth.invitation_token_required": {
-    title: "Token de Convite Obrigatório",
-    message: "O token de convite deve ser fornecido para continuar.",
-  },
-  "auth.invitation_not_found": {
-    title: "Convite Não Encontrado",
-    message: "O convite solicitado não foi localizado.",
-  },
-  "auth.invitation_not_pending": {
-    title: "Convite Indisponível",
-    message: "Este convite já foi aceito ou revogado anteriormente.",
-  },
-  "auth.invitation_expired": {
-    title: "Convite Expirado",
-    message: "Este convite expirou. Solicite um novo convite ao administrador.",
-  },
-  "auth.user_has_credentials": {
-    title: "Usuário Já Possui Credenciais",
-    message: "Esta conta já possui senha cadastrada. Por favor, faça login.",
-  },
-
-  // Organizations
-  "organizations.name_required": {
-    title: "Nome Obrigatório",
-    message: "O nome da organização é obrigatório.",
-  },
-  "organizations.name_conflict": {
-    title: "Nome em Uso",
-    message: "Já existe uma organização cadastrada com este nome.",
-  },
-  "organizations.time_zone_invalid": { title: "Fuso Inválido", message: "Selecione um identificador de fuso horário IANA válido." },
-  "report_parameters.required_missing": { title: "Parâmetro Obrigatório", message: "Preencha todos os parâmetros obrigatórios antes de executar." },
-  "report_parameters.unknown": { title: "Parâmetro Desconhecido", message: "A execução contém um parâmetro que não pertence ao relatório." },
-  "report_parameters.override_not_allowed": { title: "Substituição Não Permitida", message: "Uma variável automática não permite substituição manual." },
-  "report_parameters.type_invalid": { title: "Valor Inválido", message: "Um parâmetro possui valor incompatível com seu tipo." },
-  "report_definition.parameter_reference_invalid": { title: "Referência Inválida", message: "Um filtro referencia um parâmetro inexistente ou incompatível." },
-  "organizations.not_found": {
-    title: "Organização Não Encontrada",
-    message: "A organização solicitada não foi encontrada.",
-  },
-  "organizations.email_required": {
-    title: "E-mail Obrigatório",
-    message: "O endereço de e-mail é obrigatório.",
-  },
-  "organizations.user_not_found": {
-    title: "Usuário Não Encontrado",
-    message: "Nenhuma conta global foi localizada com este e-mail.",
-  },
-  "organizations.user_id_required": {
-    title: "Usuário Obrigatório",
-    message: "Nenhum usuário foi selecionado.",
-  },
-  "organizations.member_already_exists": {
-    title: "Membro Já Cadastrado",
-    message: "Este usuário já é membro desta organização.",
-  },
-  "organizations.membership_not_found": {
-    title: "Membro Não Encontrado",
-    message: "O vínculo deste membro não foi localizado.",
-  },
-  "organizations.role_required": {
-    title: "Papel Obrigatório",
-    message: "O papel na organização é obrigatório.",
-  },
-  "organizations.invalid_role": {
-    title: "Papel Inválido",
-    message: "O papel selecionado é inválido.",
-  },
-  "organizations.root_access_required": {
-    title: "Acesso Restrito",
-    message: "Esta ação requer acesso Root.",
-  },
-  "organizations.member_view_forbidden": {
-    title: "Acesso Negado",
-    message: "Você não possui permissão para visualizar os membros desta organização.",
-  },
-  "organizations.member_management_forbidden": {
-    title: "Acesso Negado",
-    message: "Você não possui permissão para gerenciar membros nesta organização.",
-  },
-  "organizations.administrator_assignment_forbidden": {
-    title: "Permissão Insuficiente",
-    message: "Apenas usuários Root podem atribuir o papel Administrador.",
-  },
-  "organizations.target_user_management_forbidden": {
-    title: "Permissão Insuficiente",
-    message: "Você não possui permissão para gerenciar este usuário.",
-  },
-
-  // Invitations
-  "invitations.email_required": {
-    title: "E-mail Obrigatório",
-    message: "O e-mail é obrigatório para enviar o convite.",
-  },
-  "invitations.role_required": {
-    title: "Papel Obrigatório",
-    message: "O papel do convite é obrigatório.",
-  },
-  "invitations.invalid_role": {
-    title: "Papel Inválido",
-    message: "O papel selecionado para o convite é inválido.",
-  },
-  "invitations.pending_already_exists": {
-    title: "Convite Já Pendente",
-    message: "Já existe um convite pendente ativo para este e-mail nesta organização.",
-  },
-  "invitations.user_already_member": {
-    title: "Usuário Já Membro",
-    message: "Este usuário já é membro ativo da organização.",
-  },
-  "invitations.revoke_not_pending": {
-    title: "Ação Não Permitida",
-    message: "Apenas convites com status pendente podem ser revogados.",
-  },
-  "invitations.assign_administrator_forbidden": {
-    title: "Permissão Insuficiente",
-    message: "Apenas usuários Root podem convidar com o papel Administrador.",
-  },
-  "invitations.manage_target_forbidden": {
-    title: "Acesso Negado",
-    message: "Você não possui permissão sobre esta conta.",
-  },
-  "invitations.organization_management_forbidden": {
-    title: "Acesso Negado",
-    message: "Você não possui permissão para gerenciar esta organização.",
-  },
-
-  // Users Global Role
-  "users.not_found": {
-    title: "Usuário Não Encontrado",
-    message: "O usuário solicitado não foi localizado.",
-  },
-  "users.invalid_role": {
-    title: "Papel Global Inválido",
-    message: "O papel global informado é inválido.",
-  },
-  "users.root_access_required": {
-    title: "Acesso Restrito",
-    message: "Apenas usuários Root podem alterar o papel global de usuários.",
-  },
-};
+import { KNOWN_ERROR_CODES, validationFieldLabel } from "../presentation/messages";
+export { KNOWN_ERROR_CODES } from "../presentation/messages";
 
 interface AlertProps {
   problem: ApiProblemDetails | null;
@@ -188,7 +16,7 @@ export const ProblemAlert: React.FC<AlertProps> = ({ problem }) => {
   if (!problem) return null;
 
   const hasValidationErrors = problem.errors && Object.keys(problem.errors).length > 0;
-  const knownError = problem.code ? KNOWN_ERROR_CODES[problem.code] : null;
+  const knownError = problem.code && Object.hasOwn(KNOWN_ERROR_CODES, problem.code) ? KNOWN_ERROR_CODES[problem.code] : null;
 
   // Determine if this is an expected known business/validation error
   const isExpectedError = Boolean(knownError || hasValidationErrors);
@@ -205,8 +33,8 @@ export const ProblemAlert: React.FC<AlertProps> = ({ problem }) => {
       displayTitle = "Erro de Validação";
       displayMessage = "Os dados fornecidos são inválidos. Por favor, verifique e tente novamente.";
     } else {
-      displayTitle = problem.title || "Atenção";
-      displayMessage = problem.detail || "Não foi possível concluir a ação.";
+      displayTitle = "Atenção";
+      displayMessage = "Não foi possível concluir a ação.";
     }
   }
 
@@ -221,9 +49,9 @@ export const ProblemAlert: React.FC<AlertProps> = ({ problem }) => {
 
       {hasValidationErrors && (
         <ul style={{ marginTop: "0.75rem", paddingLeft: "1.5rem", fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-          {Object.entries(problem.errors!).map(([field, messages]) => (
+          {Object.keys(problem.errors!).map((field) => (
             <li key={field}>
-              <strong>{field}:</strong> {messages.join(", ")}
+              <strong>{validationFieldLabel(field)}:</strong> Verifique o valor informado.
             </li>
           ))}
         </ul>

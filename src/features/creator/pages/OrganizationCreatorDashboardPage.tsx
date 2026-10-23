@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ReportBrowser } from "../components/ReportBrowser";
 import { ReportTagManager } from "../components/ReportTagManager";
@@ -45,7 +46,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
         const dashRes = await creatorApi.listDashboards(1, 100);
         if(!active)return;
         if (isErr(dashRes)) {
-          setErrorMsg(dashRes.error.detail || "Erro ao carregar dashboards.");
+          setErrorMsg(problemMessage(dashRes.error, "Erro ao carregar dashboards."));
         } else {
           setDashboards(dashRes.value.data.filter(d => d.organizationId === organizationId));
         }

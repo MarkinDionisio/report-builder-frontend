@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { catalogApi } from "../api/catalogApi";
 import { isErr } from "../../../shared/result/result";
@@ -114,7 +115,7 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
         clientCertificate: pfxBase64 ? { pfxBase64: pfxBase64.trim(), password: certPassword.trim() || null } : null,
       });
       if (isErr(result)) {
-        setTestError(result.error.detail || "Não foi possível concluir o teste. Verifique as conexões e tente novamente.");
+        setTestError(problemMessage(result.error, "Não foi possível concluir o teste. Verifique as conexões e tente novamente."));
         if (result.error.status === 403) void refreshUser();
       } else setTestResult(result.value);
     } catch {
@@ -192,7 +193,7 @@ export const DataSourceModal: React.FC<DataSourceModalProps> = ({
         if (success) onClose();
       }
     } catch (err: any) {
-      setErrorMsg(err?.detail || "Ocorreu um erro ao salvar o DataSource.");
+      setErrorMsg(problemMessage(err, "Ocorreu um erro ao salvar o DataSource."));
     } finally {
       setLoading(false);
     }

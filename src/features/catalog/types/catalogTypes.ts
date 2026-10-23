@@ -321,4 +321,4 @@ export interface TestDataSourceConfigurationResponse {
 
 export interface GlobalJoinTemplate {id:string;name:string;description:string|null;definition:CreateReportJoinModelRequest;}
 export interface JoinModelDependency {id:string;title:string;}
-export interface JoinTemplatePreview {proposed:ReportJoinModel;compatible:boolean;issues:string[];}
+export interface JoinTemplatePreview {proposed:ReportJoinModel;compatible:boolean;issues:string[];issueCodes?:string[];}

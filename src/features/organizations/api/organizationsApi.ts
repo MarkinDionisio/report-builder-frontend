@@ -26,9 +26,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha ao processar lista de organizações.",
+        detail: "Could not process the server response.",
         instance: "/api/v1/organizations",
       });
     }
@@ -49,9 +49,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha ao criar organização.",
+        detail: "Could not process the server response.",
         instance: "/api/v1/organizations",
       });
     }
@@ -72,9 +72,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha ao atualizar organização.",
+        detail: "Could not process the server response.",
         instance: `/api/v1/organizations/${id}`,
       });
     }
@@ -100,9 +100,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha ao listar membros da organização.",
+        detail: "Could not process the server response.",
         instance: `/api/v1/organizations/${orgId}/members`,
       });
     }
@@ -120,9 +120,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha na busca de usuário por e-mail.",
+        detail: "Could not process the server response.",
         instance: `/api/v1/organizations/${orgId}/users/lookup`,
       });
     }
@@ -146,9 +146,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha ao adicionar membro.",
+        detail: "Could not add the member.",
         instance: `/api/v1/organizations/${orgId}/members`,
       });
     }
@@ -173,9 +173,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha ao atualizar papel do membro.",
+        detail: "Could not update the member role.",
         instance: `/api/v1/organizations/${orgId}/members/${userId}`,
       });
     }
@@ -200,9 +200,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha ao atualizar perfis do membro.",
+        detail: "Could not update the member profiles.",
         instance: `/api/v1/organizations/${orgId}/members/${userId}/profiles`,
       });
     }
@@ -228,9 +228,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha ao listar convites.",
+        detail: "Could not list invitations.",
         instance: `/api/v1/organizations/${orgId}/invitations`,
       });
     }
@@ -254,9 +254,9 @@ export const organizationsApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Falha ao criar convite.",
+        detail: "Could not create the invitation.",
         instance: `/api/v1/organizations/${orgId}/invitations`,
       });
     }

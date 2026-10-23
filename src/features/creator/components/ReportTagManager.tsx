@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { Pencil, Tag, Trash2, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -27,7 +28,7 @@ export function ReportTagManager({ organizationId, onClose, onChanged }: { organ
     let active = true; setLoading(true); setError(""); setReady(false);
     void creatorApi.listReportTags(organizationId).then(result => {
       if (!active) return;
-      if (isErr(result)) setError(result.error.detail || "Não foi possível consultar etiquetas."); else { setTags(result.value); setReady(true); }
+      if (isErr(result)) setError(problemMessage(result.error, "Não foi possível consultar etiquetas.")); else { setTags(result.value); setReady(true); }
     }).catch(() => { if (active) setError("Falha de comunicação ao consultar etiquetas."); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [organizationId, retry]);
@@ -36,7 +37,7 @@ export function ReportTagManager({ organizationId, onClose, onChanged }: { organ
     lock.current = true; setBusy(true); setError(""); setNotice("");
     try {
       const result = await creatorApi.saveReportTag(organizationId, name.trim(), editing?.id);
-      if (isErr(result)) setError(result.error.detail || "Não foi possível salvar a etiqueta.");
+      if (isErr(result)) setError(problemMessage(result.error, "Não foi possível salvar a etiqueta."));
       else { setTags(current => [...current.filter(tag => tag.id !== result.value.id), result.value].sort((a,b) => a.name.localeCompare(b.name,"pt-BR"))); setEditing(null); setName(""); setNotice("Etiqueta salva."); onChanged(); }
     } catch { setError("Falha de comunicação. Seus dados foram preservados; tente novamente."); }
     finally { lock.current = false; setBusy(false); }
@@ -46,7 +47,7 @@ export function ReportTagManager({ organizationId, onClose, onChanged }: { organ
     lock.current = true; setBusy(true); setDeleteError("");
     try {
       const result = await creatorApi.deleteReportTag(organizationId, deleting.id);
-      if (isErr(result)) { setDeleteError(result.error.detail || "Não foi possível excluir a etiqueta."); return false; }
+      if (isErr(result)) { setDeleteError(problemMessage(result.error, "Não foi possível excluir a etiqueta.")); return false; }
       setTags(current => current.filter(tag => tag.id !== deleting.id));
       if (editing?.id === deleting.id) { setEditing(null); setName(""); }
       setNotice("Etiqueta excluída. Os relatórios foram preservados."); onChanged(); return true;

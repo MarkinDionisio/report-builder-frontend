@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("E2E - Formulário e resumo dos filtros", () => {
+test.describe("E2E - Filter form and summary", () => {
   test.beforeEach(async ({ page }) => {
     await page.route("**/api/v1/auth/refresh", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ accessToken: "token", refreshToken: "refresh", tokenType: "Bearer", expiresAt: new Date(Date.now() + 3600_000).toISOString(), userId: "user-1", email: "creator@example.com", globalRole: "creator" }) }));
     await page.route("**/api/v1/me", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "user-1", name: "Creator", email: "creator@example.com", globalRole: "creator", profileIds: [], organizations: [{ id: "org-1", name: "Organização", organizationRole: "creator" }] }) }));
@@ -11,7 +11,7 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     await page.addInitScript(() => localStorage.setItem("report-builder.session.v1", JSON.stringify({ refreshToken: "refresh" })));
   });
 
-  test("renomeia parâmetros compartilhados em todos os filtros", async ({ page }) => {
+  test("renames shared parameters across filters", async ({ page }) => {
     await page.goto("/organizations/org-1/creator/reports/report-1");
     await page.getByRole("button", { name: "Próximo: Escolher Colunas" }).click();
     await page.getByRole("button", { name: "Próximo: Filtros & Ordenação" }).click();
@@ -27,7 +27,7 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     await expect(dialog.getByLabel("Nome interno inicial")).toHaveValue("inicioCompartilhado");
   });
 
-  test("opções avançadas preservam parâmetros no modal em tela pequena", async ({ page }) => {
+  test("preserves advanced parameters in small-screen modals", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/organizations/org-1/creator/reports/report-1");
     await page.getByRole("button", { name: "Próximo: Escolher Colunas" }).click();
@@ -56,7 +56,7 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     await expect(dialog.getByLabel("Nome interno inicial")).toHaveValue("inicio");
   });
 
-  test("pagina o preview e volta à primeira página ao alterar o tamanho", async ({ page }) => {
+  test("paginates preview and resets the page after changing page size", async ({ page }) => {
     const requests: Array<{ page: number; pageSize: number }> = [];
     await page.route("**/api/v1/reports/preview", async (route) => {
       const request = route.request().postDataJSON();
@@ -80,7 +80,7 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     expect(requests).toEqual([{ page: 1, pageSize: 50 }, { page: 2, pageSize: 50 }, { page: 1, pageSize: 50 }, { page: 2, pageSize: 50 }, { page: 1, pageSize: 25 }]);
   });
 
-  test("edita, adiciona e remove filtros sem edição inline", async ({ page }) => {
+  test("edits, adds, and removes filters without inline editing", async ({ page }) => {
     await page.goto("/organizations/org-1/creator/reports/report-1");
     await page.getByRole("button", { name: "Próximo: Escolher Colunas" }).click();
     const columnTitles = page.getByLabel("Título da coluna");
@@ -139,7 +139,7 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     expect(await mobileDialog.evaluate((element) => element.scrollWidth <= element.clientWidth && element.getBoundingClientRect().width <= window.innerWidth)).toBe(true);
   });
 
-  test("lista fontes disponíveis para criar um relatório usando o endpoint de Creator", async ({ page }) => {
+  test("lists sources through the creator endpoint", async ({ page }) => {
     await page.goto("/organizations/org-1/creator/reports/new");
 
     await expect(page.getByRole("heading", { name: "Selecione o DataSource" })).toBeVisible();
@@ -147,7 +147,7 @@ test.describe("E2E - Formulário e resumo dos filtros", () => {
     await expect(page.getByText("Only root and organization administrators can manage report catalog grants.")).toHaveCount(0);
   });
 
-  test("bloqueia o designer antes de consultar fontes, catálogo, preview ou update", async ({ page }) => {
+  test("blocks the designer before source, catalog, preview, or update requests", async ({ page }) => {
     let dataSourceCalls = 0;
     let catalogCalls = 0;
     let previewCalls = 0;

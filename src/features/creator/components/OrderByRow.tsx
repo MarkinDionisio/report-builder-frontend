@@ -1,3 +1,4 @@
+import { diagnosticMessage } from "../../../shared/presentation/messages";
 import React, { useState } from "react";
 import { GripVertical, X, ArrowUp, ArrowDown } from "lucide-react";
 import { SearchableFieldSelect } from "./SearchableFieldSelect";
@@ -20,7 +21,7 @@ interface OrderByRowProps {
   orderBy: OrderByItem;
   fieldOptions: Array<{ label: string; fieldId: string; joinAlias: string; aggregation?: string; group?: string }>;
   compat: OrderByCompatibility;
-  backendWarning?: { message: string } | null;
+  backendWarning?: { message: string; code?: string } | null;
   onUpdate: (index: number, key: string, value: any) => void;
   onRemove: (index: number) => void;
   /** Drag & Drop handlers */
@@ -181,7 +182,7 @@ export const OrderByRow: React.FC<OrderByRowProps> = ({
               #{index + 1}
             </span>
             <span style={{ fontWeight: 600, color: "var(--primary-400)", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
-              {index === 0 ? "ORDER BY" : "THEN BY"}
+              {index === 0 ? "Ordenar por" : "Depois por"}
             </span>
           </div>
 
@@ -198,7 +199,7 @@ export const OrderByRow: React.FC<OrderByRowProps> = ({
           <button
             className="btn btn-secondary"
             style={{ padding: "0.5rem", flexShrink: 0 }}
-            title={o.direction === "asc" ? "Ascending (A-Z)" : "Descending (Z-A)"}
+            title={o.direction === "asc" ? "Crescente (A-Z)" : "Decrescente (Z-A)"}
             onClick={() => onUpdate(index, "direction", o.direction === "asc" ? "desc" : "asc")}
           >
             {o.direction === "asc" ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
@@ -207,7 +208,7 @@ export const OrderByRow: React.FC<OrderByRowProps> = ({
           {/* Delete button */}
           <button
             className="btn-icon"
-            title="Remove order"
+            title="Remover ordenação"
             style={{ color: "var(--danger-500)", padding: "0.25rem", flexShrink: 0 }}
             onClick={handleRemoveClick}
           >
@@ -219,8 +220,8 @@ export const OrderByRow: React.FC<OrderByRowProps> = ({
         {hasWarning && (
           <div style={{ fontSize: "0.8rem", color: "var(--warning-500)", marginTop: "0.25rem", marginLeft: "2rem" }}>
             {backendWarning
-              ? backendWarning.message
-              : `Field ignored or incompatible with the current query shape (${compat.reason})`}
+              ? diagnosticMessage(backendWarning.code)
+              : "Campo ignorado ou incompatível com a configuração atual da consulta."}
           </div>
         )}
       </div>

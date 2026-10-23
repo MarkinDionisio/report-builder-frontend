@@ -1,3 +1,5 @@
+import { diagnosticMessage } from "../../../shared/presentation/messages";
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ReportMetadata } from "../components/ReportMetadata";
 import { ReportExportAction } from "../../exports/components/ReportExportAction";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -45,7 +47,7 @@ function ReportRunnerContent() {
       if (inputVersion !== parameterVersion.current) return;
       setExecuting(false);
       if (isErr(response)) {
-        setError(response.error.detail || "Não foi possível executar o relatório.");
+        setError(problemMessage(response.error, "Não foi possível executar o relatório."));
         if (response.error.code === "report_execution.global_template_requires_import") {
           setReport(current => current ? { ...current, canExecute: false, executionBlockCode: response.error.code! } : current);
         }
@@ -65,7 +67,7 @@ function ReportRunnerContent() {
     let active = true;
     void creatorApi.getReport(reportId).then(async (response) => {
       if (!active) return;
-      if (isErr(response)) { setLoading(false); setError(response.error.detail || "Relatório não encontrado ou sem acesso."); return; }
+      if (isErr(response)) { setLoading(false); setError(problemMessage(response.error, "Relatório não encontrado ou sem acesso.")); return; }
       const detail = response.value;
       setReport(detail); setLoading(false);
       if (detail.canExecute !== false && (detail.content.parameters?.length ?? 0) === 0) await runExecution(1, 50, detail, {});
@@ -86,7 +88,7 @@ function ReportRunnerContent() {
         <button type="button" className="report-parameters__toggle" aria-expanded={parametersExpanded} onClick={() => setParametersExpanded((current) => !current)}><span><SlidersHorizontal size={18}/><span><strong>Parâmetros</strong><small>{missingRequired ? "Preencha os campos obrigatórios" : lastExecutedAt ? "Valores usados na execução" : "Revise antes de executar"}</small></span></span>{parametersExpanded ? <ChevronUp size={18}/> : <ChevronDown size={18}/>}</button>
         {parametersExpanded && <div className="report-parameters__content"><ExecutionParameterForm parameters={report.content.parameters || []} where={report.content.dataset.where} resolvedParameters={result?.resolvedParameters} values={parameters} onChange={(values) => { parameterVersion.current++; setParameters(values); setResult(null); setPage(1); setLastExecutedAt(null); setParametersExpanded(true); }}/>{missingRequired && <p className="report-parameters__required">Preencha os campos obrigatórios para executar.</p>}<div className="report-parameters__actions">{report.executionBlockCode !== "report_execution.global_template_requires_import" && <button className="btn btn-primary" disabled={executing || missingRequired || report.canExecute === false} onClick={() => void execute(1)}><Play size={16}/>{executing ? "Executando…" : "Executar relatório"}</button>}</div></div>}
       </section>
-      {result?.warnings?.length ? <div className="report-runner__warnings">{result.warnings.map((warning) => <Alert key={`${warning.itemIndex}-${warning.fieldId}`} type="warning" message={warning.message}/>)}</div> : null}
+      {result?.warnings?.length ? <div className="report-runner__warnings">{result.warnings.map((warning) => <Alert key={`${warning.itemIndex}-${warning.fieldId}`} type="warning" message={diagnosticMessage(warning.code, "Um item da consulta requer revisão.")}/>)}</div> : null}
       {result && result.rows.length > 0 && reportId && <ReportExportAction key={`${reportId}-${lastExecutedAt?.getTime()}`} reportId={reportId} parameters={lastExecutionParameters} disabled={executing || report.canExecute === false}/>}
       <ReportPresentationRenderer presentation={report.content.presentation} select={report.content.dataset.select} result={result} loading={executing} page={page} pageSize={pageSize} onPageChange={(targetPage) => void execute(targetPage)} onPageSizeChange={changePageSize}/>
     </>}

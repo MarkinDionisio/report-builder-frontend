@@ -25,9 +25,9 @@ export const authApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Resposta inválida recebida do servidor durante o login.",
+        detail: "Could not process the server response.",
         instance: "/api/v1/auth/login",
       });
     }
@@ -47,9 +47,9 @@ export const authApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Resposta inválida recebida do servidor durante o cadastro.",
+        detail: "Could not process the server response.",
         instance: "/api/v1/auth/register",
       });
     }
@@ -71,9 +71,9 @@ export const authApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Resposta inválida recebida do servidor no aceite do convite.",
+        detail: "Could not process the server response.",
         instance: "/api/v1/auth/invitations/accept",
       });
     }
@@ -90,9 +90,9 @@ export const authApi = {
     } catch {
       return err({
         type: "about:blank",
-        title: "Erro de Resposta",
+        title: "Response error",
         status: 500,
-        detail: "Resposta inválida recebida do servidor no endpoint /me.",
+        detail: "Could not process the server response.",
         instance: "/api/v1/me",
       });
     }

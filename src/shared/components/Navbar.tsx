@@ -66,7 +66,7 @@ export const Navbar: React.FC = () => {
       </header>
       {isOpen && <button className="app-sidebar-backdrop" aria-label="Fechar menu de navegação" onClick={() => setIsOpen(false)}/>}
       <aside className={`app-sidebar ${isOpen ? "is-open" : ""} ${isCollapsed ? "is-collapsed" : ""}`}>
-        <div className="app-sidebar__brand"><span className="app-logo">RB</span><span className="app-brand-copy"><strong>Report Builder</strong><small>Analytics workspace</small></span></div>
+        <div className="app-sidebar__brand"><span className="app-logo">RB</span><span className="app-brand-copy"><strong>Report Builder</strong><small>Área de análise</small></span></div>
         <nav aria-label="Navegação principal">
           {[...new Set(links.map((item) => item.section))].map((section) => <div className="app-nav-group" key={section}>
             <span className="app-nav-group__label">{section}</span>

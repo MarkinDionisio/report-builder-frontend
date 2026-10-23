@@ -1,28 +1,14 @@
-# CI/CD do frontend no CentOS Stream 9
+# Frontend CI/CD on CentOS Stream 9
 
-O frontend é compilado com a API pública
-`https://reportsapi.fabricasistemas.com.br`, servido por Nginx em container e
-publicado em `https://reports.fabricasistemas.com.br`. O Nginx do host termina
-TLS e encaminha para `127.0.0.1:8081`.
+Build with API https://reportsapi.fabricasistemas.com.br, serve through container Nginx at https://reports.fabricasistemas.com.br. Host Nginx terminates TLS and proxies 127.0.0.1:8081.
 
-## Fluxo de release
+## Release flow
 
-Pushes e pull requests para `main` executam lint, testes unitários, build e
-Playwright. A imagem final também passa por um gate do Trivy que rejeita
-vulnerabilidades `HIGH` ou `CRITICAL` com correção disponível. Uma tag
-`vX.Y.Z` pertencente a `main` repete as verificações,
-publica a imagem no GHCR e aguarda aprovação do environment `production`.
-Após a aprovação, o runner entra no tailnet e solicita o deploy por SSH. O
-servidor aceita somente imagem por digest e restaura a versão anterior se o
-health check falhar.
+Pushes/PRs to main run lint, unit tests, build, and Playwright. Trivy rejects fixable HIGH/CRITICAL vulnerabilities in the final image. vX.Y.Z tags belonging to main repeat checks, publish GHCR, and await production environment approval. The runner then enters the tailnet and requests SSH deployment. The server accepts only digest images and restores the previous version on health failure.
 
-## Provisionamento
+## Provisioning
 
-Crie uma deploy key somente leitura para o servidor clonar este repositório e
-uma chave para o GitHub Actions solicitar deploys. A chave de Actions pode ser
-o mesmo par usado pelo backend, mas será instalada para um usuário separado.
-
-No servidor, a partir de uma cópia deste repositório:
+Create a read-only repository deploy key and an Actions deployment key. Actions may use the backend's pair but installs for a separate user. From a repository copy on the server:
 
 ```bash
 sudo bash ./ops/provision-centos-stream-9.sh \
@@ -32,9 +18,7 @@ sudo bash ./ops/provision-centos-stream-9.sh \
   --actions-public-key /root/report-builder-frontend-actions.pub
 ```
 
-O script cria `report-builder-frontend-deploy`, instala a forced command e
-prepara `/opt/report-builder-frontend`. Em seguida, autentique esse usuário no
-GHCR com um token que possua somente `read:packages`:
+The script creates report-builder-frontend-deploy, installs a forced command, and prepares /opt/report-builder-frontend. Authenticate this user to GHCR using read:packages only:
 
 ```bash
 sudo -iu report-builder-frontend-deploy
@@ -42,38 +26,27 @@ printf '%s' "$GHCR_READ_TOKEN" | docker login ghcr.io -u GITHUB_USERNAME --passw
 exit
 ```
 
-O arquivo `/opt/report-builder-frontend/shared/.env` contém
-`FRONTEND_PORT=8081`. A porta é publicada apenas no loopback.
+/opt/report-builder-frontend/shared/.env sets FRONTEND_PORT=8081, published on loopback only.
 
 ## GitHub
 
-Crie o environment `production`, restrinja-o às tags `v*`, adicione revisores
-obrigatórios e configure a variable:
+Create production environment restricted to v* with required reviewers. Variable PRODUCTION_URL=https://reports.fabricasistemas.com.br.
 
-| Variable | Valor |
-| --- | --- |
-| `PRODUCTION_URL` | `https://reports.fabricasistemas.com.br` |
+| Secret | Content |
+|---|---|
+| TS_OAUTH_CLIENT_ID | Tailscale federated identity Client ID |
+| TS_AUDIENCE | Federated Audience |
+| PROD_TAILSCALE_HOST | Server MagicDNS name |
+| PROD_SSH_PORT | 22 |
+| PROD_SSH_USER | report-builder-frontend-deploy |
+| PROD_SSH_PRIVATE_KEY | Private key matching the installed key |
+| PROD_SSH_KNOWN_HOSTS | Verified server ED25519 entry |
 
-Configure estes environment secrets:
+Tailnet policy allows tag:github-actions only to server tcp:22, as for backend deployment.
 
-| Secret | Conteúdo |
-| --- | --- |
-| `TS_OAUTH_CLIENT_ID` | Client ID da identidade federada do Tailscale |
-| `TS_AUDIENCE` | Audience da identidade federada |
-| `PROD_TAILSCALE_HOST` | Nome MagicDNS do servidor |
-| `PROD_SSH_PORT` | `22` |
-| `PROD_SSH_USER` | `report-builder-frontend-deploy` |
-| `PROD_SSH_PRIVATE_KEY` | Chave privada correspondente à chave instalada |
-| `PROD_SSH_KNOWN_HOSTS` | Entrada ED25519 verificada do servidor |
+## DNS, TLS, and Nginx
 
-A política do tailnet deve permitir `tag:github-actions` acessar somente
-`tcp:22` do servidor, como no deploy do backend.
-
-## DNS, TLS e Nginx
-
-Aponte `reports.fabricasistemas.com.br` para o servidor, emita o certificado e
-instale `ops/nginx/report-builder-frontend.conf.example` após revisar os
-caminhos. Valide e recarregue manualmente:
+Point reports.fabricasistemas.com.br to the server, issue certificates, and install ops/nginx/report-builder-frontend.conf.example after reviewing paths. Validate/reload manually:
 
 ```bash
 sudo nginx -t
@@ -81,15 +54,13 @@ sudo systemctl reload nginx
 curl --fail https://reports.fabricasistemas.com.br/health
 ```
 
-O pipeline não altera Nginx, DNS, certificados ou firewall.
+The pipeline changes neither Nginx, DNS, certificates, nor firewall.
 
-## Publicação e rollback
+## Publishing and rollback
 
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
-Para reverter, execute manualmente o workflow `rollback` e informe uma tag já
-publicada. Ele resolve novamente o digest e o SHA gravado nos labels da imagem.
-O estado implantado fica em `/opt/report-builder-frontend/state/current`.
+Run rollback manually with a published tag. It resolves the digest and SHA from image labels. Deployment state: /opt/report-builder-frontend/state/current.

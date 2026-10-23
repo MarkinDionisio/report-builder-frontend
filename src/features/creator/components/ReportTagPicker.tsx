@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ChevronDown, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { creatorApi } from "../api/creatorApi";
@@ -54,7 +55,7 @@ export function ReportTagPicker({ organizationId, selected, onChange, disabled, 
     let active = true; setLoading(true); setError(""); onReady?.(false);
     void creatorApi.listReportTags(organizationId).then(result => {
       if (!active) return;
-      if (isErr(result)) setError(result.error.detail || "Não foi possível consultar etiquetas.");
+      if (isErr(result)) setError(problemMessage(result.error, "Não foi possível consultar etiquetas."));
       else { setTags(result.value); onReady?.(true); }
     }).catch(() => { if (active) setError("Falha de comunicação ao consultar etiquetas."); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };

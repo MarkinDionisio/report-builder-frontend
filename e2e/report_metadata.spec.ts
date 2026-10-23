@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-for (const width of [1280, 390]) test('etiquetas, descrições, filtros e edição em '+width, async ({page}, testInfo) => {
+for (const width of [1280, 390]) test('tags, descriptions, filters, and editing at '+width, async ({page}, testInfo) => {
   await page.setViewportSize({width,height:844});
   const json=(body:unknown,status=200)=>({status,contentType:"application/json",body:JSON.stringify(body)});
   let tags=[{id:"sales",organizationId:"org",name:"Vendas"},{id:"finance",organizationId:"org",name:"Financeiro"}, ...Array.from({length:24},(_,index)=>({id:'tag-'+index,organizationId:'org',name:'Etiqueta de departamento '+(index+1)}))];

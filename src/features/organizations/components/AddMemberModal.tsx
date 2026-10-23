@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import "../styles/organizationOverview.css";
 import React, { useState, useEffect } from "react";
 import type { ApiProblemDetails } from "../../../shared/api/types";
@@ -72,7 +73,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
     } else if (res.error.code === "organizations.user_not_found" || res.error.status === 404) {
       setUserNotFound(true);
     } else {
-      setLookupError(res.error.detail || "Falha ao consultar usuário.");
+      setLookupError(problemMessage(res.error, "Falha ao consultar usuário."));
     }
   };
 

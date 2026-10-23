@@ -1,3 +1,4 @@
+import { diagnosticMessage } from "../../../shared/presentation/messages";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { SearchMatchOptions } from "../../../shared/components/SearchMatchOptions";
 import { matchesTextSearch } from "../../../shared/utils/textSearch";
@@ -50,7 +51,7 @@ function SchemaGroup({ schema, fields, selected, onChange, disabled, initiallyOp
       </button>
       <span className="catalog-schema-group__count">{selectedCount}/{eligible.length} compatíveis selecionados{incompatibleCount > 0 ? ` · ${incompatibleCount} incompatíveis` : ''}</span>
     </div>
-    {schema.reason && <p className="catalog-schema-group__reason">{schema.reason}</p>}
+    {schema.reason && <p className="catalog-schema-group__reason">{diagnosticMessage(schema.reasonCode, "Tabela ou view indisponível no destino.")}</p>}
     {open && <div id={groupId} className="catalog-schema-group__fields">
       {schema.description && <p className="catalog-schema-group__description">{schema.description}</p>}
       {fields.length === 0 && <p>Nenhum campo corresponde a este filtro.</p>}
@@ -63,7 +64,7 @@ function SchemaGroup({ schema, fields, selected, onChange, disabled, initiallyOp
           }} />
           <span><strong>{field.publicName}</strong><small>{field.internalFieldName} · {field.publicType}{field.isNullable ? ' · aceita nulo' : ''}{field.isSensitive ? ' · sensível' : ''}{!field.isEnabled ? ' · desabilitado' : ''}</small></span>
         </label>
-        {field.reason && <p className="catalog-schema-group__reason">{field.reason}</p>}
+        {field.reason && <p className="catalog-schema-group__reason">{diagnosticMessage(field.reasonCode, "Campo ausente ou com tipo incompatível no destino.")}</p>}
         <details><summary>Configurações de {field.publicName}</summary>
           <p>Selecionável: {field.isSelectable ? 'sim' : 'não'}; Filtrável: {field.isFilterable ? 'sim' : 'não'}; Ordenável: {field.isSortable ? 'sim' : 'não'}; Agrupável: {field.isGroupable ? 'sim' : 'não'}; Agregável: {field.isAggregatable ? 'sim' : 'não'}</p>
           <p>Operadores: {field.allowedOperators.join(', ')}; Agregações: {field.allowedAggregations.join(', ') || 'nenhuma'}</p>

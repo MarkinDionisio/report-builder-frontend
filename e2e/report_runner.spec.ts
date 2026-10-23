@@ -6,8 +6,8 @@ async function mockSession(page: Page) {
   await page.addInitScript(() => localStorage.setItem("report-builder.session.v1", JSON.stringify({ refreshToken: "refresh" })));
 }
 
-test.describe("E2E - Execução do relatório", () => {
-  test("mostra parâmetros antes de executar e reexecuta ao mudar o tamanho da página", async ({ page }) => {
+test.describe("E2E - Report execution", () => {
+  test("shows parameters before execution and reruns on page-size changes", async ({ page }) => {
     await mockSession(page);
     await page.route("**/api/v1/reports/report-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "report-1", title: "Vendas diárias", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "viewer", allowedFilters: [], content: { version: 1, parameters: [{ name: "start", type: "datetime", source: "system", variable: "startOfToday" }, { name: "end", type: "datetime", source: "system", variable: "startOfTomorrow" }], dataset: { schemaId: "schema-1", select: [{ fieldId: "total", alias: "Total" }], where: { operator: "and", conditions: [{ operator: "and", ui: { kind: "relativePeriod", preset: "today", label: "Período de vendas" }, conditions: [{ fieldId: "date", operator: "gte", value: { parameter: "start" } }, { fieldId: "date", operator: "lt", value: { parameter: "end" } }] }] } } } }) }));
     const requests: Array<{ page: number; pageSize: number }> = [];
@@ -36,15 +36,15 @@ test.describe("E2E - Execução do relatório", () => {
     await expect(page.getByLabel("Resultados do relatório")).toBeVisible();
   });
 
-  test("mostra o erro quando o relatório não pode ser carregado", async ({ page }) => {
+  test("shows an error when the report cannot load", async ({ page }) => {
     await mockSession(page);
-    await page.route("**/api/v1/reports/missing", async (route) => route.fulfill({ status: 404, contentType: "application/problem+json", body: JSON.stringify({ title: "Não encontrado", detail: "Relatório não encontrado." }) }));
+    await page.route("**/api/v1/reports/missing", async (route) => route.fulfill({ status: 404, contentType: "application/problem+json", body: JSON.stringify({ title: "Not Found", detail: "Report not found." }) }));
     await page.goto("/reports/missing/run");
-    await expect(page.getByText("Relatório não encontrado.")).toBeVisible();
+    await expect(page.getByText("Relatório não encontrado ou sem acesso.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Voltar ao início" })).toBeVisible();
   });
 
-  test("não executa e apresenta schemas e campos bloqueadores", async ({ page }) => {
+  test("blocks execution and shows unavailable schemas and fields", async ({ page }) => {
     await mockSession(page);
     let executionRequests = 0;
     await page.route("**/api/v1/reports/blocked-report", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "blocked-report", title: "Relatório restrito", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "viewer", allowedFilters: [], canExecute: false, executionBlockCode: "report_definition.field_capability_unavailable", blockedSchemas: [{ schemaId: "schema-1", schemaName: "Pedidos", reason: "capability_missing", blockedFields: [{ fieldId: "field-1", fieldName: "Total", reason: "capability_missing", missingCapabilities: ["filterable", "aggregatable"] }] }], content: { version: 1, parameters: [], dataset: { schemaId: "schema-1", select: [{ fieldId: "field-1", alias: "Total" }] } } }) }));
@@ -60,7 +60,7 @@ test.describe("E2E - Execução do relatório", () => {
     await expect.poll(() => executionRequests).toBe(0);
   });
 
-  test("apresenta um relatório agregado como indicador", async ({ page }) => {
+  test("presents an aggregated report as an indicator", async ({ page }) => {
     await mockSession(page);
     await page.route("**/api/v1/reports/metric-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "metric-1", title: "Receita", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "viewer", allowedFilters: [], content: { version: 1, presentation: { type: "metric", valueColumnAlias: "Total", label: "Receita total" }, parameters: [], dataset: { schemaId: "schema-1", select: [{ fieldId: "total", alias: "Total", aggregation: "sum" }], groupBy: [] } } }) }));
     await page.route("**/api/v1/reports/metric-1/execute", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ columns: [{ alias: "Total", type: "number", fieldId: "total", joinAlias: null }], rows: [{ Total: 9876.5 }], page: 1, pageSize: 50, rowCount: 1, durationMs: 11, resolvedParameters: {}, warnings: [] }) }));
@@ -70,7 +70,7 @@ test.describe("E2E - Execução do relatório", () => {
     await expect(page.getByRole("table")).toHaveCount(0);
   });
 
-  test("apresenta detalhes agrupados por dia e permite recolher o grupo", async ({ page }) => {
+  test("presents day-grouped details with collapsible groups", async ({ page }) => {
     await mockSession(page);
     await page.route("**/api/v1/reports/grouped-1", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "grouped-1", title: "Vendas por dia", organizationId: "org-1", organizationName: "Organização", visibilityScope: "organization", myRole: "viewer", allowedFilters: [], content: { version: 1, presentation: { type: "groupedTable", groupColumnAlias: "Dia", direction: "desc" }, parameters: [], dataset: { schemaId: "schema-1", select: [{ fieldId: "sold-at", alias: "Dia", dateGranularity: "day" }, { fieldId: "product", alias: "Produto" }], orderBy: [{ fieldId: "sold-at", dateGranularity: "day", direction: "desc" }] } } }) }));
     await page.route("**/api/v1/reports/grouped-1/execute", async (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ columns: [{ alias: "Dia", type: "date", fieldId: "sold-at", joinAlias: null }, { alias: "Produto", type: "string", fieldId: "product", joinAlias: null }], rows: [{ Dia: "2026-08-15", Produto: "Produto A" }, { Dia: "2026-08-15", Produto: "Produto B" }, { Dia: "2026-08-14", Produto: "Produto C" }], page: 1, pageSize: 50, rowCount: 3, durationMs: 13, resolvedParameters: {}, warnings: [] }) }));

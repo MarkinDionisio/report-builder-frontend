@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-for (const width of [1280, 390]) test('carregamento contextual em ' + width, async ({ page }, testInfo) => {
+for (const width of [1280, 390]) test('contextual loading at ' + width, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 844 });
   const json = (body: unknown) => ({ contentType: "application/json", body: JSON.stringify(body) });
   const user = { id: "user", name: "Root", email: "root@example.com", globalRole: "root", profileIds: [], organizations: [] };

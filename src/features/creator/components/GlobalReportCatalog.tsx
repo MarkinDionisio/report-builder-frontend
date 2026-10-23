@@ -1,3 +1,4 @@
+import { diagnosticMessage } from "../../../shared/presentation/messages";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ReportTagPicker } from "./ReportTagPicker";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
@@ -153,7 +154,7 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
           <ReportTagPicker organizationId={organizationId} selected={tagIds} onReady={setTagsReady} onChange={ids => { setTagIds(ids); setCheck(null); }} disabled={busy}/>
           {check && <div className="global-report-import__diagnostics" aria-live="polite">
             {check.joinModels && check.joinModels.length>0&&<section><h3>Junções da organização</h3><p>A importação reutiliza ou cria cópias locais, sem conceder permissões.</p><ul>{check.joinModels.map((model,index)=><li key={index}>{model.name} · {model.action==="create"?"Será criada uma cópia independente":"Modelo local será reutilizado"}</li>)}</ul></section>}
-            {check.canImport ? <Alert type="success" message="Modelo compatível. A cópia será criada como privada."/> : <div role="alert"><p>Não é possível importar:</p><ul>{check.issues.map((issue, index) => <li key={index}>{issue.message} <small>({issue.path})</small></li>)}</ul></div>}
+            {check.canImport ? <Alert type="success" message="Modelo compatível. A cópia será criada como privada."/> : <div role="alert"><p>Não é possível importar:</p><ul>{check.issues.map((issue, index) => <li key={index}>{diagnosticMessage(issue.code, "A definição não está disponível com as permissões e capacidades do catálogo de destino.")} <small>({issue.path})</small></li>)}</ul></div>}
           </div>}
         </section>}
       </div>

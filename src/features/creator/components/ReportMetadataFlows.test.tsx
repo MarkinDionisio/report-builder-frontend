@@ -49,21 +49,21 @@ it("keeps form data after save errors and locks duplicate submissions", async ()
   const save=screen.getByRole("button",{name:"Salvar etiqueta"});
   fireEvent.click(save); fireEvent.click(save);
   expect(creatorApi.saveReportTag).toHaveBeenCalledTimes(1);
-  finish({ok:false,error:{type:"about:blank",title:"Conflito",status:409,detail:"Nome duplicado",instance:""}});
-  await screen.findByText("Nome duplicado");
+  finish({ok:false,error:{type:"about:blank",title:"Conflito",status:409,detail:"Duplicate name",code:"report_tags.name_conflict",instance:""}});
+  await screen.findByText("Já existe uma etiqueta com esse nome nesta organização.");
   expect(name).toHaveValue("Compras");
   expect(screen.getByRole("button",{name:"Salvar etiqueta"})).toBeEnabled();
 });
 
 it("requires deletion confirmation, preserves labels on failure and supports retry", async () => {
-  const problem={type:"about:blank",title:"Erro",status:500,detail:"Tente novamente",instance:""};
+  const problem={type:"about:blank",title:"Erro",status:500,detail:"Try again",instance:""};
   vi.mocked(creatorApi.deleteReportTag).mockResolvedValueOnce({ok:false,error:problem}).mockResolvedValueOnce({ok:true,value:undefined});
   render(<ReportTagManager organizationId="org" onClose={vi.fn()} onChanged={vi.fn()}/>);
   fireEvent.click(await screen.findByRole("button",{name:"Excluir Vendas"}));
   expect(creatorApi.deleteReportTag).not.toHaveBeenCalled();
   expect(screen.getByText(/Os relatórios e suas permissões serão preservados/)).toBeVisible();
   fireEvent.click(screen.getByRole("button",{name:"Confirmar Exclusão"}));
-  await screen.findByText("Tente novamente");
+  await screen.findByText("Não foi possível excluir a etiqueta.");
   fireEvent.click(screen.getByRole("button",{name:"Confirmar Exclusão"}));
   await waitFor(()=>expect(screen.queryByRole("button",{name:"Excluir Vendas"})).not.toBeInTheDocument());
   expect(creatorApi.deleteReportTag).toHaveBeenCalledTimes(2);
@@ -108,7 +108,7 @@ it("keeps organization-scoped tag labels short", () => {
 it("confirms report deletion, keeps the dialog on failure and refreshes after retry", async () => {
   const onTotal=vi.fn();
   vi.mocked(creatorApi.listReports).mockResolvedValue({ok:true,value:{page:1,pageSize:20,totalRecords:1,totalPages:1,data:[item]}});
-  vi.mocked(creatorApi.deleteReport).mockResolvedValueOnce({ok:false,error:{type:"about:blank",title:"Erro",status:403,detail:"Sem permissão",instance:""}}).mockResolvedValueOnce({ok:true,value:undefined});
+  vi.mocked(creatorApi.deleteReport).mockResolvedValueOnce({ok:false,error:{type:"about:blank",title:"Erro",status:403,detail:"Permission denied",instance:""}}).mockResolvedValueOnce({ok:true,value:undefined});
   render(<MemoryRouter><ReportBrowser organizationId="org" onTotal={onTotal}/></MemoryRouter>);
   await screen.findByText(item.title);
   fireEvent.click(screen.getByRole("button",{name:"Opções"}));
@@ -119,7 +119,7 @@ it("confirms report deletion, keeps the dialog on failure and refreshes after re
   fireEvent.click(screen.getByRole("button",{name:"Opções"}));
   fireEvent.click(screen.getByRole("button",{name:"Excluir relatório "+item.title}));
   fireEvent.click(screen.getByRole("button",{name:"Confirmar Exclusão"}));
-  await screen.findByText("Sem permissão");
+  await screen.findByText("Você não possui permissão para realizar esta ação.");
   expect(screen.getByRole("dialog",{name:"Excluir relatório"})).toBeVisible();
   vi.mocked(creatorApi.listReports).mockResolvedValue({ok:true,value:{page:1,pageSize:20,totalRecords:0,totalPages:0,data:[]}});
   fireEvent.click(screen.getByRole("button",{name:"Confirmar Exclusão"}));

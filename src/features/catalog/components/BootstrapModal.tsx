@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import React, { useState } from "react";
 import { X, Layers, CheckCircle2 } from "lucide-react";
 import type {
@@ -64,7 +65,7 @@ export const BootstrapModal: React.FC<BootstrapModalProps> = ({
     setLoadingPreview(false);
 
     if (isErr(res)) {
-      setErrorMsg(res.error.detail || "Erro ao gerar prévia do bootstrap.");
+      setErrorMsg(problemMessage(res.error, "Erro ao gerar prévia do bootstrap."));
     } else {
       setPreview(res.value);
     }
@@ -79,7 +80,7 @@ export const BootstrapModal: React.FC<BootstrapModalProps> = ({
     setExecuting(false);
 
     if (isErr(res)) {
-      setErrorMsg(res.error.detail || "Erro ao executar bootstrap.");
+      setErrorMsg(problemMessage(res.error, "Erro ao executar bootstrap."));
     } else {
       setResult(res.value);
       onSuccess();
@@ -141,7 +142,7 @@ export const BootstrapModal: React.FC<BootstrapModalProps> = ({
                         <td style={{ color: item.succeeded ? "var(--text-secondary)" : "#ef4444" }}>
                           {item.succeeded
                             ? item.import ? `Schema importado (${item.import.createdFields.length} campos criados)` : "OK"
-                            : item.error || "Erro desconhecido"}
+                            : "Não foi possível consultar esta tabela. Tente novamente."}
                         </td>
                       </tr>
                     ))}
@@ -263,7 +264,7 @@ export const BootstrapModal: React.FC<BootstrapModalProps> = ({
                             <td>
                               {item.succeeded && item.schema
                                 ? `${item.schema.fields.length} campos descobertos`
-                                : item.error || "-"}
+                                : "Não foi possível importar esta tabela. Tente novamente."}
                             </td>
                           </tr>
                         ))}

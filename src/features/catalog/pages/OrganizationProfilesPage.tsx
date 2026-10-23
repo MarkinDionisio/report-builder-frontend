@@ -1,3 +1,4 @@
+import { problemMessage } from "../../../shared/presentation/messages";
 import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { useModalFocus } from "../../../shared/hooks/useModalFocus";
 import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
@@ -64,7 +65,7 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
         setAccessDenied(true);
         refreshUser();
       } else {
-        setErrorMsg(res.error.detail || "Erro ao carregar perfis da organização.");
+        setErrorMsg(problemMessage(res.error, "Erro ao carregar perfis da organização."));
       }
     } else {
       setProfiles(res.value);
@@ -120,7 +121,7 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
           setAccessDenied(true);
           refreshUser();
         } else {
-          setErrorMsg(res.error.detail || "Erro ao atualizar perfil.");
+          setErrorMsg(problemMessage(res.error, "Erro ao atualizar perfil."));
         }
       } else {
         setIsModalOpen(false);
@@ -138,7 +139,7 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
           setAccessDenied(true);
           refreshUser();
         } else {
-          setErrorMsg(res.error.detail || "Erro ao criar perfil.");
+          setErrorMsg(problemMessage(res.error, "Erro ao criar perfil."));
         }
       } else {
         setIsModalOpen(false);
@@ -155,7 +156,7 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
     if(!deletingProfile||!organizationId)return false;
     setDeleteError("");
     const res=await catalogApi.deleteProfile(organizationId,deletingProfile.id);
-    if(isErr(res)){setDeleteError(res.error.detail||"Erro ao excluir profile.");if(res.error.status===403)void refreshUser();return false;}
+    if(isErr(res)){setDeleteError(problemMessage(res.error, "Erro ao excluir profile."));if(res.error.status===403)void refreshUser();return false;}
     setProfiles(current=>current.filter(profile=>profile.id!==deletingProfile.id));return true;
   };
 
