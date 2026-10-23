@@ -32,6 +32,15 @@ it("exports the successful input parameters without sending locked resolved para
   await waitFor(() => expect(exportApi.request).toHaveBeenCalledWith("report-1", "csv", { store: "one" }));
   fireEvent.change(screen.getByLabelText("Filial"), { target: { value: "two" } });
   expect(screen.getByRole("button", { name: "Exportar dados" })).toBeDisabled();
+  vi.mocked(exportApi.forReport).mockResolvedValue({ ok: true, value: { data: [{ id: "old", reportId: "report-1", title: "Vendas", format: "csv", status: "ready", createdAt: "2026-10-23T12:00:00Z", expiresAt: null, error: null }], totalCount: 1, page: 1, pageSize: 1 } });
+  fireEvent.click(screen.getByRole("button", { name: "Executar relatório" }));
+  const nextExport = await screen.findByRole("button", { name: "Nova exportação" });
+  expect(nextExport).toBeEnabled();
+  expect(screen.getByText("Exportação anterior deste relatório.")).toBeVisible();
+  fireEvent.click(nextExport);
+  fireEvent.click(screen.getByRole("button", { name: "CSV (.csv)" }));
+  await waitFor(() => expect(exportApi.request).toHaveBeenLastCalledWith("report-1", "csv", { store: "two" }));
+  vi.mocked(exportApi.forReport).mockResolvedValue({ ok: true, value: { data: [], totalCount: 0, page: 1, pageSize: 1 } });
 });
 
 it("discards a pending execution when its parameters change", async () => {

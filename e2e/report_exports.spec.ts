@@ -8,7 +8,7 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
   await page.route("**/api/v1/auth/refresh", route => route.fulfill(json({ accessToken: "token", refreshToken: "refresh", expiresAt: new Date(Date.now() + 3600000).toISOString() })));
   await page.route("**/api/v1/me", route => route.fulfill(json({ id: "user", name: "Pessoa", email: "pessoa@example.com", globalRole: "user", organizations: [], profileIds: [] })));
   const title = "Relatório de vendas e movimentações com nome extenso para validar o painel";
-  await page.route("**/api/v1/reports/report", route => route.fulfill(json({ id: "report", title, organizationName: "Empresa", canExecute: true, content: { version: 1, parameters: [], dataset: { select: [{ fieldId: "amount", alias: "Total" }] } } })));
+  await page.route("**/api/v1/reports/report", route => route.fulfill(json({ id: "report", title, organizationName: "Empresa", canExecute: true, content: { version: 1, parameters: [{ name: "store", label: "Filial", type: "string", source: "input", required: false }], dataset: { select: [{ fieldId: "amount", alias: "Total" }] } } })));
   await page.route("**/api/v1/reports/report/execute", route => route.fulfill(json({ columns: [{ alias: "Total", type: "number" }], rows: [{ Total: 10 }], rowCount: 1, page: 1, pageSize: 50, durationMs: 10, resolvedParameters: { store: "one" } })));
   let ready = false;
   let completed = false;
@@ -26,6 +26,9 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
     return route.fallback();
   });
   await page.goto("/reports/report/run");
+  await page.getByLabel("Filial", { exact: true }).fill("one");
+  await page.getByRole("button", { name: "Executar relatório", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Exportar dados" })).toBeEnabled();
   await page.getByRole("button", { name: "Exportar dados" }).click();
   await page.getByRole("button", { name: "CSV (.csv)" }).click();
   const alert = page.getByRole("alert");
@@ -40,7 +43,7 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
   await expect(page.getByText(/O serviço de geração está indisponível/)).toBeVisible();
   if (width > 860) await expect.poll(async () => (await page.getByRole("heading", { name: title }).boundingBox())?.x ?? 0).toBeGreaterThanOrEqual(260);
   await page.screenshot({ path: testInfo.outputPath(`waiting-${width}.png`), fullPage: true, animations: "disabled" });
-  expect(posted).toEqual({ format: "csv", parameters: {}, filters: [] });
+  expect(posted).toEqual({ format: "csv", parameters: { store: "one" }, filters: [] });
   completed = true;
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   await expect(page.getByText("Arquivo pronto para baixar")).toBeVisible();
@@ -57,6 +60,16 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
   await page.keyboard.press("Escape");
   await expect(dialog).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Acompanhar exportações" })).toBeFocused();
+  await page.getByLabel("Filial", { exact: true }).fill("two");
+  await expect(page.getByRole("button", { name: "Exportar dados" })).toBeDisabled();
+  await page.getByRole("button", { name: "Executar relatório", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Nova exportação" })).toBeEnabled();
+  await expect(page.getByText("Exportação anterior deste relatório.")).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("new-execution.png"), fullPage: true, animations: "disabled" });
+  await page.getByRole("button", { name: "Nova exportação" }).click();
+  await page.getByRole("button", { name: "CSV (.csv)" }).click();
+  await expect.poll(() => posted).toEqual({ format: "csv", parameters: { store: "two" }, filters: [] });
+  await expect(page.getByText("Exportação anterior deste relatório.")).toHaveCount(0);
   await page.reload();
   await page.getByRole("button", { name: /Exportações e notificações/ }).click();
   await expect(page.getByRole("dialog").getByRole("button", { name: "Baixar arquivo" })).toBeVisible();

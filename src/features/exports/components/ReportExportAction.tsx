@@ -67,8 +67,10 @@ export function ReportExportAction({ reportId, parameters, disabled }: { reportI
     finally { lock.current = false; setDownloading(false); }
   }
   const open = () => window.dispatchEvent(new Event("report-export-open"));
+  const previousJob = job !== null && !requested;
+  const actionLabel = previousJob && !disabled ? "Nova exportação" : "Exportar dados";
   return <section className="report-export-action" aria-label="Exportação de dados" aria-busy={busy}>
-    <div><SourceActionMenu label={busy ? "Solicitando…" : "Exportar dados"} disabled={disabled || busy}>
+    <div><SourceActionMenu label={busy ? "Solicitando…" : actionLabel} disabled={disabled || busy}>
       <button type="button" onClick={() => void request("xlsx")}>Excel (.xlsx)</button>
       <button type="button" onClick={() => void request("csv")}>CSV (.csv)</button>
     </SourceActionMenu><p>Exporta todas as linhas em uma nova consulta com os parâmetros informados na última execução. Períodos automáticos são calculados ao solicitar.</p></div>
@@ -77,6 +79,7 @@ export function ReportExportAction({ reportId, parameters, disabled }: { reportI
       {checking && !busy && !requested && !job && <NeutralLoader compact message="Consultando exportações anteriores deste relatório…"/>}
       {busy && <NeutralLoader compact message="Solicitando exportação…"/>}
       {requested && !job && <div className="export-progress" role="status"><strong>Exportação solicitada</strong><p>Seu pedido foi registrado. Consultando o andamento…</p><button type="button" className="btn btn-secondary" onClick={open}>Acompanhar exportações</button></div>}
+      {previousJob && <p className="export-previous-explanation"><strong>Exportação anterior deste relatório.</strong> O arquivo abaixo pertence a um pedido anterior e pode usar outros parâmetros.{!disabled && " Para exportar os dados da execução atual, clique em Nova exportação e escolha Excel ou CSV."}</p>}
       {job && <ExportProgressCard job={job} downloading={downloading} onDownload={() => void download()} onOpen={open}/>}
     </div>
     {(error || trackingError) && <div className="report-export-feedback"><Alert type="error" message={error || trackingError || "Não foi possível atualizar a exportação."}/><button type="button" className="btn btn-secondary" onClick={() => setRefreshVersion(value => value + 1)}>Atualizar andamento</button></div>}
