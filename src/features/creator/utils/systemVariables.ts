@@ -1,5 +1,6 @@
 import type { ReportSystemVariable } from "../types/creatorTypes";
 export const PARAMETER_VARIABLES: Array<{ value: ReportSystemVariable; label: string; type: "date" | "datetime" }> = [
+  { value: "startOfLast12Months", label: "Início dos últimos 12 meses (inclui mês atual)", type: "datetime" },
   { value: "now", label: "Agora", type: "datetime" }, { value: "currentDate", label: "Data atual", type: "date" },
   { value: "startOfToday", label: "Início de hoje", type: "datetime" }, { value: "startOfTomorrow", label: "Início de amanhã", type: "datetime" },
   { value: "startOfYesterday", label: "Início de ontem", type: "datetime" }, { value: "startOfWeek", label: "Início da semana", type: "datetime" },

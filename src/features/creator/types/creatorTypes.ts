@@ -91,10 +91,10 @@ export interface WhereNode extends Partial<FieldReference> {
   ui?: { kind: "relativePeriod"; preset: RelativePeriodPreset; label?: string };
 }
 
-export type RelativePeriodPreset = "today" | "yesterday" | "currentWeek" | "previousWeek" | "currentMonth" | "previousMonth" | "currentYear" | "previousYear";
+export type RelativePeriodPreset = "last12Months" | "today" | "yesterday" | "currentWeek" | "previousWeek" | "currentMonth" | "previousMonth" | "currentYear" | "previousYear";
 
 export type ReportParameterType = "string" | "integer" | "number" | "boolean" | "uuid" | "date" | "datetime" | "time";
-export type ReportSystemVariable = "now" | "currentDate" | "startOfToday" | "startOfTomorrow" | "startOfYesterday" | "startOfWeek" | "startOfNextWeek" | "startOfPreviousWeek" | "startOfMonth" | "startOfNextMonth" | "startOfPreviousMonth" | "startOfYear" | "startOfNextYear" | "startOfPreviousYear";
+export type ReportSystemVariable = "startOfLast12Months" | "now" | "currentDate" | "startOfToday" | "startOfTomorrow" | "startOfYesterday" | "startOfWeek" | "startOfNextWeek" | "startOfPreviousWeek" | "startOfMonth" | "startOfNextMonth" | "startOfPreviousMonth" | "startOfYear" | "startOfNextYear" | "startOfPreviousYear";
 
 export interface ReportParameterDefinition {
   name: string;

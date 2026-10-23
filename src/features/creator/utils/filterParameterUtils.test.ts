@@ -45,3 +45,12 @@ it("renames shared references recursively and simultaneously without mutating li
   expect(result.conditions?.[1]?.conditions?.map((item) => item.value)).toEqual([{ parameter: "b" }, { parameter: "a" }, "a"]);
   expect(condition.conditions[0]?.value).toEqual({ parameter: "a" });
 });
+
+it("creates a rolling 12-calendar-month period including the current month", () => {
+  const generated = createRelativePeriod("sale-date", "sales", "last12Months", [], "Emissão");
+  expect(generated.parameters.map(parameter => parameter.variable)).toEqual(["startOfLast12Months", "startOfNextMonth"]);
+  expect(generated.condition).toMatchObject({ ui: { preset: "last12Months", label: "Emissão" }, conditions: [
+    { fieldId: "sale-date", joinAlias: "sales", operator: "gte", value: { parameter: generated.parameters[0].name } },
+    { fieldId: "sale-date", joinAlias: "sales", operator: "lt", value: { parameter: generated.parameters[1].name } },
+  ] });
+});

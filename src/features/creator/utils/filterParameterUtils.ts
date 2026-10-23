@@ -1,6 +1,7 @@
 import type { RelativePeriodPreset, ReportParameterDefinition, ReportParameterType, WhereNode } from "../types/creatorTypes";
 
 export const PERIOD_PRESETS: Array<{ value: RelativePeriodPreset; label: string }> = [
+  { value: "last12Months", label: "Últimos 12 meses (mês atual parcial)" },
   { value: "today", label: "Hoje" }, { value: "yesterday", label: "Ontem" },
   { value: "currentWeek", label: "Semana atual" }, { value: "previousWeek", label: "Semana anterior" },
   { value: "currentMonth", label: "Mês atual" }, { value: "previousMonth", label: "Mês anterior" },
@@ -8,6 +9,7 @@ export const PERIOD_PRESETS: Array<{ value: RelativePeriodPreset; label: string 
 ];
 
 const BOUNDARIES = {
+  last12Months: ["startOfLast12Months", "startOfNextMonth"],
   today: ["startOfToday", "startOfTomorrow"], yesterday: ["startOfYesterday", "startOfToday"],
   currentWeek: ["startOfWeek", "startOfNextWeek"], previousWeek: ["startOfPreviousWeek", "startOfWeek"],
   currentMonth: ["startOfMonth", "startOfNextMonth"], previousMonth: ["startOfPreviousMonth", "startOfMonth"],

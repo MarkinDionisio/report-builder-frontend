@@ -1,6 +1,6 @@
 import type { ReportParameterDefinition } from "../types/creatorTypes";
 
-const SYSTEM_VARIABLE_TYPES: Record<string, "date" | "datetime"> = { currentDate: "date", now: "datetime", startOfToday: "datetime", startOfTomorrow: "datetime", startOfYesterday: "datetime", startOfWeek: "datetime", startOfNextWeek: "datetime", startOfPreviousWeek: "datetime", startOfMonth: "datetime", startOfNextMonth: "datetime", startOfPreviousMonth: "datetime", startOfYear: "datetime", startOfNextYear: "datetime", startOfPreviousYear: "datetime" };
+const SYSTEM_VARIABLE_TYPES: Record<string, "date" | "datetime"> = { startOfLast12Months: "datetime", currentDate: "date", now: "datetime", startOfToday: "datetime", startOfTomorrow: "datetime", startOfYesterday: "datetime", startOfWeek: "datetime", startOfNextWeek: "datetime", startOfPreviousWeek: "datetime", startOfMonth: "datetime", startOfNextMonth: "datetime", startOfPreviousMonth: "datetime", startOfYear: "datetime", startOfNextYear: "datetime", startOfPreviousYear: "datetime" };
 
 export function validateParameters(parameters: ReportParameterDefinition[]): string[] {
   const errors: string[] = [];

@@ -77,3 +77,7 @@ Novos padrões explicitamente aprovados pelo usuário devem ser incorporados aqu
 - Distinguir modelos de junção da organização e templates globais de junção na biblioteca da fonte. A fonte é referência de compatibilidade e preenchimento, sem limitar o modelo local a ela. Templates são snapshots independentes; excluir a origem ou o template não altera cópias.
 - Somente root gerencia modelos e templates manualmente. A importação autorizada de relatórios globais pode criar modelos locais automaticamente para creators e administradores, sem conceder permissões nem liberar gerenciamento manual. A prévia deve indicar modelos reutilizados e criados; o servidor grava relatório e modelos na mesma transação.
 - Modelos em uso mostram dependências e restrições de estrutura, tipo, habilitação e exclusão; nome e alias sugerido podem mudar. Oferecer Duplicar modelo como alternativa independente. Confirmações e erros permanecem no modal; conflito de aplicação invalida a prévia.
+
+## Período móvel de vendas
+
+- O filtro “Últimos 12 meses (mês atual parcial)” inclui o mês atual e os 11 anteriores. A API recalcula os limites no fuso da organização em cada execução e prévia. Use esse rótulo para explicitar que o mês atual está em andamento.
