@@ -32,6 +32,11 @@ function UserExportNotifications() {
   const modal = useModalFocus(open, () => setOpen(false));
   const refreshRef = useRef<() => void>(() => {});
   useEffect(() => {
+    const show = () => { setOpen(true); setPage(1); setNoticePage(1); refreshRef.current(); };
+    window.addEventListener("report-export-open", show);
+    return () => window.removeEventListener("report-export-open", show);
+  }, []);
+  useEffect(() => {
     let active = true;
     let inFlight = false;
     const abort = new AbortController();
@@ -70,8 +75,9 @@ function UserExportNotifications() {
     try { const result = await exportApi.read(id); if (isErr(result)) setError(problemMessage(result.error, "Não foi possível marcar o aviso como lido.")); else refresh(); }
     finally { actionLock.current = false; setBusyId(null); }
   }
+  const pending = jobs.filter(job => job.status === "queued" || job.status === "running").length;
   return <>
-    <button type="button" className="btn btn-secondary export-bell" aria-label={`Exportações e notificações${unread ? `, ${unread} não lidas` : ""}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => { setOpen(true); refresh(); }}><Bell size={19}/>{unread > 0 && <span className="export-bell__count">{unread}</span>}</button>
+    <button type="button" className="btn btn-secondary export-bell" aria-label={`Exportações e notificações${unread ? `, ${unread} não lidas` : ""}${pending ? `, ${pending} em andamento` : ""}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => { setOpen(true); refresh(); }}><Bell size={19}/>{(unread > 0 || pending > 0) && <span className="export-bell__count">{unread || pending}</span>}</button>
     <span className="loading-sr-only" role="status">{unread > 0 ? `${unread} notificações de exportação não lidas.` : ""}</span>
     {open && createPortal(<div className="export-notifications-backdrop" onClick={event => { if (event.target === event.currentTarget) setOpen(false); }}>
       <div ref={modal} role="dialog" aria-modal="true" aria-labelledby="export-notifications-title" className="export-notifications" tabIndex={-1}>
@@ -79,18 +85,20 @@ function UserExportNotifications() {
         <div className="export-notifications__body">
           {error && <><Alert type="error" message={error}/><button className="btn btn-secondary" onClick={refresh}>Tentar novamente</button></>}
           {loading ? <NeutralLoader message="Consultando exportações e notificações…"/> : error && jobs.length === 0 && notices.length === 0 ? null : <>
-            <section aria-label="Avisos"><h3>Avisos</h3>{notices.length === 0 && <p>Nenhum aviso de exportação.</p>}
-              {notices.map(notice => <article key={notice.id} className="export-notice"><p>{notice.message}</p><time dateTime={notice.createdAt}>{new Date(notice.createdAt).toLocaleString("pt-BR")}</time>{!notice.readAt && <button type="button" className="btn btn-secondary" disabled={busyId !== null} onClick={() => void read(notice.id)}>{busyId === notice.id ? "Salvando…" : "Marcar como lida"}</button>}</article>)}
-              {noticeTotal > 20 && <div className="export-notifications__pages"><button className="btn btn-secondary" disabled={noticePage === 1} onClick={() => setNoticePage(p => p - 1)}>Avisos anteriores</button><span>Página {noticePage}</span><button className="btn btn-secondary" disabled={noticePage * 20 >= noticeTotal} onClick={() => setNoticePage(p => p + 1)}>Mais avisos</button></div>}
-            </section>
             <section aria-label="Arquivos exportados"><h3>Arquivos</h3>{jobs.length === 0 && <p>Nenhuma exportação solicitada.</p>}
               {jobs.map(job => <article key={job.id} className="export-notice"><strong>{job.title}</strong><span>{job.format.toUpperCase()} · {labels[job.status]}</span>
+                <time dateTime={job.createdAt}>Solicitada em {new Date(job.createdAt).toLocaleString("pt-BR")}</time>
+                {(job.status === "queued" || job.status === "running") && (job.serviceStatus === "unavailable" ? <Alert type="warning" message="O serviço de geração está indisponível. Seu pedido permanece registrado. Avise o administrador; não é necessário solicitar novamente."/> : <NeutralLoader compact message={job.status === "queued" ? "Aguardando processamento. Você pode continuar usando o sistema." : "Gerando o arquivo. O download aparecerá aqui quando terminar."}/>)}
                 {job.expiresAt && <small>Disponível até {new Date(job.expiresAt).toLocaleString("pt-BR")}</small>}
                 {job.error && <p>{problemMessage({ code: job.errorCode }, "Não foi possível gerar o arquivo. Revise os parâmetros e tente novamente.")}</p>}
                 {job.status === "ready" && <button type="button" className="btn btn-secondary" disabled={busyId !== null} onClick={() => void download(job)}>{busyId === job.id ? "Baixando…" : "Baixar arquivo"}</button>}
                 {(job.status === "failed" || job.status === "expired") && <Link className="btn btn-secondary" to={`/reports/${job.reportId}/run`} onClick={() => setOpen(false)}>Abrir relatório para exportar novamente</Link>}
               </article>)}
               {total > 20 && <div className="export-notifications__pages"><button className="btn btn-secondary" disabled={page === 1} onClick={() => setPage(p => p - 1)}>Anterior</button><span>Página {page}</span><button className="btn btn-secondary" disabled={page * 20 >= total} onClick={() => setPage(p => p + 1)}>Próxima</button></div>}
+            </section>
+            <section aria-label="Avisos"><h3>Avisos</h3>{notices.length === 0 && <p>Nenhum aviso de exportação.</p>}
+              {notices.map(notice => <article key={notice.id} className="export-notice"><p>{notice.message}</p><time dateTime={notice.createdAt}>{new Date(notice.createdAt).toLocaleString("pt-BR")}</time>{!notice.readAt && <button type="button" className="btn btn-secondary" disabled={busyId !== null} onClick={() => void read(notice.id)}>{busyId === notice.id ? "Salvando…" : "Marcar como lida"}</button>}</article>)}
+              {noticeTotal > 20 && <div className="export-notifications__pages"><button className="btn btn-secondary" disabled={noticePage === 1} onClick={() => setNoticePage(p => p - 1)}>Avisos anteriores</button><span>Página {noticePage}</span><button className="btn btn-secondary" disabled={noticePage * 20 >= noticeTotal} onClick={() => setNoticePage(p => p + 1)}>Mais avisos</button></div>}
             </section>
           </>}
         </div><footer>Os arquivos ficam disponíveis por 24 horas após a conclusão.</footer>

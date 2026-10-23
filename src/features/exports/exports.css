@@ -1,6 +1,18 @@
 .report-export-action { margin: 1rem 0; }
 .report-export-action > div:first-child { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .report-export-action p { color: var(--text-secondary); font-size: .875rem; margin: .5rem 0; }
+.export-progress { margin-top: 1rem; padding: 1rem; border: 1px solid var(--primary-500); border-radius: var(--radius-lg); background: var(--bg-card); overflow-wrap: anywhere; }
+.export-progress--ready { border-color: var(--success-500); }
+.export-progress--warning, .export-progress--failed { border-color: var(--warning-500); }
+.export-progress__heading { display: flex; align-items: flex-start; gap: .65rem; }
+.export-progress__heading > svg { flex-shrink: 0; color: var(--primary-400); }
+.export-progress__heading strong, .export-progress__heading span { display: block; }
+.export-progress__heading span, .export-progress__actions small { color: var(--text-secondary); font-size: .8rem; margin-top: .25rem; }
+.export-progress__steps { display: flex; gap: .5rem; list-style: none; padding: 0; margin: 1rem 0; flex-wrap: wrap; }
+.export-progress__steps li { display: flex; align-items: center; gap: .35rem; padding: .35rem .65rem; border-radius: 1rem; background: var(--bg-secondary); color: var(--text-muted); font-size: .8rem; }
+.export-progress__steps li[data-active="true"] { color: var(--text-primary); background: var(--primary-glow); }
+.export-progress__actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-top: .75rem; }
+.export-progress-anchor:focus-visible { outline: 2px solid var(--primary-400); outline-offset: 3px; }
 .export-bell { position: relative; margin-left: auto; margin-right: .75rem; flex-shrink: 0; }
 .export-bell__count { background: var(--primary-500); color: white; border-radius: 1rem; padding: .125rem .4rem; font-size: .75rem; }
 .export-notifications-backdrop { position: fixed; inset: 0; z-index: 1200; background: #0008; display: flex; justify-content: flex-end; padding: 24px; }

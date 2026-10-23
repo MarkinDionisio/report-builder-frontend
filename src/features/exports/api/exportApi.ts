@@ -9,6 +9,7 @@ export interface ExportJob {
   id: string; reportId: string; title: string; format: ExportFormat;
   status: "queued" | "running" | "ready" | "failed" | "expired";
   createdAt: string; expiresAt: string | null; error: string | null; errorCode?: string;
+  startedAt?: string | null; completedAt?: string | null; serviceStatus?: "available" | "unavailable";
 }
 export interface ExportNotice { id: string; jobId: string; message: string; createdAt: string; readAt: string | null }
 export interface ExportPage<T> { data: T[]; totalCount: number; page: number; pageSize: number }
@@ -24,6 +25,8 @@ export const exportApi = {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ format, parameters, filters }),
     }),
   list: (page = 1, signal?: AbortSignal) => json<ExportPage<ExportJob>>(`/api/v1/report-exports?page=${page}&pageSize=20`, { signal }),
+  get: (id: string, signal?: AbortSignal) => json<ExportJob>(`/api/v1/report-exports/${encodeURIComponent(id)}`, { signal }),
+  forReport: (reportId: string, signal?: AbortSignal) => json<ExportPage<ExportJob>>(`/api/v1/report-exports?reportId=${encodeURIComponent(reportId)}&page=1&pageSize=1`, { signal }),
   notifications: (page = 1, signal?: AbortSignal) => json<ExportPage<ExportNotice> & { unreadCount: number }>(`/api/v1/notifications?page=${page}&pageSize=20`, { signal }),
   read: (id: string) => apiFetch(`/api/v1/notifications/${encodeURIComponent(id)}/read`, { method: "PATCH" }),
   async download(job: ExportJob): Promise<Result<void, ApiProblemDetails>> {
