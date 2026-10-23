@@ -1,4 +1,4 @@
-import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import React, { useState, useEffect } from "react";
 import { X, Search, Database, CheckCircle2 } from "lucide-react";
@@ -303,7 +303,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
                 </div><SearchMatchOptions matchCase={matchCase} exactMatch={exactMatch} onMatchCaseChange={setMatchCase} onExactMatchChange={setExactMatch}/></div>
 
                 {loadingObjects ? (
-                  <NeutralLoader compact message="Consultando tabelas e views do banco…"/>
+                  <ContentSkeleton rows={5} message="Consultando tabelas e views do banco…"/>
                 ) : filteredObjects.length === 0 ? (
                   <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", textAlign: "center", padding: "1rem 0" }}>
                     Nenhum objeto encontrado.
@@ -492,7 +492,7 @@ export const IntrospectionModal: React.FC<IntrospectionModalProps> = ({
                         </div>
                       </div>
                     ) : loadingFields ? (
-                      <NeutralLoader compact message="Consultando campos da tabela ou view selecionada…"/>
+                      <ContentSkeleton variant="table" rows={5} columns={3} message="Consultando campos da tabela ou view selecionada…"/>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
                         <div style={{ fontWeight: 600, fontSize: "0.9rem", marginBottom: "0.5rem", flexShrink: 0 }}>

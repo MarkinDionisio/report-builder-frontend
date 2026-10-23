@@ -26,7 +26,7 @@ Referência central para todas as novas telas e alterações de interface do Rep
 
 ## Carregamento, erros e conclusão
 
-- Use NeutralLoader em todos os carregamentos de dados: painel com spinner, título e mensagem específica; use compact em regiões pequenas e atualizações que preservam o conteúdo. A mensagem é obrigatória. Consultas usam “Consultando [dados]…”, enquanto verificações, execução e gravação descrevem a operação real. Use reticências tipográficas (…). Botões mantêm rótulos curtos da ação em andamento.
+- Use ContentSkeleton no carregamento inicial de listas, tabelas e cards com estrutura conhecida, preservando cabeçalhos e navegação. Placeholders ficam ocultos dos leitores de tela; uma única mensagem contextual anuncia o progresso. Use NeutralLoader para consultas sem estrutura previsível, verificações e execução inicial de relatórios, com painel suave e mensagem obrigatória. Nas atualizações da mesma consulta, preserve dados e use NeutralLoader compact com “Atualizando…”, aria-busy e bloqueio de ações incompatíveis. Ao mudar organização, fonte ou relatório, limpe o contexto anterior. Consultas usam “Consultando [dados]…”; operações descrevem a ação real. Botões mantêm indicador e rótulo curto. Respeite movimento reduzido, sem porcentagens, estimativas ou atrasos artificiais.
 - Carregamentos precisam ser evidentes, com mensagem específica sobre a operação e indicador visual. Prefira “Consultando conexão, tabelas, campos e permissões desta fonte…” a um “Carregando…” sem contexto; use título destacado quando o carregamento ocupar a página ou modal.
 - Trate carregamento, lista vazia, falha, acesso negado e nova tentativa. Preserve o contêiner e o contexto em todos esses estados. Não habilite gravações dependentes de dados cuja leitura falhou.
 - Após salvar, atualize o catálogo ou resumo afetado e encaminhe ao próximo passo correto. Use os IDs persistidos do destino: os IDs do snapshot de um template não identificam as tabelas recém-criadas.
@@ -67,7 +67,7 @@ Novos padrões explicitamente aprovados pelo usuário devem ser incorporados aqu
 
 ## Referências de implementação
 
-- NeutralLoader e Alert centralizam mensagens de consulta e a identificação acessível de progresso e erro. Informe sempre a operação concreta ao usar o carregamento.
+- ContentSkeleton, NeutralLoader e Alert centralizam carregamento estrutural, mensagens de operação e a identificação acessível de progresso e erro. Informe sempre a operação concreta ao usar o carregamento.
 - ConfirmDeleteModal centraliza confirmações de exclusão e revogação, bloqueio de repetição, erro no modal e comportamento de teclado. useModalFocus mantém o foco nos formulários abertos e o devolve ao controle de origem ao fechar.
 - SourceActionMenu agrupa ações secundárias; OrganizationContextHeader mantém a identidade da organização. A área de criação também preserva a aba pela URL.
 - A classe admin-page aplica largura e padding administrativos; admin-form-dialog mantém cabeçalho e ações dos formulários longos acessíveis. Designer e execução mantêm os próprios contêineres.

@@ -1,3 +1,4 @@
+import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ReportTagPicker } from "./ReportTagPicker";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
@@ -122,7 +123,7 @@ export function GlobalReportCatalog({ organizationId, onClose, onImported }: Pro
         {step === 1 ? <section aria-label="Modelos disponíveis" className="global-report-catalog">
           <p className="global-report-import__hint">Busque pelo título e selecione um modelo para continuar.</p>
           <div className="global-report-catalog__search"><Search size={18} aria-hidden="true"/><div className="search-input-clear"><input id="global-template-search" aria-label="Buscar relatórios globais" placeholder="Buscar pelo título do relatório..." value={search} onChange={event => { setSearch(event.target.value); setPage(1); setLoading(true); setTemplates([]); }}/><ClearSearchButton value={search} onClear={()=>{setSearch("");setPage(1);setLoading(true);setTemplates([]);}}/></div></div>
-          {loading ? <NeutralLoader message="Consultando modelos de relatórios globais…"/> : <>
+          {loading ? <ContentSkeleton variant="list" rows={4} columns={4} message="Consultando modelos de relatórios globais…"/> : <>
             <p className="global-report-catalog__count" role="status">{total} {total === 1 ? "modelo encontrado" : "modelos encontrados"}</p>
             {templates.length === 0 ? <div className="global-report-catalog__empty"><FileBarChart size={32} aria-hidden="true"/><p>{search.trim() ? "Nenhum modelo encontrado para esta busca." : "Nenhum modelo global disponível."}</p>{search.trim() && <small>Tente outro título ou limpe a busca.</small>}</div> : <div className="global-report-catalog__grid">
               {templates.map(template => <button type="button" key={template.id} className="global-report-catalog__card" aria-label={`Selecionar modelo ${template.title}`} aria-pressed={selectedTemplate?.id === template.id} onClick={() => chooseTemplate(template)}>

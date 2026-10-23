@@ -1,3 +1,4 @@
+import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
 import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import "../styles/catalogTemplates.css";
@@ -15,6 +16,7 @@ export function CatalogTemplatesPage({ embedded = false }: { embedded?: boolean 
   const { refreshUser } = useAuth();
   const [templates, setTemplates] = useState<CatalogTemplate[]>([]);
   const [error, setError] = useState('');
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState(true);
   const [deleting, setDeleting] = useState<CatalogTemplate | null>(null);
   const [deleteError,setDeleteError]=useState("");
@@ -24,7 +26,7 @@ export function CatalogTemplatesPage({ embedded = false }: { embedded?: boolean 
     try {
       const result = await catalogApi.listCatalogTemplates();
       if (isErr(result)) { setError(result.error.detail || 'Erro ao carregar templates.'); if (result.error.status === 403) void refreshUser(); }
-      else setTemplates(result.value);
+      else { setTemplates(result.value); setLoaded(true); }
     } catch {setError('Falha de comunicação ao consultar modelos de catálogo. Tente atualizar novamente.');}
     finally {setBusy(false);}
   }, [refreshUser]);
@@ -50,9 +52,10 @@ export function CatalogTemplatesPage({ embedded = false }: { embedded?: boolean 
         <button className="btn btn-secondary" disabled={busy} onClick={() => void load()}>Atualizar</button>
       </header>
       {error && <p role="alert">{error}</p>}
-      {busy && <NeutralLoader message="Consultando modelos de catálogo…"/>}
-      {!busy && templates.length === 0 && <p>Nenhum template cadastrado.</p>}
-      <div className="catalog-template-list">
+      {busy && !loaded && <ContentSkeleton variant="cards" message="Consultando modelos de catálogo…"/>}
+      {busy && loaded && <NeutralLoader compact message={lock.current ? "Excluindo modelo…" : "Atualizando modelos de catálogo…"}/>}
+      {!busy && !error && templates.length === 0 && <p>Nenhum template cadastrado.</p>}
+      <div className="catalog-template-list" aria-busy={busy} inert={busy}>
         {templates.map(t => <article className="card catalog-template-card" key={t.id}>
           <header className="catalog-template-card__header">
             <div><TemplateHeading>{t.name}</TemplateHeading>{t.description && <p className="catalog-template-card__description">{t.description}</p>}</div>

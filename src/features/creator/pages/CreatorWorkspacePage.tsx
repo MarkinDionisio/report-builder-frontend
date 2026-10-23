@@ -1,4 +1,4 @@
-import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/context/AuthContext";
@@ -76,7 +76,7 @@ export const CreatorWorkspacePage: React.FC = () => {
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
         <Navbar />
         <main className="admin-page">
-          <NeutralLoader message="Consultando organizações disponíveis para criação…"/>
+          <ContentSkeleton variant="cards" rows={3} columns={4} message="Consultando organizações disponíveis para criação…"/>
         </main>
       </div>
     );

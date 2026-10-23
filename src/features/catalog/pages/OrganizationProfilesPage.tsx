@@ -1,3 +1,4 @@
+import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { useModalFocus } from "../../../shared/hooks/useModalFocus";
 import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
 import { OrganizationContextHeader } from "../../organizations/components/OrganizationContextHeader";
@@ -12,7 +13,6 @@ import { isErr } from "../../../shared/result/result";
 import { canManageOrganization } from "../../../shared/utils/roles";
 import { Navbar } from "../../../shared/components/Navbar";
 import { Alert } from "../../../shared/components/Alert";
-import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { Users, Plus, Key, Edit2, Trash2, ShieldAlert, X } from "lucide-react";
 
 export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly?: boolean; sourceId?: string; onCreated?: (profile: Profile) => void; onCancelCreate?: () => void }> = ({ embedded = false, createOnly = false, sourceId: suppliedSourceId, onCreated, onCancelCreate }) => {
@@ -256,7 +256,7 @@ export const OrganizationProfilesPage: React.FC<{ embedded?: boolean; createOnly
         {errorMsg && !isModalOpen && <Alert type="error" message={errorMsg} style={{ marginBottom: "1.25rem" }} />}
 
         {loading ? (
-          <NeutralLoader message="Consultando profiles da organização…" />
+          <ContentSkeleton variant="cards" rows={3} columns={4} message="Consultando profiles da organização…"/>
         ) : profiles.length === 0 ? (
           <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem", color: "var(--text-secondary)" }}>
             <Users size={40} style={{ opacity: 0.4, marginBottom: "0.75rem" }} />

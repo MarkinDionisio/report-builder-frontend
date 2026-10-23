@@ -147,3 +147,26 @@ it("returns to the previous page after deleting its final report and preserves f
   expect(screen.getByLabelText("URL")).toHaveTextContent("tagIds=sales");
   expect(screen.getByLabelText("URL")).toHaveTextContent("page=1");
 });
+
+
+it("keeps reports visible and disables actions during a page refresh", async () => {
+  render(<MemoryRouter><ReportBrowser organizationId="org"/></MemoryRouter>);
+  await screen.findByText(item.title);
+  let finish!: (value: Awaited<ReturnType<typeof creatorApi.listReports>>) => void;
+  vi.mocked(creatorApi.listReports).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  fireEvent.click(screen.getByRole("button", { name: "Próxima" }));
+  await screen.findByText("Atualizando relatórios…");
+  expect(screen.getByText(item.title)).toBeVisible();
+  expect(screen.getByText(item.title).closest("[inert]")).not.toBeNull();
+  finish({ ok: true, value: { page: 2, pageSize: 20, totalRecords: 125, totalPages: 7, data: [item] } });
+  await waitFor(() => expect(screen.queryByText("Atualizando relatórios…")).not.toBeInTheDocument());
+});
+
+it("hides reports immediately when switching organizations", async () => {
+  const { rerender } = render(<MemoryRouter><ReportBrowser organizationId="org"/></MemoryRouter>);
+  await screen.findByText(item.title);
+  vi.mocked(creatorApi.listReports).mockImplementationOnce(() => new Promise(() => {}));
+  rerender(<MemoryRouter><ReportBrowser organizationId="other"/></MemoryRouter>);
+  expect(screen.queryByText(item.title)).not.toBeInTheDocument();
+  expect(screen.getByRole("status")).toHaveTextContent("Consultando relatórios");
+});

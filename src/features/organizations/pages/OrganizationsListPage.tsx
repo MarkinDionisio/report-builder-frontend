@@ -1,4 +1,4 @@
-import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { SourceActionMenu } from "../../catalog/components/SourceActionMenu";
 import "../styles/organizationOverview.css";
 import "../../catalog/styles/dataSourceWorkspace.css";
@@ -148,7 +148,7 @@ export const OrganizationsListPage: React.FC = () => {
       <ProblemAlert problem={problem} />
 
       {isLoading ? (
-        <NeutralLoader message="Consultando organizações…"/>
+        <ContentSkeleton variant="cards" rows={4} columns={4} message="Consultando organizações…"/>
       ) : organizations.length === 0 ? (
         <div className="card organization-empty">
           <Building2 size={48} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />

@@ -1,3 +1,4 @@
+import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ClearSearchButton } from "../../../shared/components/ClearSearchButton";
 import { useModalFocus } from "../../../shared/hooks/useModalFocus";
 import { ConfirmDeleteModal } from "../../organizations/components/ConfirmDeleteModal";
@@ -279,7 +280,7 @@ export const ReportFieldsPage: React.FC<{ embedded?: boolean; schemaId?: string;
         {errorMsg && !isModalOpen && <Alert type="error" message={errorMsg} style={{ marginBottom: "1.25rem" }} />}
 
         {loading ? (
-          <NeutralLoader message="Consultando campos da tabela…" />
+          <ContentSkeleton variant="table" rows={6} columns={5} message="Consultando campos da tabela…"/>
         ) : fields.length === 0 ? (
           <div className="card" style={{ textAlign: "center", padding: "3rem 1.5rem", color: "var(--text-secondary)" }}>
             <List size={40} style={{ opacity: 0.4, marginBottom: "0.75rem" }} />

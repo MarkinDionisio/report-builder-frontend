@@ -129,7 +129,7 @@ export const RegisterPage: React.FC = () => {
           >
             {isLoading ? (
               <>
-                <Loader2 size={18} className="animate-spin" /> Cadastrando...
+                <Loader2 size={18} className="animate-spin" /> Cadastrando…
               </>
             ) : (
               <>

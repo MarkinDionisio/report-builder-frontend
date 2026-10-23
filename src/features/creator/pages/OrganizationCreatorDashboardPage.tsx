@@ -1,7 +1,7 @@
+import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { ReportBrowser } from "../components/ReportBrowser";
 import { ReportTagManager } from "../components/ReportTagManager";
 import { canManageOrganization } from "../../../shared/utils/roles";
-import { NeutralLoader } from "../../../shared/components/NeutralLoader";
 import { OrganizationContextHeader } from "../../organizations/components/OrganizationContextHeader";
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useSearchParams } from "react-router-dom";
@@ -135,7 +135,7 @@ export const OrganizationCreatorDashboardPage: React.FC = () => {
         {activeTab === "reports" ? (
           <ReportBrowser organizationId={organizationId} onTotal={setReportCount} version={version}/>
         ) : loading ? (
-          <NeutralLoader message="Consultando relatórios e dashboards desta organização…"/>
+          <ContentSkeleton variant="cards" rows={4} columns={4} message="Consultando relatórios e dashboards desta organização…"/>
 
         ) : (
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>

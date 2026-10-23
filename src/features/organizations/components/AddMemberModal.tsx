@@ -261,7 +261,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> Processando...
+                  <Loader2 size={16} className="animate-spin" /> Processando…
                 </>
               ) : userNotFound ? (
                 "Enviar Convite"

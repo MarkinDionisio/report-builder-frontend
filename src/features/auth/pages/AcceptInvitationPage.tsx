@@ -158,7 +158,7 @@ export const AcceptInvitationPage: React.FC = () => {
           >
             {isLoading ? (
               <>
-                <Loader2 size={18} className="animate-spin" /> Processando...
+                <Loader2 size={18} className="animate-spin" /> Processando…
               </>
             ) : (
               <>

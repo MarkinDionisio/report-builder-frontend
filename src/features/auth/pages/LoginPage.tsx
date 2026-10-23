@@ -101,7 +101,7 @@ export const LoginPage: React.FC = () => {
           >
             {isLoading ? (
               <>
-                <Loader2 size={18} className="animate-spin" /> Entrando...
+                <Loader2 size={18} className="animate-spin" /> Entrando…
               </>
             ) : (
               <>

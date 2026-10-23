@@ -138,7 +138,7 @@ export const OrganizationFormModal: React.FC<OrganizationFormModalProps> = ({
             <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Loader2 size={16} className="animate-spin" /> Salvando...
+                  <Loader2 size={16} className="animate-spin" /> Salvando…
                 </>
               ) : (
                 "Salvar Organização"

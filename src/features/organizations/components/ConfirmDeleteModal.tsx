@@ -100,7 +100,7 @@ export const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
           >
             {isDeleting ? (
               <>
-                <Loader2 size={16} className="animate-spin" /> Excluindo...
+                <Loader2 size={16} className="animate-spin" /> Excluindo…
               </>
             ) : (
               <>

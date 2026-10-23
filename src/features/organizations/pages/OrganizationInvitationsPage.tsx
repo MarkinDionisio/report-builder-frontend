@@ -1,4 +1,4 @@
-import { NeutralLoader } from "../../../shared/components/NeutralLoader";
+import { ContentSkeleton } from "../../../shared/components/ContentSkeleton";
 import { OrganizationContextHeader } from "../components/OrganizationContextHeader";
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
@@ -166,7 +166,7 @@ export const OrganizationInvitationsPage: React.FC = () => {
       <ProblemAlert problem={actionProblem} />
 
       {isLoading ? (
-        <NeutralLoader message="Consultando convites da organização…"/>
+        <ContentSkeleton variant="table" rows={5} columns={5} message="Consultando convites da organização…"/>
       ) : invitations.length === 0 ? (
         <div className="card organization-empty">
           <Mail size={48} style={{ color: "var(--text-muted)", marginBottom: "1rem" }} />
