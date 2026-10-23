@@ -20,7 +20,20 @@ for (const width of [1440, 390]) test(`exports and notifications at ${width}px`,
   await page.route("**/api/v1/report-exports/job", route => route.fulfill(json(job())));
   await page.route("**/api/v1/notifications?**", route => route.fulfill(json({ data: ready ? [{ id: "notice", jobId: "job", message: "Exportação disponível", createdAt: new Date().toISOString(), readAt: null }] : [], totalCount: ready ? 1 : 0, unreadCount: ready ? 1 : 0 })));
   await page.route("**/api/v1/report-exports/job/download", route => route.fulfill({ status: 200, contentType: "text/csv", headers: { "Content-Disposition": "attachment; filename=relatorio.csv" }, body: "Total\r\n10\r\n" }));
+  let denyExport = true;
+  await page.route("**/api/v1/reports/report/exports", async route => {
+    if (denyExport) return route.fulfill({ ...json({ code: "export.global_template", status: 403 }), status: 403 });
+    return route.fallback();
+  });
   await page.goto("/reports/report/run");
+  await page.getByRole("button", { name: "Exportar dados" }).click();
+  await page.getByRole("button", { name: "CSV (.csv)" }).click();
+  const alert = page.getByRole("alert");
+  await expect(alert).toHaveText("Importe este modelo global para sua organização antes de exportar.");
+  await expect(page.getByRole("button", { name: "Atualizar andamento" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("export-error.png"), fullPage: true, animations: "disabled" });
+  denyExport = false;
   await page.getByRole("button", { name: "Exportar dados" }).click();
   await page.getByRole("button", { name: "CSV (.csv)" }).click();
   await expect(page.getByText("Exportação na fila")).toBeVisible();

@@ -1,6 +1,8 @@
 .report-export-action { margin: 1rem 0; }
 .report-export-action > div:first-child { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .report-export-action p { color: var(--text-secondary); font-size: .875rem; margin: .5rem 0; }
+.report-export-feedback { display: flex; flex-direction: column; gap: .75rem; margin-top: 1rem; }
+.report-export-feedback > button { align-self: flex-start; }
 .export-progress { margin-top: 1rem; padding: 1rem; border: 1px solid var(--primary-500); border-radius: var(--radius-lg); background: var(--bg-card); overflow-wrap: anywhere; }
 .export-progress--ready { border-color: var(--success-500); }
 .export-progress--warning, .export-progress--failed { border-color: var(--warning-500); }

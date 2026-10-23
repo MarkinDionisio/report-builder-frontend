@@ -79,6 +79,6 @@ export function ReportExportAction({ reportId, parameters, disabled }: { reportI
       {requested && !job && <div className="export-progress" role="status"><strong>Exportação solicitada</strong><p>Seu pedido foi registrado. Consultando o andamento…</p><button type="button" className="btn btn-secondary" onClick={open}>Acompanhar exportações</button></div>}
       {job && <ExportProgressCard job={job} downloading={downloading} onDownload={() => void download()} onOpen={open}/>}
     </div>
-    {(error || trackingError) && <><Alert type="error" message={error || trackingError || "Não foi possível atualizar a exportação."}/><button type="button" className="btn btn-secondary" onClick={() => setRefreshVersion(value => value + 1)}>Atualizar andamento</button></>}
+    {(error || trackingError) && <div className="report-export-feedback"><Alert type="error" message={error || trackingError || "Não foi possível atualizar a exportação."}/><button type="button" className="btn btn-secondary" onClick={() => setRefreshVersion(value => value + 1)}>Atualizar andamento</button></div>}
   </section>;
 }
