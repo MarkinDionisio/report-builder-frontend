@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { diagnosticMessage, problemMessage, validationFieldLabel } from "./messages";
 
 describe("Portuguese presentation boundaries", () => {
+  it("explains when exporting a global report requires import", () => {
+    expect(problemMessage({ code: "export.global_template", status: 403 })).toBe("Importe este modelo global para sua organização antes de exportar.");
+  });
   it("translates known codes without mutating the English technical response", () => {
     const problem = { code: "export.queue_limit", detail: "The pending export limit has been reached.", status: 429 };
     expect(problemMessage(problem)).toBe("O limite de exportações pendentes foi atingido. Tente novamente em instantes.");

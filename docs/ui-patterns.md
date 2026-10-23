@@ -112,6 +112,8 @@ In creator lists, Abrir is the visible primary action; Editar relatório/Excluir
 
 ## Exports and notifications
 
+Anyone permitted to execute a report may export its data, including shared reports; no separate export permission or ownership requirement applies. Recheck current execution access at request, processing, and download, preserving row restrictions. Root may execute/export global originals; other users import a local copy first.
+
 For saved reports with data, Exportar dados offers Excel/CSV for all rows. Explain that it queries again using parameters from the last execution, while automatic periods resolve server-side at request time and freeze during queueing. Changed parameters require execution before requesting export. Confirm queue admission without blocking the screen during generation.
 
 The navigation bell combines persisted notices/files with unread count and Portuguese statuses Na fila, Gerando, Disponível, Falhou, Expirada. Downloads are explicit, files last 24 hours, and new requests require report access. Never start downloads automatically.

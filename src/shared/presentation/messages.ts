@@ -1,6 +1,7 @@
 import type { ApiProblemDetails } from "../api/types";
 
 export const KNOWN_ERROR_CODES: Record<string, { title: string; message: string }> = {
+  "export.global_template": { title: "Importação necessária", message: "Importe este modelo global para sua organização antes de exportar." },
   "report_import.incompatible": { title: "Modelo incompatível", message: "O modelo ou catálogo mudou. Verifique a compatibilidade novamente." },
   "report_import.forbidden": { title: "Importação não permitida", message: "É necessário acesso de creator à organização para importar relatórios." },
   "report_import.template_not_found": { title: "Modelo indisponível", message: "Este modelo global não está mais disponível. Escolha outro modelo." },
